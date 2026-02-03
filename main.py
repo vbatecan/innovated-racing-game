@@ -9,7 +9,7 @@ from mediapipe.tasks.python.vision.hand_landmarker import HandLandmarkerOptions
 logging.basicConfig(level=logging.DEBUG)
 
 
-class HandDetector:
+class Controller:
     def __init__(self):
         self.latest_result = None
 
@@ -26,6 +26,7 @@ class HandDetector:
                 min_tracking_confidence=0.3,
             )
         )
+        self.steer = 0.0
 
     # This runs in a separate thread!
     def callback(self, result, output_image, timestamp_ms):
@@ -94,12 +95,13 @@ class HandDetector:
                 for landmark in hand_landmarks:
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
                     cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
+            self.steer = normalized_slope
 
         return image
 
 
 def main():
-    detector = HandDetector()
+    detector = Controller()
     cam = cv2.VideoCapture(0)
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
@@ -112,10 +114,7 @@ def main():
 
         frame_timestamp_ms = int((time.time() - start_time) * 1000)
 
-        # 1. Send frame to be analyzed (background process)
         detector.detect(frame, frame_timestamp_ms)
-
-        # 2. Draw the latest known landmarks on the CURRENT frame
         frame = detector.draw_annotations(frame)
 
         cv2.imshow("frame", frame)
