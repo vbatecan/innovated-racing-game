@@ -67,6 +67,9 @@ class Map:
                 obs = Obstacle(spawn_x, spawn_y, 50, 50, self.speed)
                 self.obstacles.add(obs)
 
+        for obs in self.obstacles:
+            obs.speed = self.speed
+
         self.obstacles.update()
 
         # Kapag outside the boundary na, tatanggalin natin yung obstacle para hindi maipon at makasave ng memory.
@@ -80,7 +83,7 @@ class Map:
         pygame.draw.rect(
             surface, self.ROAD_COLOR, (self.road_x, 0, self.road_width, self.height)
         )
-        
+
         # ito yung marker sa center
         center_x = self.road_x + self.road_width // 2
 
