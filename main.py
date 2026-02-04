@@ -36,6 +36,8 @@ def draw_settings_menu(screen, font, settings, selected_index, options):
             value_text = str(settings.obstacle_frequency)
         elif option == "Sensitivity":
             value_text = f"{settings.steering_sensitivity:.1f}"
+        elif option == "Brake Sens":
+            value_text = str(settings.brake_sensitivity)
 
         text = font.render(f"{option}: {value_text}", True, color)
 
@@ -53,8 +55,8 @@ def draw_settings_menu(screen, font, settings, selected_index, options):
 
 def main():
     pygame.init()
-    SCREEN_WIDTH = 800
-    SCREEN_HEIGHT = 600
+    SCREEN_WIDTH = 1920
+    SCREEN_HEIGHT = 1080
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Hand Gesture Racing Game")
     clock = pygame.time.Clock()
@@ -85,6 +87,7 @@ def main():
         "Show Camera",
         "Obstacle Freq",
         "Sensitivity",
+        "Brake Sens",
     ]
     selected_setting = 0
 
@@ -122,6 +125,8 @@ def main():
                             settings.decrease_obstacle_frequency()
                         elif selected_setting == 4:
                             settings.decrease_sensitivity()
+                        elif selected_setting == 5:
+                            settings.decrease_brake_sensitivity()
                     elif event.key == pygame.K_RIGHT:
                         if selected_setting == 0:
                             settings.increase_speed()
@@ -133,9 +138,14 @@ def main():
                             settings.increase_obstacle_frequency()
                         elif selected_setting == 4:
                             settings.increase_sensitivity()
+                        elif selected_setting == 5:
+                            settings.increase_brake_sensitivity()
 
         # Update Logic
         if not show_settings:
+            # Sync settings to detector
+            detector.brake_threshold = settings.get_brake_threshold()
+
             # Get detector frame
             frame = detector.get_frame()
             if settings.show_camera and frame is not None:

@@ -10,7 +10,9 @@ class Controller:
     def __init__(self):
         self.latest_result = None
         self.steer = 0.0
+        self.steer = 0.0
         self.breaking = False
+        self.brake_threshold = 0.02
         self.running = False
         self.current_frame = None
         self.annotated_frame = None
@@ -95,15 +97,15 @@ class Controller:
 
             # Check for braking (Thumb Up) on EITHER hand
             self.breaking = False
-            for hand_landmarks in self.latest_result.hand_landmarks:
-                # Thumb Tip (4) < Thumb IP (3) < Thumb MCP (2) (y-coordinate, lower is higher on screen)
-                # And basic check that thumb is actually pointing up relative to wrist
-                thumb_tip = hand_landmarks[4]
-                thumb_ip = hand_landmarks[3]
+            # for hand_landmarks in self.latest_result.hand_landmarks:
+            #     # Thumb Tip (4) < Thumb IP (3) < Thumb MCP (2) (y-coordinate, lower is higher on screen)
+            #     # And basic check that thumb is actually pointing up relative to wrist
+            #     thumb_tip = hand_landmarks[4]
+            #     thumb_ip = hand_landmarks[3]
 
-                # Simple check: Thumb tip is significantly above the IP joint
-                if thumb_tip.y < thumb_ip.y - 0.02:
-                    self.breaking = True
+            #     # Simple check: Thumb tip is significantly above the IP joint
+            #     if thumb_tip.y < thumb_ip.y - self.brake_threshold:
+            #         self.breaking = True
 
             brake_color = (0, 0, 255) if self.breaking else (0, 255, 0)
             status_text = "BRAKING!" if self.breaking else "THROTTLE ON"

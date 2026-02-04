@@ -25,7 +25,7 @@ class Map:
         self.width = screen_width
         self.height = screen_height
 
-        self.road_width = 400
+        self.road_width = 800
         self.road_x = (self.width - self.road_width) // 2
 
         self.scroll_y = 0
@@ -53,16 +53,14 @@ class Map:
         if self.obstacle_timer >= self.obstacle_frequency:
             self.obstacle_timer = 0
             if len(self.obstacles) < 5:  # Limit active obstacles
-                # Spawn in one of 3 lanes roughly
                 lane_width = self.road_width // 3
                 lane = random.randint(0, 2)
-                # Add some randomness to x
                 spawn_x = (
                     self.road_x
                     + (lane * lane_width)
                     + random.randint(10, lane_width - 60)
                 )
-                spawn_y = -100  # Above screen
+                spawn_y = -100
 
                 obs = Obstacle(spawn_x, spawn_y, 50, 50, self.speed)
                 self.obstacles.add(obs)

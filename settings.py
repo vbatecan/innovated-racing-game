@@ -10,7 +10,20 @@ class Settings:
         # Physics
         self.ACCELERATION = 0.2
         self.FRICTION = 0.05
-        self.BRAKE_STRENGTH = 0.8
+        self.BRAKE_STRENGTH = 0.5
+        self.brake_sensitivity = 5  # 1 (Hard) to 10 (Easy)
+
+    def get_brake_threshold(self):
+        # Map sensitivity 1-10 to threshold 0.06 to -0.03
+        # High sens = Low threshold (easier to trigger)
+        # 5 -> 0.02
+        return 0.07 - (self.brake_sensitivity * 0.01)
+
+    def increase_brake_sensitivity(self):
+        self.brake_sensitivity = min(self.brake_sensitivity + 1, 10)
+
+    def decrease_brake_sensitivity(self):
+        self.brake_sensitivity = max(self.brake_sensitivity - 1, 1)
 
     def increase_speed(self):
         self.car_speed = min(self.car_speed + 1, 50)
