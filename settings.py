@@ -5,6 +5,7 @@ class Settings:
         self.show_camera = True
         self.obstacle_frequency = 30
         self.steering_sensitivity = 1.0
+        self._vals = [30, 60, 120]
 
     def increase_speed(self):
         self.car_speed = min(self.car_speed + 1, 50)
@@ -24,19 +25,16 @@ class Settings:
             self.max_fps = 30
 
     def decrease_fps(self):
-        vals = [30, 60, 120]
         try:
-            idx = vals.index(self.max_fps)
-            self.max_fps = vals[max(idx - 1, 0)]
+            idx = self._vals.index(self.max_fps)
+            self.max_fps = self._vals[max(idx - 1, 0)]
         except ValueError:
             self.max_fps = 30
 
     def increase_obstacle_frequency(self):
-        # Higher value = less frequent (more frames between obstacles)
         self.obstacle_frequency = min(self.obstacle_frequency + 5, 120)
 
     def decrease_obstacle_frequency(self):
-        # Lower value = more frequent
         self.obstacle_frequency = max(self.obstacle_frequency - 5, 5)
 
     def increase_sensitivity(self):
