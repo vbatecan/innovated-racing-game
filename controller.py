@@ -2,11 +2,18 @@ import mediapipe as mp
 from mediapipe.tasks.python import vision, BaseOptions
 from mediapipe.tasks.python.vision.hand_landmarker import HandLandmarkerOptions
 import cv2
+import threading
+import time
 
 
 class Controller:
     def __init__(self):
         self.latest_result = None
+        self.steer = 0.0
+        self.running = False
+        self.current_frame = None
+        self.annotated_frame = None
+        self.lock = threading.Lock()
 
         self.lm = vision.HandLandmarker.create_from_options(
             HandLandmarkerOptions(
@@ -21,49 +28,79 @@ class Controller:
                 min_tracking_confidence=0.3,
             )
         )
-        self.steer = 0.0
 
-    # This runs in a separate thread!
+    def start_stream(self):
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.running = True
+        self.thread = threading.Thread(target=self._update, daemon=True)
+        self.thread.start()
+        print("Camera thread started.")
+
+    def stop_stream(self):
+        self.running = False
+        if self.thread.is_alive():
+            self.thread.join()
+        self.cap.release()
+        print("Camera thread stopped.")
+
+    def _update(self):
+        start_time = time.time()
+        while self.running:
+            ret, frame = self.cap.read()
+            if not ret:
+                continue
+
+            frame = cv2.flip(frame, 1)
+
+            timestamp_ms = int((time.time() - start_time) * 1000)
+
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+            self.lm.detect_async(mp_image, timestamp_ms)
+
+            # Draw annotations on the frame immediately
+            # Note: detection is async, so latest_result might trail behind slightly.
+            annotated = self._draw_annotations_internal(frame)
+
+            with self.lock:
+                self.annotated_frame = annotated
+
+            # Optional: tiny sleep to yield if CPU usage is too high,
+            # but cap.read() is blocking so it shouldn't spin.
+
     def callback(self, result, output_image, timestamp_ms):
-        # Just store the result. Don't draw here.
         self.latest_result = result
 
-    def detect(self, frame, timestamp_ms):
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-        self.lm.detect_async(mp_image, timestamp_ms)
-
-    def draw_annotations(self, image):
-        # Check if we have results to draw
+    def _draw_annotations_internal(self, image):
         if self.latest_result and self.latest_result.hand_landmarks:
-            # Must be two hands
             if len(self.latest_result.hand_landmarks) != 2:
                 cv2.putText(
                     image,
-                    "Must be 2 hands detected",
+                    "Must be 2 hands",
                     (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1,
                     (0, 0, 255),
                     2,
                 )
+                self.steer = 0.0
                 return image
 
-            # Magddraw tayo ng line between the left hand wrist and right hand wrist and
-            # we will use that to measure yung steering [-1.0 < 0 < 1.0]
             left_hand_wrist = self.latest_result.hand_landmarks[0][0]
             right_hand_wrist = self.latest_result.hand_landmarks[1][0]
 
-            # Gamitin natin yung slope formula
             slope = (right_hand_wrist.y - left_hand_wrist.y) / (
-                right_hand_wrist.x - left_hand_wrist.x
+                right_hand_wrist.x - left_hand_wrist.x + 1e-6
             )
 
-            # Normalize the slope to be between -5.0 and 5.0
             normalized_slope = max(-5.0, min(5.0, slope))
+            self.steer = normalized_slope
+
             cv2.putText(
                 image,
-                f"Steering: {normalized_slope:.2f}",
+                f"Steer: {normalized_slope:.2f}",
                 (10, 60),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
@@ -71,25 +108,26 @@ class Controller:
                 2,
             )
 
+            h, w, _ = image.shape
             cv2.line(
                 image,
-                (
-                    int(left_hand_wrist.x * image.shape[1]),
-                    int(left_hand_wrist.y * image.shape[0]),
-                ),
-                (
-                    int(right_hand_wrist.x * image.shape[1]),
-                    int(right_hand_wrist.y * image.shape[0]),
-                ),
+                (int(left_hand_wrist.x * w), int(left_hand_wrist.y * h)),
+                (int(right_hand_wrist.x * w), int(right_hand_wrist.y * h)),
                 (0, 255, 0),
                 2,
             )
 
             for hand_landmarks in self.latest_result.hand_landmarks:
-                h, w, _ = image.shape
                 for landmark in hand_landmarks:
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
                     cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
-            self.steer = normalized_slope
+        else:
+            self.steer = 0.0
 
         return image
+
+    def get_frame(self):
+        with self.lock:
+            if self.annotated_frame is not None:
+                return self.annotated_frame.copy()
+            return None
