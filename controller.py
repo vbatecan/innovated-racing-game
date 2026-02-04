@@ -97,6 +97,7 @@ class Controller:
 
             # Check for braking (Thumb Up) on EITHER hand
             self.breaking = False
+            # TODO: Reliable break system.
             # for hand_landmarks in self.latest_result.hand_landmarks:
             #     # Thumb Tip (4) < Thumb IP (3) < Thumb MCP (2) (y-coordinate, lower is higher on screen)
             #     # And basic check that thumb is actually pointing up relative to wrist
