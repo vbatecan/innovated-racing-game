@@ -29,11 +29,6 @@ class Car(pygame.sprite.Sprite):
         WINDSHIELD_COLOR = (0, 255, 255, 200)  # Cyan with alpha
         GLOW_COLOR = (255, 0, 128, 50)
 
-        # Draw Glow (larger rect behind)
-        # We can simulate glow by drawing multiple translucent rects if we wanted,
-        # but for now let's keep the shape sharp.
-
-        # Main Body (Slightly rounded)
         pygame.draw.rect(self.image, BODY_COLOR, (10, 0, 40, 100), border_radius=10)
 
         # Side pods / Rear wheels area
