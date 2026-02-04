@@ -7,6 +7,11 @@ class Settings:
         self.steering_sensitivity = 1.0
         self._vals = [30, 60, 120]
 
+        # Physics
+        self.ACCELERATION = 0.2
+        self.FRICTION = 0.05
+        self.BRAKE_STRENGTH = 0.8
+
     def increase_speed(self):
         self.car_speed = min(self.car_speed + 1, 50)
 

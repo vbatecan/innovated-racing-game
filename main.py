@@ -1,4 +1,3 @@
-import time
 import cv2
 import pygame
 import logging
@@ -151,15 +150,34 @@ def main():
                 # We handled it in the toggle logic above.
                 pass
 
-            steer_input = detector.steer * settings.steering_sensitivity
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_LEFT]:
-                steer_input = -1.0 * settings.steering_sensitivity
-            if keys[pygame.K_RIGHT]:
-                steer_input = 1.0 * settings.steering_sensitivity
+            # Input Handling
+            # Brake if controller says so OR if Down Arrow / S is pressed (Debug)
+            is_breaking = detector.breaking
 
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_DOWN]:
+                is_breaking = True
+
+            target_steer = detector.steer * settings.steering_sensitivity
+            if keys[pygame.K_LEFT]:
+                target_steer = -1.0 * settings.steering_sensitivity
+            if keys[pygame.K_RIGHT]:
+                target_steer = 1.0 * settings.steering_sensitivity
+
+            # Update Car Physics
+            player_car.update(
+                steering=target_steer,
+                is_braking=is_breaking,
+                max_speed=settings.car_speed,
+                acceleration=settings.ACCELERATION,
+                friction=settings.FRICTION,
+                brake_strength=settings.BRAKE_STRENGTH,
+                screen_width=SCREEN_WIDTH,
+            )
+
+            # Update Map Speed based on Car Speed
+            game_map.speed = int(player_car.current_speed)
             game_map.update()
-            player_car.update(steer_input, SCREEN_WIDTH)
 
             road_min_x, road_max_x = game_map.get_road_borders()
             if player_car.rect.left < road_min_x or player_car.rect.right > road_max_x:

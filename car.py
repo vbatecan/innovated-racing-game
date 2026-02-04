@@ -14,7 +14,8 @@ class Car(pygame.sprite.Sprite):
         self.rect.center = (start_x, start_y)
 
         # Physics / Control
-        self.max_speed = 10
+        self.current_speed = 0
+        self.max_speed = 10  # This will be overridden or used as a cap
         self.velocity_x = 0
         self.smoothing = 0.2  # Smooth movement
 
@@ -27,7 +28,6 @@ class Car(pygame.sprite.Sprite):
         # Colors (Neon/Cyberpunk Theme)
         BODY_COLOR = (255, 0, 128)  # Neon Pink/Magenta
         WINDSHIELD_COLOR = (0, 255, 255, 200)  # Cyan with alpha
-        GLOW_COLOR = (255, 0, 128, 50)
 
         pygame.draw.rect(self.image, BODY_COLOR, (10, 0, 40, 100), border_radius=10)
 
@@ -51,12 +51,44 @@ class Car(pygame.sprite.Sprite):
         # Rear lights
         pygame.draw.rect(self.image, (255, 50, 50), (15, 95, 30, 5), border_radius=2)
 
-    def update(self, steering, screen_width):
+    def update(
+        self,
+        steering,
+        is_braking,
+        max_speed,
+        acceleration,
+        friction,
+        brake_strength,
+        screen_width,
+    ):
         """
-        Update car position based on steering value [-1, 1]
+        Update car position and speed.
         """
-        # Map steering to velocity
-        target_vx = steering * self.max_speed
+        # Physics: Speed Calculation
+        if is_braking:
+            self.current_speed -= brake_strength
+        else:
+            # Auto-throttle
+            self.current_speed += acceleration
+
+        # Always apply some friction/drag relative to speed to prevent infinite accel interactions if we didn't cap it,
+        # but here we just cap it.
+        # Actually, let's just subtract friction
+        self.current_speed -= friction
+
+        # Clamp Speed
+        if self.current_speed < 0:
+            self.current_speed = 0
+        if self.current_speed > max_speed:
+            self.current_speed = max_speed
+
+        # Steering effectively map to velocity
+        # Higher speed = more sensitive steering? Or constant?
+
+        effective_speed = max(
+            self.current_speed, 2
+        )  # Ensure some steering even at low speed
+        target_vx = steering * effective_speed
 
         # Smooth interpolation
         self.velocity_x += (target_vx - self.velocity_x) * self.smoothing
