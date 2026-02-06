@@ -1,7 +1,12 @@
 import logging
+from typing import Any
+
 import cv2
 import pygame
 import os
+
+from pygame.event import Event
+
 import config
 
 from config import WINDOW_SIZE, FONT_SIZE, MAX_FPS
@@ -118,48 +123,8 @@ def main():
         )
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-                elif event.key == pygame.K_s:
-                    show_settings = not show_settings
-                    if not show_settings and not settings.show_camera:
-                        cv2.destroyAllWindows()
-
-                if show_settings:
-                    if event.key == pygame.K_UP:
-                        selected_setting = (selected_setting - 1) % len(setting_options)
-                    elif event.key == pygame.K_DOWN:
-                        selected_setting = (selected_setting + 1) % len(setting_options)
-                    elif event.key == pygame.K_LEFT:
-                        if selected_setting == 0:
-                            settings.decrease_speed()
-                        elif selected_setting == 1:
-                            settings.decrease_fps()
-                        elif selected_setting == 2:
-                            settings.toggle_camera()
-                        elif selected_setting == 3:
-                            settings.decrease_obstacle_frequency()
-                        elif selected_setting == 4:
-                            settings.decrease_sensitivity()
-                        elif selected_setting == 5:
-                            settings.decrease_brake_sensitivity()
-                    elif event.key == pygame.K_RIGHT:
-                        if selected_setting == 0:
-                            settings.increase_speed()
-                        elif selected_setting == 1:
-                            settings.increase_fps()
-                        elif selected_setting == 2:
-                            settings.toggle_camera()
-                        elif selected_setting == 3:
-                            settings.increase_obstacle_frequency()
-                        elif selected_setting == 4:
-                            settings.increase_sensitivity()
-                        elif selected_setting == 5:
-                            settings.increase_brake_sensitivity()
+            running, selected_setting, show_settings = handle_event(event, running, selected_setting, setting_options,
+                                                                    settings, show_settings)
 
         if not show_settings:
             detector.brake_threshold = settings.get_brake_threshold()
@@ -242,6 +207,53 @@ def main():
     detector.stop_stream()
     cv2.destroyAllWindows()
     pygame.quit()
+
+
+def handle_event(event: Event, running: bool, selected_setting: int | Any, setting_options: list[str],
+                 settings: Settings, show_settings: bool) -> tuple[bool, bool, int | Any]:
+    if event.type == pygame.QUIT:
+        running = False
+
+    if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_ESCAPE:
+            running = False
+        elif event.key == pygame.K_s:
+            show_settings = not show_settings
+            if not show_settings and not settings.show_camera:
+                cv2.destroyAllWindows()
+
+        if show_settings:
+            if event.key == pygame.K_UP:
+                selected_setting = (selected_setting - 1) % len(setting_options)
+            elif event.key == pygame.K_DOWN:
+                selected_setting = (selected_setting + 1) % len(setting_options)
+            elif event.key == pygame.K_LEFT:
+                if selected_setting == 0:
+                    settings.decrease_speed()
+                elif selected_setting == 1:
+                    settings.decrease_fps()
+                elif selected_setting == 2:
+                    settings.toggle_camera()
+                elif selected_setting == 3:
+                    settings.decrease_obstacle_frequency()
+                elif selected_setting == 4:
+                    settings.decrease_sensitivity()
+                elif selected_setting == 5:
+                    settings.decrease_brake_sensitivity()
+            elif event.key == pygame.K_RIGHT:
+                if selected_setting == 0:
+                    settings.increase_speed()
+                elif selected_setting == 1:
+                    settings.increase_fps()
+                elif selected_setting == 2:
+                    settings.toggle_camera()
+                elif selected_setting == 3:
+                    settings.increase_obstacle_frequency()
+                elif selected_setting == 4:
+                    settings.increase_sensitivity()
+                elif selected_setting == 5:
+                    settings.increase_brake_sensitivity()
+    return running, selected_setting, show_settings
 
 
 if __name__ == "__main__":
