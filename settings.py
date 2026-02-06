@@ -1,22 +1,22 @@
+from config import *
+
+
 class Settings:
     def __init__(self):
-        self.car_speed = 10
-        self.max_fps = 30
+        self.car_speed = CAR_SPEED
+        self.max_fps = MAX_FPS
         self.show_camera = True
-        self.obstacle_frequency = 30
-        self.steering_sensitivity = 1.0
-        self._vals = [30, 60, 120]
+        self.obstacle_frequency = OBSTACLE_FREQUENCY
+        self.steering_sensitivity = STEERING_SENSITIVITY
+        self._vals = AVAILABLE_FPS
 
         # Physics
-        self.ACCELERATION = 0.2
-        self.FRICTION = 0.05
-        self.BRAKE_STRENGTH = 0.5
-        self.brake_sensitivity = 5  # 1 (Hard) to 10 (Easy)
+        self.ACCELERATION = ACCELERATION
+        self.FRICTION = FRICTION
+        self.BRAKE_STRENGTH = BRAKE_STRENGTH
+        self.brake_sensitivity = BRAKE_SENSITIVITY  # 1 (Hard) to 10 (Easy)
 
     def get_brake_threshold(self):
-        # Map sensitivity 1-10 to threshold 0.06 to -0.03
-        # High sens = Low threshold (easier to trigger)
-        # 5 -> 0.02
         return 0.07 - (self.brake_sensitivity * 0.01)
 
     def increase_brake_sensitivity(self):
@@ -50,10 +50,10 @@ class Settings:
             self.max_fps = 30
 
     def increase_obstacle_frequency(self):
-        self.obstacle_frequency = min(self.obstacle_frequency + 5, 120)
+        self.obstacle_frequency = min(self.obstacle_frequency + 1, 100)
 
     def decrease_obstacle_frequency(self):
-        self.obstacle_frequency = max(self.obstacle_frequency - 5, 5)
+        self.obstacle_frequency = max(self.obstacle_frequency - 1, 1)
 
     def increase_sensitivity(self):
         self.steering_sensitivity = min(self.steering_sensitivity + 0.1, 5.0)

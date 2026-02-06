@@ -1,12 +1,16 @@
-import pygame
 import random
+
+import pygame
+
+import config
+from config import OBSTACLE_FREQUENCY
 
 
 class Obstacle(pygame.sprite.Sprite):
     def __init__(self, x, y, width, height, speed):
         super().__init__()
         self.image = pygame.Surface((width, height))
-        self.image.fill((255, 50, 50))  # Red obstacles
+        self.image.fill((255, 50, 50))
         pygame.draw.rect(self.image, (255, 255, 0), (0, 0, width, 10))
 
         self.rect = self.image.get_rect()
@@ -21,15 +25,15 @@ class Obstacle(pygame.sprite.Sprite):
 
 
 class Map:
-    def __init__(self, screen_width, screen_height):
-        self.width = screen_width
-        self.height = screen_height
+    def __init__(self, window_size):
+        self.width = window_size["width"]
+        self.height = window_size["height"]
 
-        self.road_width = 800
+        self.road_width = config.ROAD_SIZE["width"]
         self.road_x = (self.width - self.road_width) // 2
 
         self.scroll_y = 0
-        self.speed = 10
+        self.speed = 1
 
         self.BG_COLOR = (20, 20, 30)
         self.ROAD_COLOR = (30, 30, 40)
@@ -56,9 +60,9 @@ class Map:
                 lane_width = self.road_width // 3
                 lane = random.randint(0, 2)
                 spawn_x = (
-                    self.road_x
-                    + (lane * lane_width)
-                    + random.randint(10, lane_width - 60)
+                        self.road_x
+                        + (lane * lane_width)
+                        + random.randint(10, lane_width - 60)
                 )
                 spawn_y = -100
 
@@ -95,11 +99,8 @@ class Map:
             )
             start_y += self.total_marker_segment
 
-        # Draw Obstacles (under side lines potentially? No, above road, below UI)
         self.obstacles.draw(surface)
 
-        # Draw Side Lines (thick neon glow) - Draw these last to cover obstacles potentially? No, obstacles should be on top.
-        # Actually in a 2D game, lines usually are flat on ground. Obstacles on top.
         pygame.draw.line(
             surface, self.LINE_COLOR, (self.road_x, 0), (self.road_x, self.height), 5
         )

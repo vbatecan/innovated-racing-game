@@ -1,22 +1,32 @@
+import os
+from threading import Thread
+
 import mediapipe as mp
 from mediapipe.tasks.python import vision, BaseOptions
 from mediapipe.tasks.python.vision.hand_landmarker import HandLandmarkerOptions
 import cv2
 import threading
 import time
+import config
+
+import logging
+
+os.makedirs("logs", exist_ok=True)
+logger = logging.getLogger(__name__)
 
 
 class Controller:
     def __init__(self):
+        self.cap: cv2.VideoCapture | None = None
+        self.running = False
         self.latest_result = None
-        self.steer = 0.0
         self.steer = 0.0
         self.breaking = False
         self.brake_threshold = 0.02
-        self.running = False
         self.current_frame = None
         self.annotated_frame = None
         self.lock = threading.Lock()
+        self.thread: Thread | None = None
 
         self.lm = vision.HandLandmarker.create_from_options(
             HandLandmarkerOptions(
@@ -34,44 +44,43 @@ class Controller:
 
     def start_stream(self):
         self.cap = cv2.VideoCapture(0)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.CAM_X_SIZE)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.CAM_Y_SIZE)
         self.running = True
         self.thread = threading.Thread(target=self._update, daemon=True)
         self.thread.start()
-        print("Camera thread started.")
+        logger.info("Camera thread started.")
 
     def stop_stream(self):
+        if self.thread is None or not self.thread.is_alive():
+            return
         self.running = False
         if self.thread.is_alive():
             self.thread.join()
-        self.cap.release()
-        print("Camera thread stopped.")
+
+        if self.cap is not None:
+            self.cap.release()
+        logger.info("Camera thread stopped.")
 
     def _update(self):
         start_time = time.time()
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
+                logger.error("Failed to read frame from camera.")
                 continue
 
             frame = cv2.flip(frame, 1)
 
             timestamp_ms = int((time.time() - start_time) * 1000)
-
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
             self.lm.detect_async(mp_image, timestamp_ms)
 
-            # Draw annotations on the frame immediately
-            # Note: detection is async, so latest_result might trail behind slightly.
             annotated = self._draw_annotations_internal(frame)
 
             with self.lock:
                 self.annotated_frame = annotated
-
-            # Optional: tiny sleep to yield if CPU usage is too high,
-            # but cap.read() is blocking so it shouldn't spin.
 
     def callback(self, result, output_image, timestamp_ms):
         self.latest_result = result
@@ -95,7 +104,6 @@ class Controller:
             left_hand_wrist = self.latest_result.hand_landmarks[0][0]
             right_hand_wrist = self.latest_result.hand_landmarks[1][0]
 
-            # Check for braking (Thumb Up) on EITHER hand
             self.breaking = False
             # TODO: Reliable break system.
             # for hand_landmarks in self.latest_result.hand_landmarks:
@@ -121,7 +129,7 @@ class Controller:
             )
 
             slope = (right_hand_wrist.y - left_hand_wrist.y) / (
-                right_hand_wrist.x - left_hand_wrist.x + 1e-6
+                    right_hand_wrist.x - left_hand_wrist.x + 1e-6
             )
 
             normalized_slope = max(-5.0, min(5.0, slope))

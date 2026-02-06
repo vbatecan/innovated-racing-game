@@ -64,16 +64,11 @@ class Car(pygame.sprite.Sprite):
         """
         Update car position and speed.
         """
-        # Physics: Speed Calculation
         if is_braking:
             self.current_speed -= brake_strength
         else:
-            # Auto-throttle
             self.current_speed += acceleration
 
-        # Always apply some friction/drag relative to speed to prevent infinite accel interactions if we didn't cap it,
-        # but here we just cap it.
-        # Actually, let's just subtract friction
         self.current_speed -= friction
 
         # Clamp Speed
@@ -82,12 +77,9 @@ class Car(pygame.sprite.Sprite):
         if self.current_speed > max_speed:
             self.current_speed = max_speed
 
-        # Steering effectively map to velocity
-        # Higher speed = more sensitive steering? Or constant?
-
         effective_speed = max(
             self.current_speed, 2
-        )  # Ensure some steering even at low speed
+        )
         target_vx = steering * effective_speed
 
         # Smooth interpolation

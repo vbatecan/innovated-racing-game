@@ -1,12 +1,18 @@
+import logging
 import cv2
 import pygame
-import logging
-from controller import Controller
+import os
+import config
+
+from config import WINDOW_SIZE, FONT_SIZE, MAX_FPS
 from car import Car
+from controller import Controller
 from map import Map
 from settings import Settings
 
-logging.basicConfig(level=logging.INFO)
+os.makedirs("logs", exist_ok=True)
+logging.basicConfig(filename="logs/main.log", level=logging.INFO,
+                    format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def draw_settings_menu(screen, font, settings, selected_index, options):
@@ -55,18 +61,16 @@ def draw_settings_menu(screen, font, settings, selected_index, options):
 
 def main():
     pygame.init()
-    SCREEN_WIDTH = 1920
-    SCREEN_HEIGHT = 1080
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    screen = pygame.display.set_mode((WINDOW_SIZE["width"], WINDOW_SIZE["height"]))
     pygame.display.set_caption("Hand Gesture Racing Game")
     clock = pygame.time.Clock()
-    font = pygame.font.Font(None, 36)
+    font = pygame.font.Font(None, config.FONT_SIZE)
 
     settings = Settings()
-    game_map = Map(SCREEN_WIDTH, SCREEN_HEIGHT)
+    game_map = Map(WINDOW_SIZE)
 
-    start_x = SCREEN_WIDTH // 2
-    start_y = SCREEN_HEIGHT - 120
+    start_x = WINDOW_SIZE["width"] // 2
+    start_y = WINDOW_SIZE["height"] - 120
     player_car = Car(start_x, start_y)
 
     sprite_group = pygame.sprite.Group()
@@ -94,7 +98,7 @@ def main():
     while running:
         # 1. Provide settings to map
         game_map.speed = settings.car_speed
-        game_map.obstacle_frequency = settings.obstacle_frequency
+        game_map.obstacle_frequency = int(settings.max_fps / settings.obstacle_frequency)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -105,7 +109,6 @@ def main():
                     running = False
                 elif event.key == pygame.K_s:
                     show_settings = not show_settings
-                    # If turning off camera via settings, ensure window is closed
                     if not show_settings and not settings.show_camera:
                         cv2.destroyAllWindows()
 
@@ -141,27 +144,17 @@ def main():
                         elif selected_setting == 5:
                             settings.increase_brake_sensitivity()
 
-        # Update Logic
         if not show_settings:
-            # Sync settings to detector
             detector.brake_threshold = settings.get_brake_threshold()
 
-            # Get detector frame
             frame = detector.get_frame()
             if settings.show_camera and frame is not None:
                 cv2.imshow("Hand Tracker (Press 'S' for Settings)", frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
-                    # Just close camera or quit game? Let's just do nothing here, let main loop handle quit
                     pass
             elif not settings.show_camera:
-                # If we just toggled it off, we need to make sure window is gone.
-                # cv2.destroyWindow throws error if window doesn't exist, so use try/except or just destroyAllWindows occassionally
-                # But calling destroyAllWindows every frame is bad.
-                # We handled it in the toggle logic above.
                 pass
 
-            # Input Handling
-            # Brake if controller says so OR if Down Arrow / S is pressed (Debug)
             is_breaking = detector.breaking
 
             keys = pygame.key.get_pressed()
@@ -174,7 +167,6 @@ def main():
             if keys[pygame.K_RIGHT]:
                 target_steer = 1.0 * settings.steering_sensitivity
 
-            # Update Car Physics
             player_car.update(
                 steering=target_steer,
                 is_braking=is_breaking,
@@ -182,20 +174,19 @@ def main():
                 acceleration=settings.ACCELERATION,
                 friction=settings.FRICTION,
                 brake_strength=settings.BRAKE_STRENGTH,
-                screen_width=SCREEN_WIDTH,
+                screen_width=WINDOW_SIZE["width"],
             )
 
-            # Update Map Speed based on Car Speed
             game_map.speed = int(player_car.current_speed)
             game_map.update()
 
             road_min_x, road_max_x = game_map.get_road_borders()
             if player_car.rect.left < road_min_x or player_car.rect.right > road_max_x:
-                player_car.rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 120)
+                player_car.rect.center = (WINDOW_SIZE["width"] // 2, WINDOW_SIZE["height"] - 120)
                 player_car.velocity_x = 0
 
             if pygame.sprite.spritecollide(player_car, game_map.obstacles, True):
-                player_car.rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 120)
+                player_car.rect.center = (WINDOW_SIZE["width"] // 2, WINDOW_SIZE["height"] - 120)
                 player_car.velocity_x = 0
 
         # Drawing

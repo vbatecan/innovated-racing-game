@@ -1,0 +1,23 @@
+CAM_X_SIZE = 640
+CAM_Y_SIZE = 480
+WINDOW_SIZE = {
+    "width": 1920,
+    "height": 1080
+}
+
+ROAD_SIZE = {
+    "width": 1280,
+    "height": 1080
+}
+FONT_SIZE = 24
+CAR_SPEED = 10
+MAX_FPS = 60
+OBSTACLE_FREQUENCY = 1 # Per frame
+STEERING_SENSITIVITY = 1.0
+AVAILABLE_FPS = [30, 60, 120]
+
+# Physics settings
+ACCELERATION = 0.2
+FRICTION = 0.05
+BRAKE_STRENGTH = 0.5
+BRAKE_SENSITIVITY = 5  # 1 (Hard) to 10 (Easy)
