@@ -11,11 +11,20 @@ from map import Map
 from settings import Settings
 
 os.makedirs("logs", exist_ok=True)
-logging.basicConfig(filename="logs/main.log", level=logging.INFO,
-                    format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    filename="logs/main.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 
 def draw_settings_menu(screen, font, settings, selected_index, options):
+    """
+    Render the in-game settings overlay.
+
+    Draws a centered semi-transparent panel with the available options, highlights
+    the currently selected item, and shows the current value for each setting.
+    """
     overlay = pygame.Surface((400, 300))
     overlay.fill((0, 0, 0))
     overlay.set_alpha(200)
@@ -60,6 +69,12 @@ def draw_settings_menu(screen, font, settings, selected_index, options):
 
 
 def main():
+    """
+    Initialize the game and run the main loop.
+
+    Sets up Pygame, the player car, map, controller, and settings menu, then
+    processes input, updates game state, and renders each frame until exit.
+    """
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_SIZE["width"], WINDOW_SIZE["height"]))
     pygame.display.set_caption("Hand Gesture Racing Game")
@@ -98,7 +113,9 @@ def main():
     while running:
         # 1. Provide settings to map
         game_map.speed = settings.car_speed
-        game_map.obstacle_frequency = int(settings.max_fps / settings.obstacle_frequency)
+        game_map.obstacle_frequency = int(
+            settings.max_fps / settings.obstacle_frequency
+        )
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -182,11 +199,17 @@ def main():
 
             road_min_x, road_max_x = game_map.get_road_borders()
             if player_car.rect.left < road_min_x or player_car.rect.right > road_max_x:
-                player_car.rect.center = (WINDOW_SIZE["width"] // 2, WINDOW_SIZE["height"] - 120)
+                player_car.rect.center = (
+                    WINDOW_SIZE["width"] // 2,
+                    WINDOW_SIZE["height"] - 120,
+                )
                 player_car.velocity_x = 0
 
             if pygame.sprite.spritecollide(player_car, game_map.obstacles, True):
-                player_car.rect.center = (WINDOW_SIZE["width"] // 2, WINDOW_SIZE["height"] - 120)
+                player_car.rect.center = (
+                    WINDOW_SIZE["width"] // 2,
+                    WINDOW_SIZE["height"] - 120,
+                )
                 player_car.velocity_x = 0
 
         # Drawing

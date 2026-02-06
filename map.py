@@ -8,6 +8,12 @@ from config import OBSTACLE_FREQUENCY
 
 class Obstacle(pygame.sprite.Sprite):
     def __init__(self, x, y, width, height, speed):
+        """
+        Create a rectangular obstacle sprite.
+
+        Positions the obstacle at the given coordinates and assigns its vertical
+        scroll speed.
+        """
         super().__init__()
         self.image = pygame.Surface((width, height))
         self.image.fill((255, 50, 50))
@@ -19,6 +25,9 @@ class Obstacle(pygame.sprite.Sprite):
         self.speed = speed
 
     def update(self):
+        """
+        Move the obstacle downward and delete if off-screen.
+        """
         self.rect.y += self.speed
         if self.rect.y > 2000:
             self.kill()
@@ -26,6 +35,12 @@ class Obstacle(pygame.sprite.Sprite):
 
 class Map:
     def __init__(self, window_size):
+        """
+        Initialize the scrolling road and obstacle system.
+
+        Sets up road geometry, visual colors, marker spacing, and obstacle
+        tracking state based on the window size.
+        """
         self.width = window_size["width"]
         self.height = window_size["height"]
 
@@ -49,6 +64,12 @@ class Map:
         self.obstacle_frequency = 30  # Bawat game max frame merong isang obstacle (60 fps = 1 obstacle) if kalahati merong dalawa
 
     def update(self):
+        """
+        Advance the road scroll and update obstacles.
+
+        Scrolls lane markers, spawns obstacles at the configured frequency, and
+        removes any that move outside the visible area.
+        """
         self.scroll_y += self.speed
         if self.scroll_y >= self.total_marker_segment:
             self.scroll_y -= self.total_marker_segment
@@ -60,9 +81,9 @@ class Map:
                 lane_width = self.road_width // 3
                 lane = random.randint(0, 2)
                 spawn_x = (
-                        self.road_x
-                        + (lane * lane_width)
-                        + random.randint(10, lane_width - 60)
+                    self.road_x
+                    + (lane * lane_width)
+                    + random.randint(10, lane_width - 60)
                 )
                 spawn_y = -100
 
@@ -80,6 +101,12 @@ class Map:
                 obs.kill()
 
     def draw(self, surface):
+        """
+        Draw the road, markers, and obstacles to the surface.
+
+        Fills the background, renders the road and center markers, draws
+        obstacles, and outlines the road edges.
+        """
         surface.fill(self.BG_COLOR)
 
         pygame.draw.rect(
@@ -113,4 +140,7 @@ class Map:
         )
 
     def get_road_borders(self):
+        """
+        Return the left and right x-coordinates of the road.
+        """
         return self.road_x, self.road_x + self.road_width

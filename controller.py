@@ -17,6 +17,12 @@ logger = logging.getLogger(__name__)
 
 class Controller:
     def __init__(self):
+        """
+        Initialize camera control and hand tracking state.
+
+        Sets defaults for steering/braking, creates the MediaPipe hand landmarker,
+        and prepares synchronization primitives for the capture thread.
+        """
         self.cap: cv2.VideoCapture | None = None
         self.running = False
         self.latest_result = None
@@ -43,6 +49,12 @@ class Controller:
         )
 
     def start_stream(self):
+        """
+        Start the camera capture and processing thread.
+
+        Opens the default camera device, configures its resolution, and launches
+        the background update loop that performs hand detection.
+        """
         self.cap = cv2.VideoCapture(0)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.CAM_X_SIZE)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.CAM_Y_SIZE)
@@ -52,6 +64,12 @@ class Controller:
         logger.info("Camera thread started.")
 
     def stop_stream(self):
+        """
+        Stop the camera capture and clean up resources.
+
+        Signals the update loop to exit, joins the thread, and releases the
+        camera handle if it is open.
+        """
         if self.thread is None or not self.thread.is_alive():
             return
         self.running = False
@@ -63,6 +81,12 @@ class Controller:
         logger.info("Camera thread stopped.")
 
     def _update(self):
+        """
+        Capture frames and run asynchronous hand detection.
+
+        Reads frames from the camera, flips them for a mirror view, and submits
+        them to MediaPipe. The latest annotated frame is stored for rendering.
+        """
         start_time = time.time()
         while self.running:
             ret, frame = self.cap.read()
@@ -83,9 +107,20 @@ class Controller:
                 self.annotated_frame = annotated
 
     def callback(self, result, output_image, timestamp_ms):
+        """
+        Receive hand tracking results from MediaPipe.
+
+        Stores the latest result for use by the annotation routine.
+        """
         self.latest_result = result
 
     def _draw_annotations_internal(self, image):
+        """
+        Annotate a frame and compute steering/braking state.
+
+        Draws hand landmarks and a steering line when two hands are detected,
+        updates the current steer value, and overlays status text.
+        """
         if self.latest_result and self.latest_result.hand_landmarks:
             if len(self.latest_result.hand_landmarks) != 2:
                 cv2.putText(
@@ -129,7 +164,7 @@ class Controller:
             )
 
             slope = (right_hand_wrist.y - left_hand_wrist.y) / (
-                    right_hand_wrist.x - left_hand_wrist.x + 1e-6
+                right_hand_wrist.x - left_hand_wrist.x + 1e-6
             )
 
             normalized_slope = max(-5.0, min(5.0, slope))
@@ -165,6 +200,12 @@ class Controller:
         return image
 
     def get_frame(self):
+        """
+        Return the most recent annotated frame.
+
+        Provides a copy of the latest frame to avoid threading issues. Returns
+        None if no frame is available yet.
+        """
         with self.lock:
             if self.annotated_frame is not None:
                 return self.annotated_frame.copy()

@@ -3,6 +3,12 @@ import pygame
 
 class Car(pygame.sprite.Sprite):
     def __init__(self, start_x, start_y):
+        """
+        Create a car sprite at the given position.
+
+        Initializes the car's geometry, physics state, and draws its initial
+        appearance onto its surface.
+        """
         super().__init__()
         # Car dimensions
         self.width = 60
@@ -22,6 +28,12 @@ class Car(pygame.sprite.Sprite):
         self.draw_car()
 
     def draw_car(self):
+        """
+        Draw the car body and details onto its surface.
+
+        Uses a neon-inspired palette with body panels, wheels, windshield, and
+        lights to form the sprite appearance.
+        """
         # Clear surface
         self.image.fill((0, 0, 0, 0))
 
@@ -62,7 +74,10 @@ class Car(pygame.sprite.Sprite):
         screen_width,
     ):
         """
-        Update car position and speed.
+        Update the car's speed and position for a frame.
+
+        Applies acceleration/braking and friction, clamps to bounds, smooths the
+        steering response, and keeps the car within the screen width.
         """
         if is_braking:
             self.current_speed -= brake_strength
@@ -77,9 +92,7 @@ class Car(pygame.sprite.Sprite):
         if self.current_speed > max_speed:
             self.current_speed = max_speed
 
-        effective_speed = max(
-            self.current_speed, 2
-        )
+        effective_speed = max(self.current_speed, 2)
         target_vx = steering * effective_speed
 
         # Smooth interpolation
