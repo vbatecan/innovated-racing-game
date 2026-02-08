@@ -14,7 +14,10 @@ class Car(pygame.sprite.Sprite):
         self.height = 100
 
         # Create a surface for the car
-        self.image = pygame.transform.scale(pygame.image.load("resources/car.png").convert_alpha(), (96, 96))
+        self.image = pygame.transform.scale(
+            pygame.image.load("resources/car.png").convert_alpha(), (96, 96)
+        )
+        self.original_image = self.image.copy()
         self.rect = self.image.get_rect()
         self.rect.center = (start_x, start_y)
 
@@ -24,26 +27,23 @@ class Car(pygame.sprite.Sprite):
         self.velocity_x = 0
         self.smoothing = 0.2  # Smooth movement
 
-        self.draw_car()
+        # Control
+        self.current_turn = "CENTER"
+        self.angle = 90
 
-    def draw_car(self):
-        """
-        Draw the car body and details onto its surface.
-
-        Uses a neon-inspired palette with body panels, wheels, windshield, and
-        lights to form the sprite appearance.
-        """
-        pass
+    def turn(self, steer: float = 0.0):
+        self.image = pygame.transform.rotate(self.original_image, -steer * 30)
+        self.rect = self.image.get_rect(center=self.rect.center)
 
     def update(
-        self,
-        steering,
-        is_braking,
-        max_speed,
-        acceleration,
-        friction,
-        brake_strength,
-        screen_width,
+            self,
+            steering,
+            is_braking,
+            max_speed,
+            acceleration,
+            friction,
+            brake_strength,
+            screen_width,
     ):
         """
         Update the car's speed and position for a frame.

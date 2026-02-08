@@ -1,11 +1,12 @@
 import logging
-from typing import Any
+from typing import Any, Tuple
 
 import cv2
 import pygame
 import os
 
 from pygame.event import Event
+from pygame.key import ScancodeWrapper
 
 import config
 
@@ -67,7 +68,7 @@ def draw_settings_menu(screen, font, settings, selected_index, options):
         )
         screen.blit(text, text_rect)
 
-    hint = font.render("Press S to Close", True, (150, 150, 150))
+    hint = font.render("Press P to Close", True, (150, 150, 150))
     screen.blit(
         hint, (overlay_rect.centerx - hint.get_width() // 2, overlay_rect.bottom - 40)
     )
@@ -145,10 +146,8 @@ def main():
                 is_breaking = True
 
             target_steer = detector.steer * settings.steering_sensitivity
-            if keys[pygame.K_LEFT]:
-                target_steer = -1.0 * settings.steering_sensitivity
-            if keys[pygame.K_RIGHT]:
-                target_steer = 1.0 * settings.steering_sensitivity
+            target_steer, turn = steer(keys, settings.steering_sensitivity, target_steer)
+            player_car.turn(target_steer)
 
             player_car.update(
                 steering=target_steer,
@@ -208,6 +207,17 @@ def main():
     detector.stop_stream()
     cv2.destroyAllWindows()
     pygame.quit()
+
+
+def steer(keys: ScancodeWrapper, steering_sensitivity, target_steer: float) -> Tuple[float, str]:
+    turn = "CENTER"
+    if keys[pygame.K_LEFT]:
+        target_steer = -1.0 * steering_sensitivity
+        turn = "LEFT"
+    if keys[pygame.K_RIGHT]:
+        target_steer = 1.0 * steering_sensitivity
+        turn = "RIGHT"
+    return target_steer, turn
 
 
 def handle_event(event: Event, running: bool, selected_setting: int | Any, setting_options: list[str],
