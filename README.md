@@ -2,7 +2,7 @@
 
 ## Core Controls
 
-- [ ] **Reliable Braking**: Implement a distinct braking gesture (e.g., Crossed Arms, Open Palms, or specific hand sign).
+- [x] **Reliable Braking**: Implement a distinct braking gesture (e.g., Crossed Arms, Open Palms, or specific hand sign).
 - [ ] **Dynamic Throttle**: Control speed based on hand distance from camera or body lean angle.
 - [ ] **Gear Shifting**: Add immersive gestures for shifting (e.g., "Punch" forward to upshift, tap shoulder to downshift).
 - [ ] **Handbrake**: Extreme turn mechanic triggered by a specific gesture (e.g., both hands raised).
@@ -18,7 +18,7 @@
 
 - [ ] **Dynamic Obstacles**:
   - Static: Rocks, Barriers.
-  - Dynamic: AI Traffic, crossing animals.
+  - Dynamic: Traffic, crossing animals.
   - Hazards: Oil slicks (inverts controls).
 - [ ] **Power-ups**: Collectibles that require specific gestures to activate (e.g., "Boost", "Shield").
 - [ ] **Biomes & Progression**: Procedural environment changes (City -> Highway -> Desert) to convey distance.
