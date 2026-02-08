@@ -106,6 +106,21 @@ class Controller:
             with self.lock:
                 self.annotated_frame = annotated
 
+    def _is_palm_open(self, hand_landmarks):
+        # Only checks the first hand?
+        wrist = hand_landmarks[0]
+        tip_indices = [8, 12, 16, 20]
+        pip_indices = [6, 10, 14, 18]
+        extended = 0
+        for tip_i, pip_i in zip(tip_indices, pip_indices):
+            tip = hand_landmarks[tip_i]
+            pip = hand_landmarks[pip_i]
+            tip_dist_sq = (tip.x - wrist.x) ** 2 + (tip.y - wrist.y) ** 2
+            pip_dist_sq = (pip.x - wrist.x) ** 2 + (pip.y - wrist.y) ** 2
+            if tip_dist_sq > pip_dist_sq * 1.05:
+                extended += 1
+        return extended >= 3
+
     def callback(self, result, output_image, timestamp_ms):
         """
         Receive hand tracking results from MediaPipe.
@@ -139,29 +154,10 @@ class Controller:
             left_hand_wrist = self.latest_result.hand_landmarks[0][0]
             right_hand_wrist = self.latest_result.hand_landmarks[1][0]
 
-            # Reliable braking: Open Palms gesture
-            def landmark_point(landmark):
-                return landmark.x, landmark.y
-
-            def is_palm_open(hand_landmarks):
-                wrist = hand_landmarks[0]
-                tip_indices = [8, 12, 16, 20]
-                pip_indices = [6, 10, 14, 18]
-                wrist_x, wrist_y = landmark_point(wrist)
-                extended = 0
-                for tip_i, pip_i in zip(tip_indices, pip_indices):
-                    tip = hand_landmarks[tip_i]
-                    pip = hand_landmarks[pip_i]
-                    tip_dist_sq = (tip.x - wrist_x) ** 2 + (tip.y - wrist_y) ** 2
-                    pip_dist_sq = (pip.x - wrist_x) ** 2 + (pip.y - wrist_y) ** 2
-                    if tip_dist_sq > pip_dist_sq * 1.05:
-                        extended += 1
-                return extended >= 3
-
             left_hand = self.latest_result.hand_landmarks[0]
             right_hand = self.latest_result.hand_landmarks[1]
-            left_open = is_palm_open(left_hand)
-            right_open = is_palm_open(right_hand)
+            left_open = self._is_palm_open(left_hand)
+            right_open = self._is_palm_open(right_hand)
             self.breaking = left_open or right_open
 
             brake_color = (0, 0, 255) if self.breaking else (0, 255, 0)

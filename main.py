@@ -218,7 +218,7 @@ def handle_event(event: Event, running: bool, selected_setting: int | Any, setti
     if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_ESCAPE:
             running = False
-        elif event.key == pygame.K_pq:
+        elif event.key == pygame.K_p:
             show_settings = not show_settings
             if not show_settings and not settings.show_camera:
                 cv2.destroyAllWindows()
