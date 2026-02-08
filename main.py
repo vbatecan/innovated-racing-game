@@ -9,7 +9,7 @@ from pygame.event import Event
 
 import config
 
-from config import WINDOW_SIZE, FONT_SIZE, MAX_FPS
+from config import WINDOW_SIZE, FONT_SIZE, MAX_FPS, SHOW_CAMERA
 from car import Car
 from controller import Controller
 from map import Map
@@ -87,6 +87,7 @@ def main():
     font = pygame.font.Font(None, config.FONT_SIZE)
 
     settings = Settings()
+    settings.show_camera = SHOW_CAMERA
     game_map = Map(WINDOW_SIZE)
 
     start_x = WINDOW_SIZE["width"] // 2
@@ -217,7 +218,7 @@ def handle_event(event: Event, running: bool, selected_setting: int | Any, setti
     if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_ESCAPE:
             running = False
-        elif event.key == pygame.K_s:
+        elif event.key == pygame.K_pq:
             show_settings = not show_settings
             if not show_settings and not settings.show_camera:
                 cv2.destroyAllWindows()

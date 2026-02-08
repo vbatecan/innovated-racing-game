@@ -116,7 +116,7 @@ class Controller:
 
     def _draw_annotations_internal(self, image):
         """
-        Annotate a frame and compute steering/braking state.
+        Annotate a frame and compute the steering / braking state.
 
         Draws hand landmarks and a steering line when two hands are detected,
         updates the current steer value, and overlays status text.
