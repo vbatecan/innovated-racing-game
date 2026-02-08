@@ -10,12 +10,12 @@ class Car(pygame.sprite.Sprite):
         appearance onto its surface.
         """
         super().__init__()
-        self.width = 60
-        self.height = 100
+        self.width = 64
+        self.height = 64
 
         # Create a surface for the car
         self.image = pygame.transform.scale(
-            pygame.image.load("resources/car.png").convert_alpha(), (96, 96)
+            pygame.image.load("resources/car.png").convert_alpha(), (64, 64)
         )
         self.original_image = self.image.copy()
         self.rect = self.image.get_rect()
