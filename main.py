@@ -92,7 +92,7 @@ def main():
     game_map = Map(WINDOW_SIZE)
 
     start_x = WINDOW_SIZE["width"] // 2
-    start_y = WINDOW_SIZE["height"] - 120
+    start_y = WINDOW_SIZE["height"] - 240
     player_car = Car(start_x, start_y)
 
     sprite_group = pygame.sprite.Group()
@@ -115,7 +115,8 @@ def main():
         )
 
         for event in pygame.event.get():
-            running, selected_setting, show_settings = handle_event(event, running, selected_setting, config.SETTING_OPTIONS,
+            running, selected_setting, show_settings = handle_event(event, running, selected_setting,
+                                                                    config.SETTING_OPTIONS,
                                                                     settings, settings.visible)
 
         if not settings.visible:

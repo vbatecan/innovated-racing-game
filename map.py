@@ -3,7 +3,6 @@ import random
 import pygame
 
 import config
-from config import OBSTACLE_FREQUENCY
 
 
 class Obstacle(pygame.sprite.Sprite):
@@ -81,9 +80,9 @@ class Map:
                 lane_width = self.road_width // 3
                 lane = random.randint(0, 2)
                 spawn_x = (
-                    self.road_x
-                    + (lane * lane_width)
-                    + random.randint(10, lane_width - 60)
+                        self.road_x
+                        + (lane * lane_width)
+                        + random.randint(10, lane_width - 60)
                 )
                 spawn_y = -100
 

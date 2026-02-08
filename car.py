@@ -28,12 +28,13 @@ class Car(pygame.sprite.Sprite):
         self.smoothing = 0.2  # Smooth movement
 
         # Control
-        self.current_turn = "CENTER"
-        self.angle = 90
+        self.steer = 0
 
     def turn(self, steer: float = 0.0):
-        self.image = pygame.transform.rotate(self.original_image, -steer * 30)
+        TURN_STEER_SENS = 30
+        self.image = pygame.transform.rotate(self.original_image, -steer * TURN_STEER_SENS)
         self.rect = self.image.get_rect(center=self.rect.center)
+        self.steer = -steer * TURN_STEER_SENS
 
     def update(
             self,
