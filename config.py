@@ -24,3 +24,12 @@ ACCELERATION = 0.2
 FRICTION = 0.01
 BRAKE_STRENGTH = 0.2
 BRAKE_SENSITIVITY = 5  # 1 (Hard) to 10 (Easy)
+
+SETTING_OPTIONS = [
+    "Car Speed",
+    "Max FPS",
+    "Show Camera",
+    "Obstacle Freq",
+    "Sensitivity",
+    "Brake Sens",
+]

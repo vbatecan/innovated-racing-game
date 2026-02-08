@@ -22,9 +22,12 @@ class Settings:
         self.BRAKE_STRENGTH = BRAKE_STRENGTH
         self.brake_sensitivity = BRAKE_SENSITIVITY  # 1 (Hard) to 10 (Easy)
 
+        # This
+        self.visible = False
+
     def get_brake_threshold(self):
         """
-        Compute the thumb raise threshold for braking detection.
+        Compute the thumb raise the threshold for braking detection.
         """
         return 0.07 - (self.brake_sensitivity * 0.01)
 

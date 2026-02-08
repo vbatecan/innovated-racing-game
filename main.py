@@ -105,16 +105,6 @@ def main():
     print("Starting Game Loop...")
     print("Controls: Use your hands visible to the camera.")
     print("Press 'S' to open Settings.")
-
-    show_settings = False
-    setting_options = [
-        "Car Speed",
-        "Max FPS",
-        "Show Camera",
-        "Obstacle Freq",
-        "Sensitivity",
-        "Brake Sens",
-    ]
     selected_setting = 0
 
     while running:
@@ -125,10 +115,10 @@ def main():
         )
 
         for event in pygame.event.get():
-            running, selected_setting, show_settings = handle_event(event, running, selected_setting, setting_options,
-                                                                    settings, show_settings)
+            running, selected_setting, show_settings = handle_event(event, running, selected_setting, config.SETTING_OPTIONS,
+                                                                    settings, settings.visible)
 
-        if not show_settings:
+        if not settings.visible:
             detector.brake_threshold = settings.get_brake_threshold()
 
             frame = detector.get_frame()
@@ -196,9 +186,9 @@ def main():
         )
         screen.blit(obs_text, (10, 90))
 
-        if show_settings:
+        if settings.visible:
             draw_settings_menu(
-                screen, font, settings, selected_setting, setting_options
+                screen, font, settings, selected_setting, config.SETTING_OPTIONS
             )
 
         pygame.display.flip()
