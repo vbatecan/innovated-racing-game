@@ -14,6 +14,7 @@ from config import WINDOW_SIZE, FONT_SIZE, MAX_FPS, SHOW_CAMERA
 from car import Car
 from controller import Controller
 from map import Map
+from score import Score
 from settings import Settings
 
 os.makedirs("logs", exist_ok=True)
@@ -101,6 +102,9 @@ def main():
     detector = Controller()
     detector.start_stream()
 
+    score = Score()
+    score.set_score(0)
+
     running = True
     print("Starting Game Loop...")
     print("Controls: Use your hands visible to the camera.")
@@ -108,7 +112,6 @@ def main():
     selected_setting = 0
 
     while running:
-        # 1. Provide settings to map
         game_map.speed = settings.car_speed
         game_map.obstacle_frequency = int(
             settings.max_fps / settings.obstacle_frequency
@@ -144,7 +147,7 @@ def main():
             player_car.update(
                 steering=target_steer,
                 is_braking=is_breaking,
-                max_speed=settings.car_speed,
+                max_speed=player_car.max_speed,
                 acceleration=settings.ACCELERATION,
                 friction=settings.FRICTION,
                 brake_strength=settings.BRAKE_STRENGTH,
@@ -167,7 +170,9 @@ def main():
                     WINDOW_SIZE["width"] // 2,
                     WINDOW_SIZE["height"] - 120,
                 )
+                player_car.current_speed = 0
                 player_car.velocity_x = 0
+                score.deduct(10)
 
         # Drawing
         game_map.draw(screen)
@@ -176,6 +181,10 @@ def main():
         # Display Info
         steer_text = font.render(f"Steer: {detector.steer:.2f}", True, (255, 255, 255))
         screen.blit(steer_text, (10, 10))
+
+        # Draw Scores
+        score_text = font.render(f"Score: {score.get_score()}", True, (255, 255, 255))
+        screen.blit(score_text, (10, 140))
 
         fps = clock.get_fps()
         fps_text = font.render(
@@ -194,6 +203,9 @@ def main():
             )
 
         pygame.display.flip()
+        print(player_car.current_speed)
+        score.add_score(1)
+        player_car.set_max_speed(config.CAR_SPEED + score.get_score() // 1000)
         clock.tick(settings.max_fps)
 
     detector.stop_stream()
