@@ -12,12 +12,12 @@ class Car(pygame.sprite.Sprite):
         appearance onto its surface.
         """
         super().__init__()
-        self.width = 64
-        self.height = 64
+        self.width = 96
+        self.height = 96
 
         # Create a surface for the car
         self.image = pygame.transform.scale(
-            pygame.image.load("resources/car.png").convert_alpha(), (64, 64)
+            pygame.image.load("resources/car.png").convert_alpha(), (self.width, self.height)
         )
         self.original_image = self.image.copy()
         self.rect = self.image.get_rect()
@@ -82,3 +82,9 @@ class Car(pygame.sprite.Sprite):
         if self.rect.right > screen_width:
             self.rect.right = screen_width
             self.velocity_x = 0
+
+    def set_max_speed(self, max_speed):
+        self.max_speed = max_speed
+
+    def add_max_speed(self, max_speed):
+        self.max_speed = max_speed
