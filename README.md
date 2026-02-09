@@ -24,6 +24,15 @@
 - [ ] **Biomes & Progression**: Procedural environment changes (City -> Highway -> Desert) to convey distance.
 - [ ] **Game Modes**: Time Attack, Survival (Distance Run), and Head-to-Head Rivals.
 
+## Bugs
+- [ ] Fix obstacle hit boxes
+
+## To Draw
+- [ ] Rocks
+- [ ] Cars, Trucks, L300
+- [ ] Biomes
+- [ ] Cross Animals
+
 ## User Experience (UX) & Quality of Life
 
 - [ ] **Calibration Screen**: Pre-game scene to record user specific "Neutral", "Max Left", and "Max Right" positions.
