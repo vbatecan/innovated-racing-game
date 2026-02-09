@@ -118,6 +118,7 @@ def main():
             running, selected_setting, show_settings = handle_event(event, running, selected_setting,
                                                                     config.SETTING_OPTIONS,
                                                                     settings, settings.visible)
+            settings.visible = show_settings
 
         if not settings.visible:
             detector.brake_threshold = settings.get_brake_threshold()
