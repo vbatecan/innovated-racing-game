@@ -111,6 +111,12 @@ def main():
     print("Press 'S' to open Settings.")
     selected_setting = 0
 
+    score_timer = 0
+    score_interval = 1000  # milliseconds
+    min_interval = 200     # minimum interval between score increases
+    interval_decrement = 10  # ms to decrease interval every 5 seconds
+    last_speedup = pygame.time.get_ticks()
+
     while running:
         game_map.speed = settings.car_speed
         game_map.obstacle_frequency = int(
@@ -204,8 +210,29 @@ def main():
 
         pygame.display.flip()
         print(player_car.current_speed)
-        score.add_score(1)
-        player_car.set_max_speed(config.CAR_SPEED + score.get_score() // 1000)
+
+
+        # Scoring system: add 2 points every score_interval ms, speed up over time, but pause if breaking
+        now = pygame.time.get_ticks()
+        if not is_breaking:
+            if now - score_timer >= score_interval:
+                score.add_score(2)
+                score_timer = now
+        # If breaking, do not update score_timer, so scoring resumes where it left off
+
+
+        # Every 5 seconds, decrease interval (speed up scoring), but not below min_interval
+        if now - last_speedup >= 5000 and score_interval > min_interval:
+            score_interval = max(min_interval, score_interval - interval_decrement)
+            last_speedup = now
+
+        # Every 100 points, speed up scoring (decrease interval), but not below min_interval
+        if score.get_score() > 0 and score.get_score() % 100 == 0:
+            score_interval = max(min_interval, score_interval - interval_decrement)
+
+        # sa every 400 points, nag-add 1 to speed
+        speed_bonus = score.get_score() // 400
+        player_car.set_max_speed(config.CAR_SPEED + speed_bonus)
         clock.tick(settings.max_fps)
 
     detector.stop_stream()
