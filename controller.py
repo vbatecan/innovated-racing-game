@@ -42,9 +42,9 @@ class Controller:
                 num_hands=2,
                 running_mode=vision.RunningMode.LIVE_STREAM,
                 result_callback=self.callback,
-                min_hand_detection_confidence=0.5,
-                min_hand_presence_confidence=0.5,
-                min_tracking_confidence=0.3,
+                min_hand_detection_confidence=0.4,
+                min_hand_presence_confidence=0.4,
+                min_tracking_confidence=0.4,
             )
         )
 
