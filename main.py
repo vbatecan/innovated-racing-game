@@ -106,7 +106,7 @@ def main():
             target_steer, turn = steer(
                 keys, settings.steering_sensitivity, target_steer
             )
-            player_car.turn(target_steer)
+            player_car.turn(max(-2, min(target_steer, 2)))
 
             player_car.update(
                 steering=target_steer,
@@ -169,7 +169,6 @@ def main():
             )
 
         pygame.display.flip()
-        logger.info(player_car.current_speed)
 
         # Scoring system: add 2 points every score_interval ms, speed up over time, 
         # but pause if breaking

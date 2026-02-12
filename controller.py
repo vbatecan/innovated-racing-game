@@ -121,6 +121,17 @@ class Controller:
         Draws hand landmarks and a steering line when two hands are detected,
         updates the current steer value, and overlays status text.
         """
+        # Standard MediaPipe hand landmark connections (21 landmarks).
+        # Index mapping: 0 wrist; thumb 1-4; index 5-8; middle 9-12; ring 13-16; pinky 17-20.
+        connections = (
+            (0, 1), (1, 2), (2, 3), (3, 4),
+            (0, 5), (5, 6), (6, 7), (7, 8),
+            (0, 9), (9, 10), (10, 11), (11, 12),
+            (0, 13), (13, 14), (14, 15), (15, 16),
+            (0, 17), (17, 18), (18, 19), (19, 20),
+            (5, 9), (9, 13), (13, 17),
+        )
+
         if self.latest_result and self.latest_result.hand_landmarks:
             if len(self.latest_result.hand_landmarks) != 2:
                 cv2.putText(
@@ -203,6 +214,13 @@ class Controller:
             )
 
             for hand_landmarks in self.latest_result.hand_landmarks:
+                # Draw skeleton (connections) first, then landmark points.
+                for a, b in connections:
+                    la = hand_landmarks[a]
+                    lb = hand_landmarks[b]
+                    ax, ay = int(la.x * w), int(la.y * h)
+                    bx, by = int(lb.x * w), int(lb.y * h)
+                    cv2.line(image, (ax, ay), (bx, by), (0, 255, 0), 2)
                 for landmark in hand_landmarks:
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
                     cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)

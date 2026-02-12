@@ -25,9 +25,11 @@
 - [ ] **Game Modes**: Time Attack, Survival (Distance Run), and Head-to-Head Rivals.
 
 ## Bugs
-- [ ] Fix obstacle hit boxes
+
+- [x] Fix obstacle hit boxes
 
 ## To Draw
+
 - [ ] Rocks
 - [ ] Cars, Trucks, L300
 - [ ] Biomes
@@ -36,7 +38,7 @@
 ## User Experience (UX) & Quality of Life
 
 - [ ] **Calibration Screen**: Pre-game scene to record user specific "Neutral", "Max Left", and "Max Right" positions.
-- [ ] **Visual Feedback (HUD)**:
+- [x] **Visual Feedback (HUD)**:
   - Real-time skeleton overlay showing what the computer sees.
   - "Gesture Recognized" icons (e.g., Stop sign appears when braking).
   - Speedometer and gear indicator.
