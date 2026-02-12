@@ -6,7 +6,7 @@ WINDOW_SIZE = {
 }
 
 ROAD_SIZE = {
-    "width": 600,
+    "width": 700,
     "height": 1080
 }
 
@@ -20,7 +20,7 @@ STEERING_SENSITIVITY = 1.0
 AVAILABLE_FPS = [30, 60, 120]
 
 # Physics settings
-ACCELERATION = 0.05
+ACCELERATION = 0.2
 FRICTION = 0.01
 BRAKE_STRENGTH = 0.5
 BRAKE_SENSITIVITY = 5  # 1 (Hard) to 10 (Easy)

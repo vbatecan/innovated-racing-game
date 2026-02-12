@@ -16,6 +16,7 @@ from controller import Controller
 from map import Map
 from score import Score
 from settings import Settings
+from ui.hud import PlayerHUD
 
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
@@ -23,6 +24,8 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
+logger = logging.getLogger(__name__)
+
 
 
 def draw_settings_menu(screen, font, settings, selected_index, options):
@@ -105,10 +108,13 @@ def main():
     score = Score()
     score.set_score(0)
 
+    hud = PlayerHUD(player_car, detector, font)
+
     running = True
-    print("Starting Game Loop...")
-    print("Controls: Use your hands visible to the camera.")
-    print("Press 'S' to open Settings.")
+    
+    logger.info("Starting Game Loop...")
+    logger.info("Controls: Use your hands visible to the camera.")
+    logger.info("Press 'S' to open Settings.")
     selected_setting = 0
 
     while running:
@@ -178,19 +184,15 @@ def main():
         game_map.draw(screen)
         sprite_group.draw(screen)
 
-        # Display Info
-        steer_text = font.render(f"Steer: {detector.steer:.2f}", True, (255, 255, 255))
-        screen.blit(steer_text, (10, 10))
-
-        # Draw Scores
-        score_text = font.render(f"Score: {score.get_score()}", True, (255, 255, 255))
-        screen.blit(score_text, (10, 140))
-
         fps = clock.get_fps()
-        fps_text = font.render(
-            f"FPS: {int(fps)} / {settings.max_fps}", True, (0, 255, 0)
+        hud.update_from_game(
+            player_car,
+            detector,
+            score=score.get_score(),
+            fps=int(fps),
+            max_fps=settings.max_fps,
         )
-        screen.blit(fps_text, (10, 50))
+        hud.draw(screen)
 
         obs_text = font.render(
             f"Obs Freq: {settings.obstacle_frequency}", True, (200, 200, 200)
@@ -203,7 +205,7 @@ def main():
             )
 
         pygame.display.flip()
-        print(player_car.current_speed)
+        logger.info(player_car.current_speed)
         score.add_score(1)
         player_car.set_max_speed(config.CAR_SPEED + score.get_score() // 1000)
         clock.tick(settings.max_fps)
