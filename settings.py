@@ -41,7 +41,8 @@ class Settings:
         self.visible = False
 
         # Scoring system
-        self.speed_increment = 400  # Every 400 points, increase speed.
+        self.speed_bonus = 50  # Every n points, increase speed by 1
+        self.car_collision_deduction_pts = 100
 
     def get_brake_threshold(self):
         """
@@ -104,13 +105,15 @@ class Settings:
         """
         Increase how often obstacles spawn (smaller gap).
         """
-        self.obstacle_frequency = min(self.obstacle_frequency + 1, 100)
+        self.obstacle_frequency += 1
 
     def decrease_obstacle_frequency(self):
         """
         Decrease how often obstacles spawn (larger gap).
         """
-        self.obstacle_frequency = max(self.obstacle_frequency - 1, 1)
+        if self.obstacle_frequency <= 1:
+            return
+        self.obstacle_frequency -= 1
 
     def increase_sensitivity(self):
         """
@@ -125,10 +128,10 @@ class Settings:
         self.steering_sensitivity = max(self.steering_sensitivity - 0.1, 0.1)
 
     def increase_points_speed_increment(self, points):
-        self.speed_increment += points
+        self.speed_bonus += points
 
     def decrease_points_speed_increment(self, deduct):
-        self.speed_increment -= deduct
+        self.speed_bonus -= deduct
 
     def draw_settings_menu(self, screen, font, settings, selected_index, options):
         """

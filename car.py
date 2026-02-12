@@ -22,6 +22,7 @@ class Car(pygame.sprite.Sprite):
         self.original_image = self.image.copy()
         self.rect = self.image.get_rect()
         self.rect.center = (start_x, start_y)
+        self.mask = pygame.mask.from_surface(self.image)
 
         # Physics / Control
         self.current_speed = 0
@@ -35,6 +36,7 @@ class Car(pygame.sprite.Sprite):
     def turn(self, steer: float = 0.0):
         self.image = pygame.transform.rotate(self.original_image, -steer * config.TURN_STEER_SENS)
         self.rect = self.image.get_rect(center=self.rect.center)
+        self.mask = pygame.mask.from_surface(self.image)
         self.steer = -steer * config.TURN_STEER_SENS
 
     def update(

@@ -90,14 +90,14 @@ def main():
 
             frame = detector.get_frame()
             if settings.show_camera and frame is not None:
-                cv2.imshow("Hand Tracker (Press 'S' for Settings)", frame)
+                cv2.imshow("Hand Tracker (Press 'P' for Settings)", frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     pass
             elif not settings.show_camera:
                 pass
-
+            
+            # Arrow key down will break.
             is_breaking = detector.breaking
-
             keys = pygame.key.get_pressed()
             if keys[pygame.K_DOWN]:
                 is_breaking = True
@@ -129,14 +129,19 @@ def main():
                 )
                 player_car.velocity_x = 0
 
-            if pygame.sprite.spritecollide(player_car, game_map.obstacles, True):
+            if pygame.sprite.spritecollide(
+                player_car,
+                game_map.obstacles,
+                True,
+                collided=pygame.sprite.collide_mask,
+            ):
                 player_car.rect.center = (
                     WINDOW_SIZE["width"] // 2,
                     WINDOW_SIZE["height"] - 120,
                 )
                 player_car.current_speed = 0
                 player_car.velocity_x = 0
-                score.deduct(10)
+                score.deduct(settings.car_collision_deduction_pts)
 
         # Drawing
         game_map.draw(screen)
@@ -171,7 +176,7 @@ def main():
         now = pygame.time.get_ticks()
         if not is_breaking:
             if now - score_timer >= score_interval:
-                score.add_score(2)
+                score.add_score(1 * round(player_car.current_speed / 2))
                 score_timer = now
 
         # Every 5 seconds, decrease interval (speed up scoring), but not below min_interval
@@ -184,8 +189,10 @@ def main():
             score_interval = max(min_interval, score_interval - interval_decrement)
 
         # sa every 400 points, nag-add 1 to speed
-        speed_bonus = score.get_score() // 400
-        player_car.set_max_speed(config.CAR_SPEED + speed_bonus)
+        if player_car.max_speed <= 20:
+            speed_bonus = score.get_score() // settings.speed_bonus
+            player_car.set_max_speed(settings.car_speed + speed_bonus)
+        
         clock.tick(settings.max_fps)
 
     detector.stop_stream()
