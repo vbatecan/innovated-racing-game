@@ -1,17 +1,14 @@
 import logging
-from typing import Any, Tuple
+import os
+from typing import Tuple
 
 import cv2
 import pygame
-import os
-
-from pygame.event import Event
 from pygame.key import ScancodeWrapper
 
 import config
-
-from config import WINDOW_SIZE, FONT_SIZE, MAX_FPS, SHOW_CAMERA
 from car import Car
+from config import SHOW_CAMERA, WINDOW_SIZE
 from controller import Controller
 from map import Map
 from score import Score
@@ -25,57 +22,6 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-
-def draw_settings_menu(screen, font, settings, selected_index, options):
-    """
-    Render the in-game settings overlay.
-
-    Draws a centered semi-transparent panel with the available options, highlights
-    the currently selected item, and shows the current value for each setting.
-    """
-    overlay = pygame.Surface((400, 300))
-    overlay.fill((0, 0, 0))
-    overlay.set_alpha(200)
-    screen_rect = screen.get_rect()
-    overlay_rect = overlay.get_rect(center=screen_rect.center)
-    screen.blit(overlay, overlay_rect)
-
-    title = font.render("SETTINGS", True, (255, 255, 255))
-    screen.blit(
-        title, (overlay_rect.centerx - title.get_width() // 2, overlay_rect.y + 20)
-    )
-
-    for i, option in enumerate(options):
-        color = (255, 255, 0) if i == selected_index else (255, 255, 255)
-
-        value_text = ""
-        if option == "Car Speed":
-            value_text = str(settings.car_speed)
-        elif option == "Max FPS":
-            value_text = str(settings.max_fps)
-        elif option == "Show Camera":
-            value_text = "ON" if settings.show_camera else "OFF"
-        elif option == "Obstacle Freq":
-            value_text = str(settings.obstacle_frequency)
-        elif option == "Sensitivity":
-            value_text = f"{settings.steering_sensitivity:.1f}"
-        elif option == "Brake Sens":
-            value_text = str(settings.brake_sensitivity)
-
-        text = font.render(f"{option}: {value_text}", True, color)
-
-        # Center the text in the overlay
-        text_rect = text.get_rect(
-            center=(overlay_rect.centerx, overlay_rect.y + 80 + i * 40)
-        )
-        screen.blit(text, text_rect)
-
-    hint = font.render("Press P to Close", True, (150, 150, 150))
-    screen.blit(
-        hint, (overlay_rect.centerx - hint.get_width() // 2, overlay_rect.bottom - 40)
-    )
 
 
 def main():
@@ -111,7 +57,7 @@ def main():
     hud = PlayerHUD(player_car, detector, font)
 
     running = True
-    
+
     logger.info("Starting Game Loop...")
     logger.info("Controls: Use your hands visible to the camera.")
     logger.info("Press 'S' to open Settings.")
@@ -119,7 +65,7 @@ def main():
 
     score_timer = 0
     score_interval = 1000  # milliseconds
-    min_interval = 200     # minimum interval between score increases
+    min_interval = 200  # minimum interval between score increases
     interval_decrement = 10  # ms to decrease interval every 5 seconds
     last_speedup = pygame.time.get_ticks()
 
@@ -130,9 +76,13 @@ def main():
         )
 
         for event in pygame.event.get():
-            running, selected_setting, show_settings = handle_event(event, running, selected_setting,
-                                                                    config.SETTING_OPTIONS,
-                                                                    settings, settings.visible)
+            running, selected_setting, show_settings = settings.handle_event(
+                event,
+                running,
+                selected_setting,
+                config.SETTING_OPTIONS,
+                settings.visible,
+            )
             settings.visible = show_settings
 
         if not settings.visible:
@@ -153,7 +103,9 @@ def main():
                 is_breaking = True
 
             target_steer = detector.steer * settings.steering_sensitivity
-            target_steer, turn = steer(keys, settings.steering_sensitivity, target_steer)
+            target_steer, turn = steer(
+                keys, settings.steering_sensitivity, target_steer
+            )
             player_car.turn(target_steer)
 
             player_car.update(
@@ -206,22 +158,21 @@ def main():
         screen.blit(obs_text, (10, 90))
 
         if settings.visible:
-            draw_settings_menu(
+
+            settings.draw_settings_menu(
                 screen, font, settings, selected_setting, config.SETTING_OPTIONS
             )
 
         pygame.display.flip()
         logger.info(player_car.current_speed)
 
-
-        # Scoring system: add 2 points every score_interval ms, speed up over time, but pause if breaking
+        # Scoring system: add 2 points every score_interval ms, speed up over time, 
+        # but pause if breaking
         now = pygame.time.get_ticks()
         if not is_breaking:
             if now - score_timer >= score_interval:
                 score.add_score(2)
                 score_timer = now
-        # If breaking, do not update score_timer, so scoring resumes where it left off
-
 
         # Every 5 seconds, decrease interval (speed up scoring), but not below min_interval
         if now - last_speedup >= 5000 and score_interval > min_interval:
@@ -242,7 +193,19 @@ def main():
     pygame.quit()
 
 
-def steer(keys: ScancodeWrapper, steering_sensitivity, target_steer: float) -> Tuple[float, str]:
+def steer(
+    keys: ScancodeWrapper, steering_sensitivity, target_steer: float
+) -> Tuple[float, str]:
+    """Steer using arrow keys, if no arrow keys pressed. Return the steering sensitivity anyway.
+
+    Args:
+        keys (ScancodeWrapper): The pygame key event
+        steering_sensitivity (floa): The steering sensitivity that is multiplied to the target steer
+        target_steer (float): The steering.
+
+    Returns:
+        Tuple[float, str]: Returns the target_steer and the turn whether LEFT, CENTER, or RIGHT.
+    """
     turn = "CENTER"
     if keys[pygame.K_LEFT]:
         target_steer = -1.0 * steering_sensitivity
@@ -253,51 +216,6 @@ def steer(keys: ScancodeWrapper, steering_sensitivity, target_steer: float) -> T
     return target_steer, turn
 
 
-def handle_event(event: Event, running: bool, selected_setting: int | Any, setting_options: list[str],
-                 settings: Settings, show_settings: bool) -> tuple[bool, bool, int | Any]:
-    if event.type == pygame.QUIT:
-        running = False
-
-    if event.type == pygame.KEYDOWN:
-        if event.key == pygame.K_ESCAPE:
-            running = False
-        elif event.key == pygame.K_p:
-            show_settings = not show_settings
-            if not show_settings and not settings.show_camera:
-                cv2.destroyAllWindows()
-
-        if show_settings:
-            if event.key == pygame.K_UP:
-                selected_setting = (selected_setting - 1) % len(setting_options)
-            elif event.key == pygame.K_DOWN:
-                selected_setting = (selected_setting + 1) % len(setting_options)
-            elif event.key == pygame.K_LEFT:
-                if selected_setting == 0:
-                    settings.decrease_speed()
-                elif selected_setting == 1:
-                    settings.decrease_fps()
-                elif selected_setting == 2:
-                    settings.toggle_camera()
-                elif selected_setting == 3:
-                    settings.decrease_obstacle_frequency()
-                elif selected_setting == 4:
-                    settings.decrease_sensitivity()
-                elif selected_setting == 5:
-                    settings.decrease_brake_sensitivity()
-            elif event.key == pygame.K_RIGHT:
-                if selected_setting == 0:
-                    settings.increase_speed()
-                elif selected_setting == 1:
-                    settings.increase_fps()
-                elif selected_setting == 2:
-                    settings.toggle_camera()
-                elif selected_setting == 3:
-                    settings.increase_obstacle_frequency()
-                elif selected_setting == 4:
-                    settings.increase_sensitivity()
-                elif selected_setting == 5:
-                    settings.increase_brake_sensitivity()
-    return running, selected_setting, show_settings
 
 
 if __name__ == "__main__":
