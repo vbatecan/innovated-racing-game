@@ -192,7 +192,11 @@ class Controller:
             )
 
             normalized_slope = max(-5.0, min(5.0, slope))
-            self.steer = normalized_slope
+            # Prevent steering while braking
+            if self.breaking:
+                self.steer = 0.0
+            else:
+                self.steer = normalized_slope
 
             cv2.putText(
                 image,
