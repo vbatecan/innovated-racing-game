@@ -269,7 +269,7 @@ class ObstacleManager:
         road: Road,
         spawn_frequency: int = 30,
         max_obstacles: int = 5,
-        obstacle_size: tuple[int, int] = (50, 50),
+        obstacle_size: tuple[int, int] = (40, 40),
     ):
         """
         Initialize obstacle spawning limits and sprite storage.
@@ -323,9 +323,17 @@ class ObstacleManager:
         source = self.obstacle_models[model_index]
 
         lane_fit_width = max(1, lane.width - 24)
-        target_width = min(lane_fit_width, int(lane.width * 0.65))
-        target_width = max(24, target_width)
-        target_width = min(target_width, max(24, int(source.get_width() * 1.2)))
+        target_width = min(
+            lane_fit_width, int(lane.width * config.TRAFFIC_LANE_WIDTH_RATIO)
+        )
+        target_width = max(config.TRAFFIC_MIN_SIZE, target_width)
+        target_width = min(
+            target_width,
+            max(
+                config.TRAFFIC_MIN_SIZE,
+                int(source.get_width() * config.TRAFFIC_MAX_SOURCE_SCALE),
+            ),
+        )
 
         cache_key = (model_index, target_width)
         cached = self.model_scale_cache.get(cache_key)
@@ -333,7 +341,9 @@ class ObstacleManager:
             return cached
 
         source_width, source_height = source.get_size()
-        scaled_height = max(24, int(source_height * (target_width / source_width)))
+        scaled_height = max(
+            config.TRAFFIC_MIN_SIZE, int(source_height * (target_width / source_width))
+        )
         scaled = pygame.transform.smoothscale(source, (target_width, scaled_height))
         self.model_scale_cache[cache_key] = scaled
         return scaled
