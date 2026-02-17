@@ -205,15 +205,15 @@ def main():
 def steer(
     keys: ScancodeWrapper, steering_sensitivity, target_steer: float
 ) -> Tuple[float, str]:
-    """Steer using arrow keys, if no arrow keys pressed. Return the steering sensitivity anyway.
+    """Apply keyboard steering overrides and return steer value plus turn label.
 
     Args:
-        keys (ScancodeWrapper): The pygame key event
-        steering_sensitivity (floa): The steering sensitivity that is multiplied to the target steer
-        target_steer (float): The steering.
+        keys (ScancodeWrapper): Current keyboard state from pygame.
+        steering_sensitivity (float): Steering multiplier used for keyboard input.
+        target_steer (float): Current steering value from hand input.
 
     Returns:
-        Tuple[float, str]: Returns the target_steer and the turn whether LEFT, CENTER, or RIGHT.
+        Tuple[float, str]: Final steering value and one of LEFT/CENTER/RIGHT.
     """
     turn = "CENTER"
     if keys[pygame.K_LEFT]:

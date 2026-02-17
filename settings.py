@@ -24,8 +24,8 @@ class Settings:
         """
         Initialize runtime-tunable game settings.
 
-        Loads defaults from config and sets up physics and control parameters
-        used throughout the game loop.
+        Returns:
+            None: Initializes mutable runtime settings from configuration defaults.
         """
         self.car_speed = CAR_SPEED
         self.max_fps = MAX_FPS
@@ -50,43 +50,64 @@ class Settings:
 
     def get_brake_threshold(self):
         """
-        Compute the thumb raise the threshold for braking detection.
+        Convert brake sensitivity into a thumb-raise threshold for gesture braking.
+
+        Returns:
+            float: Gesture threshold value used by the controller.
         """
         return 0.07 - (self.brake_sensitivity * 0.01)
 
     def increase_brake_sensitivity(self):
         """
         Make braking easier to trigger by raising sensitivity.
+
+        Returns:
+            None: Increases `brake_sensitivity` within allowed bounds.
         """
         self.brake_sensitivity = min(self.brake_sensitivity + 1, 10)
 
     def decrease_brake_sensitivity(self):
         """
         Make braking harder to trigger by lowering sensitivity.
+
+        Returns:
+            None: Decreases `brake_sensitivity` within allowed bounds.
         """
         self.brake_sensitivity = max(self.brake_sensitivity - 1, 1)
 
     def increase_speed(self):
         """
         Increase the car speed setting within limits.
+
+        Returns:
+            None: Increases `car_speed` within allowed bounds.
         """
         self.car_speed = min(self.car_speed + 1, 50)
 
     def decrease_speed(self):
         """
         Decrease the car speed setting within limits.
+
+        Returns:
+            None: Decreases `car_speed` within allowed bounds.
         """
         self.car_speed = max(self.car_speed - 1, 1)
 
     def toggle_camera(self):
         """
         Toggle whether the camera preview is shown.
+
+        Returns:
+            None: Flips `show_camera`.
         """
         self.show_camera = not self.show_camera
 
     def increase_fps(self):
         """
         Increase the max FPS setting using supported values.
+
+        Returns:
+            None: Moves to the next supported FPS value.
         """
         vals = [30, 60, 120]
         try:
@@ -98,6 +119,9 @@ class Settings:
     def decrease_fps(self):
         """
         Decrease the max FPS setting using supported values.
+
+        Returns:
+            None: Moves to the previous supported FPS value.
         """
         try:
             idx = self._vals.index(self.max_fps)
@@ -108,12 +132,18 @@ class Settings:
     def increase_obstacle_frequency(self):
         """
         Increase how often obstacles spawn (smaller gap).
+
+        Returns:
+            None: Increments obstacle frequency control value.
         """
         self.obstacle_frequency += 1
 
     def decrease_obstacle_frequency(self):
         """
         Decrease how often obstacles spawn (larger gap).
+
+        Returns:
+            None: Decrements obstacle frequency control value when possible.
         """
         if self.obstacle_frequency <= 1:
             return
@@ -122,39 +152,76 @@ class Settings:
     def increase_lane_count(self):
         """
         Increase the number of road lanes within limits.
+
+        Returns:
+            None: Increases `lane_count` within configured bounds.
         """
         self.lane_count = min(self.lane_count + 1, MAX_LANE_COUNT)
 
     def decrease_lane_count(self):
         """
         Decrease the number of road lanes within limits.
+
+        Returns:
+            None: Decreases `lane_count` within configured bounds.
         """
         self.lane_count = max(self.lane_count - 1, MIN_LANE_COUNT)
 
     def increase_sensitivity(self):
         """
         Increase steering sensitivity within limits.
+
+        Returns:
+            None: Increases steering sensitivity within allowed bounds.
         """
         self.steering_sensitivity = min(self.steering_sensitivity + 0.1, 5.0)
 
     def decrease_sensitivity(self):
         """
         Decrease steering sensitivity within limits.
+
+        Returns:
+            None: Decreases steering sensitivity within allowed bounds.
         """
         self.steering_sensitivity = max(self.steering_sensitivity - 0.1, 0.1)
 
     def increase_points_speed_increment(self, points):
+        """
+        Increase the score interval used to grant speed bonuses.
+
+        Args:
+            points (int): Amount added to `speed_bonus`.
+
+        Returns:
+            None: Updates score threshold for speed bonus changes.
+        """
         self.speed_bonus += points
 
     def decrease_points_speed_increment(self, deduct):
+        """
+        Decrease the score interval used to grant speed bonuses.
+
+        Args:
+            deduct (int): Amount subtracted from `speed_bonus`.
+
+        Returns:
+            None: Updates score threshold for speed bonus changes.
+        """
         self.speed_bonus -= deduct
 
     def draw_settings_menu(self, screen, font, settings, selected_index, options):
         """
         Render the in-game settings overlay.
 
-        Draws a centered semi-transparent panel with the available options, highlights
-        the currently selected item, and shows the current value for each setting.
+        Args:
+            screen (pygame.Surface): Main display surface.
+            font (pygame.font.Font): Font used to render menu text.
+            settings (Settings): Current mutable settings instance.
+            selected_index (int): Selected menu row index.
+            options (list[str]): Ordered settings labels to display.
+
+        Returns:
+            None: Draws directly to the screen surface.
         """
         overlay_width = 400
         overlay_height = max(300, 140 + len(options) * 40)
@@ -213,6 +280,19 @@ class Settings:
         setting_options: list[str],
         show_settings: bool,
     ) -> tuple[bool, int | Any, bool]:
+        """
+        Process input for game and settings navigation.
+
+        Args:
+            event (Event): Current pygame event to process.
+            running (bool): Existing game running state.
+            selected_setting (int | Any): Current selected settings menu index.
+            setting_options (list[str]): Menu options used for index wrapping.
+            show_settings (bool): Current visibility of settings menu.
+
+        Returns:
+            tuple[bool, int | Any, bool]: Updated `(running, selected_setting, show_settings)`.
+        """
         if event.type == pygame.QUIT:
             running = False
 
