@@ -7,7 +7,7 @@ import pygame
 from pygame.key import ScancodeWrapper
 
 import config
-from car import Car
+from car import PlayerCar
 from config import SHOW_CAMERA, WINDOW_SIZE
 from controller import Controller
 from map import Map
@@ -43,7 +43,7 @@ def main():
 
     start_x = WINDOW_SIZE["width"] // 2
     start_y = WINDOW_SIZE["height"] - 240
-    player_car = Car(start_x, start_y)
+    player_car = PlayerCar(start_x, start_y)
 
     sprite_group = pygame.sprite.Group()
     sprite_group.add(player_car)

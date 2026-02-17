@@ -1,5 +1,6 @@
 import random
 from dataclasses import dataclass
+from pathlib import Path
 
 import pygame
 
@@ -21,37 +22,66 @@ class Lane:
 
 
 class Obstacle(pygame.sprite.Sprite):
-    def __init__(self, x: int, y: int, width: int, height: int, speed: int):
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        speed: int,
+        image: pygame.Surface | None = None,
+        traffic_speed: float = 0.0,
+    ):
         """
-        Create a rectangular obstacle sprite.
+        Create an obstacle sprite.
 
         Args:
             x (int): Initial X position (left) of the obstacle sprite.
             y (int): Initial Y position (top) of the obstacle sprite.
             width (int): Obstacle width in pixels.
             height (int): Obstacle height in pixels.
-            speed (int): Vertical movement speed per frame.
+            speed (int): Initial vertical movement speed per frame.
+            image (pygame.Surface | None): Optional pre-built obstacle image.
+            traffic_speed (float): World traffic speed used for relative movement.
         """
         super().__init__()
-        self.image = pygame.Surface((width, height))
-        self.image.fill((255, 50, 50))
-        pygame.draw.rect(self.image, (255, 255, 0), (0, 0, width, 10))
+        if image is None:
+            self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+            self.image.fill((255, 50, 50))
+            pygame.draw.rect(self.image, (255, 255, 0), (0, 0, width, 10))
+        else:
+            self.image = image
 
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.mask = pygame.mask.from_surface(self.image)
-        self.speed = speed
+        self.speed = float(speed)
+        # Per-vehicle base approach speed so traffic always moves on-screen.
+        self.traffic_speed = max(0.5, float(traffic_speed))
+        self._y_pos = float(y)
 
-    def update(self) -> None:
+    def update(self, player_speed: float, screen_height: int) -> None:
         """
-        Move the obstacle downward and delete if off-screen.
+        Move the obstacle using relative speed and delete if off-screen.
+
+        The traffic vehicle's screen speed is computed from:
+        `player_speed - traffic_speed`.
 
         Returns:
             None: Updates sprite position in place.
         """
-        self.rect.y += self.speed
-        if self.rect.y > 2000:
+        # Blend player speed with per-vehicle traffic speed so traffic remains active
+        # even at low player speed and scales up as gameplay gets faster.
+        blended_speed = self.traffic_speed + (0.2 * float(player_speed))
+        self.speed = max(1.0, min(24.0, blended_speed))
+        self._y_pos += self.speed
+        self.rect.y = int(self._y_pos)
+
+        if (
+            self.rect.top > screen_height + self.rect.height
+            or self.rect.bottom < -self.rect.height
+        ):
             self.kill()
 
 
@@ -256,6 +286,67 @@ class ObstacleManager:
         self.obstacles = pygame.sprite.Group()
         self.timer = 0
         self.spawn_frequency = max(1, int(spawn_frequency))
+        self.model_dir = Path("resources/models")
+        self.model_scale_cache: dict[tuple[int, int], pygame.Surface] = {}
+        self.obstacle_models = self._load_obstacle_models()
+
+    def _load_obstacle_models(self) -> list[pygame.Surface]:
+        """Load top-level obstacle model PNGs from resources/models."""
+        if not self.model_dir.exists():
+            return []
+
+        models: list[pygame.Surface] = []
+        for model_path in sorted(self.model_dir.glob("*.png")):
+            try:
+                image = pygame.image.load(str(model_path))
+                if pygame.display.get_surface() is not None:
+                    image = image.convert_alpha()
+                models.append(image)
+            except pygame.error:
+                continue
+        return models
+
+    def _get_random_obstacle_image(self, lane: Lane) -> pygame.Surface | None:
+        """
+        Return a random obstacle model scaled to fit the target lane.
+
+        Args:
+            lane (Lane): Target lane where the obstacle will spawn.
+
+        Returns:
+            pygame.Surface | None: Scaled model image, or None if unavailable.
+        """
+        if not self.obstacle_models:
+            return None
+
+        model_index = random.randrange(len(self.obstacle_models))
+        source = self.obstacle_models[model_index]
+
+        lane_fit_width = max(1, lane.width - 24)
+        target_width = min(lane_fit_width, int(lane.width * 0.65))
+        target_width = max(24, target_width)
+        target_width = min(target_width, max(24, int(source.get_width() * 1.2)))
+
+        cache_key = (model_index, target_width)
+        cached = self.model_scale_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        source_width, source_height = source.get_size()
+        scaled_height = max(24, int(source_height * (target_width / source_width)))
+        scaled = pygame.transform.smoothscale(source, (target_width, scaled_height))
+        self.model_scale_cache[cache_key] = scaled
+        return scaled
+
+    @staticmethod
+    def _lane_spawn_x(lane: Lane, obstacle_width: int, min_padding: int = 10) -> int:
+        """Return a valid spawn X for an obstacle inside the specified lane."""
+        lane_padding = min(min_padding, max(0, (lane.width - obstacle_width) // 2))
+        max_left = lane.right - obstacle_width - lane_padding
+        min_left = lane.left + lane_padding
+        if max_left <= min_left:
+            return lane.left + max(0, (lane.width - obstacle_width) // 2)
+        return random.randint(min_left, max_left)
 
     def set_spawn_frequency(self, frequency: int) -> None:
         """
@@ -269,20 +360,47 @@ class ObstacleManager:
         """
         self.spawn_frequency = max(1, int(frequency))
 
+    @staticmethod
+    def _sample_traffic_speed(player_speed: int) -> float:
+        """
+        Generate a per-vehicle traffic speed in world units.
+
+        The spawned vehicle initially approaches the player by at least one
+        pixel/frame so traffic always appears active on-screen.
+        """
+        _ = player_speed
+        return random.uniform(1.5, 6.0)
+
     def _spawn_obstacle(self, speed: int) -> None:
         """
         Create one obstacle at the top of a random lane.
 
         Args:
-            speed (int): Initial vertical speed for the spawned obstacle.
+            speed (int): Current player/map speed used to derive traffic speed.
 
         Returns:
             None: Adds a new obstacle sprite to the managed group.
         """
-        spawn_x = self.road.random_lane_spawn_x(self.obstacle_width)
-        spawn_y = -self.obstacle_height
+        lane = self.road.random_lane()
+        obstacle_image = self._get_random_obstacle_image(lane)
+        obstacle_width = self.obstacle_width
+        obstacle_height = self.obstacle_height
+        if obstacle_image is not None:
+            obstacle_width = obstacle_image.get_width()
+            obstacle_height = obstacle_image.get_height()
+        
+
+        spawn_x = self._lane_spawn_x(lane, obstacle_width)
+        spawn_y = -obstacle_height
+        traffic_speed = self._sample_traffic_speed(speed)
         obstacle = Obstacle(
-            spawn_x, spawn_y, self.obstacle_width, self.obstacle_height, speed
+            spawn_x,
+            spawn_y,
+            obstacle_width,
+            obstacle_height,
+            speed,
+            image=obstacle_image,
+            traffic_speed=traffic_speed,
         )
         self.obstacles.add(obstacle)
 
@@ -302,13 +420,7 @@ class ObstacleManager:
             if len(self.obstacles) < self.max_obstacles:
                 self._spawn_obstacle(speed)
 
-        for obstacle in self.obstacles:
-            obstacle.speed = speed
-        self.obstacles.update()
-
-        for obstacle in tuple(self.obstacles):
-            if obstacle.rect.y > self.road.height:
-                obstacle.kill()
+        self.obstacles.update(speed, self.road.height)
 
     def draw(self, surface: pygame.Surface) -> None:
         """

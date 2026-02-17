@@ -5,14 +5,14 @@ import math
 
 import pygame
 
-from car import Car
+from car import PlayerCar
 from controller import Controller
 
 
 class PlayerHUD:
     def __init__(
         self,
-        player_car: Car,
+        player_car: PlayerCar,
         controller: Controller,
         font: pygame.font.Font,
         position: tuple[int, int] = (10, 10),
@@ -46,7 +46,7 @@ class PlayerHUD:
 
     def update_from_game(
         self,
-        player_car: Car,
+        player_car: PlayerCar,
         controller: Controller,
         score: Optional[int] = None,
         fps: Optional[int] = None,
