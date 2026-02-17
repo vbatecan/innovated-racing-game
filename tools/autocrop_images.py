@@ -4,9 +4,10 @@ Auto-crop images to remove excess whitespace/transparent areas.
 Resizes pictures to fit the edges of the subject.
 """
 
-from PIL import Image, ImageChops
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 
 def autocrop_image(image_path, output_path=None, padding=0, background_color=(255, 255, 255)):
@@ -22,7 +23,6 @@ def autocrop_image(image_path, output_path=None, padding=0, background_color=(25
     try:
         # Open image
         img = Image.open(image_path)
-        original_format = img.format
 
         # Convert to RGBA to handle transparency
         if img.mode != "RGBA":

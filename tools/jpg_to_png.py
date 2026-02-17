@@ -4,9 +4,10 @@ Convert JPG images to PNG with transparent background.
 Removes white/light backgrounds and converts to PNG with alpha channel.
 """
 
-from PIL import Image
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 
 def jpg_to_transparent_png(jpg_path, output_path=None, threshold=240):

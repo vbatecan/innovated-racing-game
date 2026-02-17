@@ -1,15 +1,15 @@
+import logging
 import os
-from threading import Thread
-
-import mediapipe as mp
-from mediapipe.tasks.python import vision, BaseOptions
-from mediapipe.tasks.python.vision.hand_landmarker import HandLandmarkerOptions
-import cv2
 import threading
 import time
-import config
+from threading import Thread
 
-import logging
+import cv2
+import mediapipe as mp
+from mediapipe.tasks.python import BaseOptions, vision
+from mediapipe.tasks.python.vision.hand_landmarker import HandLandmarkerOptions
+
+import config
 
 os.makedirs("logs", exist_ok=True)
 logger = logging.getLogger(__name__)
@@ -124,12 +124,29 @@ class Controller:
         # Standard MediaPipe hand landmark connections (21 landmarks).
         # Index mapping: 0 wrist; thumb 1-4; index 5-8; middle 9-12; ring 13-16; pinky 17-20.
         connections = (
-            (0, 1), (1, 2), (2, 3), (3, 4),
-            (0, 5), (5, 6), (6, 7), (7, 8),
-            (0, 9), (9, 10), (10, 11), (11, 12),
-            (0, 13), (13, 14), (14, 15), (15, 16),
-            (0, 17), (17, 18), (18, 19), (19, 20),
-            (5, 9), (9, 13), (13, 17),
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 4),
+            (0, 5),
+            (5, 6),
+            (6, 7),
+            (7, 8),
+            (0, 9),
+            (9, 10),
+            (10, 11),
+            (11, 12),
+            (0, 13),
+            (13, 14),
+            (14, 15),
+            (15, 16),
+            (0, 17),
+            (17, 18),
+            (18, 19),
+            (19, 20),
+            (5, 9),
+            (9, 13),
+            (13, 17),
         )
 
         if self.latest_result and self.latest_result.hand_landmarks:
