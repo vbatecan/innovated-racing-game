@@ -9,6 +9,9 @@ ROAD_SIZE = {
     "width": 700,
     "height": 1080
 }
+LANE_COUNT = 3
+MIN_LANE_COUNT = 2
+MAX_LANE_COUNT = 6
 
 SHOW_CAMERA = False
 
@@ -31,6 +34,7 @@ SETTING_OPTIONS = [
     "Max FPS",
     "Show Camera",
     "Obstacle Freq",
+    "Lane Count",
     "Sensitivity",
     "Brake Sens",
 ]

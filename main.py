@@ -39,7 +39,7 @@ def main():
 
     settings = Settings()
     settings.show_camera = SHOW_CAMERA
-    game_map = Map(WINDOW_SIZE)
+    game_map = Map(WINDOW_SIZE, lane_count=settings.lane_count)
 
     start_x = WINDOW_SIZE["width"] // 2
     start_y = WINDOW_SIZE["height"] - 240
@@ -74,6 +74,7 @@ def main():
         game_map.obstacle_frequency = int(
             settings.max_fps / settings.obstacle_frequency
         )
+        game_map.set_lane_count(settings.lane_count)
 
         for event in pygame.event.get():
             running, selected_setting, show_settings = settings.handle_event(
@@ -161,6 +162,8 @@ def main():
             f"Obs Freq: {settings.obstacle_frequency}", True, (200, 200, 200)
         )
         screen.blit(obs_text, (10, 90))
+        lane_text = font.render(f"Lanes: {settings.lane_count}", True, (200, 200, 200))
+        screen.blit(lane_text, (10, 120))
 
         if settings.visible:
 

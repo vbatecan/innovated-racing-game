@@ -10,7 +10,10 @@ from config import (
     BRAKE_STRENGTH,
     CAR_SPEED,
     FRICTION,
+    LANE_COUNT,
+    MAX_LANE_COUNT,
     MAX_FPS,
+    MIN_LANE_COUNT,
     OBSTACLE_FREQUENCY,
     STEERING_SENSITIVITY,
 )
@@ -28,6 +31,7 @@ class Settings:
         self.max_fps = MAX_FPS
         self.show_camera = True
         self.obstacle_frequency = OBSTACLE_FREQUENCY
+        self.lane_count = LANE_COUNT
         self.steering_sensitivity = STEERING_SENSITIVITY
         self._vals = AVAILABLE_FPS
 
@@ -115,6 +119,18 @@ class Settings:
             return
         self.obstacle_frequency -= 1
 
+    def increase_lane_count(self):
+        """
+        Increase the number of road lanes within limits.
+        """
+        self.lane_count = min(self.lane_count + 1, MAX_LANE_COUNT)
+
+    def decrease_lane_count(self):
+        """
+        Decrease the number of road lanes within limits.
+        """
+        self.lane_count = max(self.lane_count - 1, MIN_LANE_COUNT)
+
     def increase_sensitivity(self):
         """
         Increase steering sensitivity within limits.
@@ -140,7 +156,9 @@ class Settings:
         Draws a centered semi-transparent panel with the available options, highlights
         the currently selected item, and shows the current value for each setting.
         """
-        overlay = pygame.Surface((400, 300))
+        overlay_width = 400
+        overlay_height = max(300, 140 + len(options) * 40)
+        overlay = pygame.Surface((overlay_width, overlay_height))
         overlay.fill((0, 0, 0))
         overlay.set_alpha(200)
 
@@ -166,6 +184,8 @@ class Settings:
                 value_text = "ON" if settings.show_camera else "OFF"
             elif option == "Obstacle Freq":
                 value_text = str(settings.obstacle_frequency)
+            elif option == "Lane Count":
+                value_text = str(settings.lane_count)
             elif option == "Sensitivity":
                 value_text = f"{settings.steering_sensitivity:.1f}"
             elif option == "Brake Sens":
@@ -192,7 +212,7 @@ class Settings:
         selected_setting: int | Any,
         setting_options: list[str],
         show_settings: bool,
-    ) -> tuple[bool, bool, int | Any]:
+    ) -> tuple[bool, int | Any, bool]:
         if event.type == pygame.QUIT:
             running = False
 
@@ -219,8 +239,10 @@ class Settings:
                     elif selected_setting == 3:
                         self.decrease_obstacle_frequency()
                     elif selected_setting == 4:
-                        self.decrease_sensitivity()
+                        self.decrease_lane_count()
                     elif selected_setting == 5:
+                        self.decrease_sensitivity()
+                    elif selected_setting == 6:
                         self.decrease_brake_sensitivity()
                 elif event.key == pygame.K_RIGHT:
                     if selected_setting == 0:
@@ -232,7 +254,9 @@ class Settings:
                     elif selected_setting == 3:
                         self.increase_obstacle_frequency()
                     elif selected_setting == 4:
-                        self.increase_sensitivity()
+                        self.increase_lane_count()
                     elif selected_setting == 5:
+                        self.increase_sensitivity()
+                    elif selected_setting == 6:
                         self.increase_brake_sensitivity()
         return running, selected_setting, show_settings
