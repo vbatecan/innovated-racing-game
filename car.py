@@ -1,23 +1,52 @@
 import pygame
 
+import config
 
-class Car(pygame.sprite.Sprite):
-    def __init__(self, start_x, start_y):
+
+class Vehicle(pygame.sprite.Sprite):
+    def __init__(
+        self,
+        start_x: int,
+        start_y: int,
+        width: int = 96,
+        height: int = 96,
+        image_path: str = "resources/car.png",
+    ) -> None:
+        """
+        Create a generic vehicle sprite that can be reused by player/NPC classes.
+        """
+        super().__init__()
+        self.width = width
+        self.height = height
+        self.image = pygame.transform.scale(
+            pygame.image.load(image_path).convert_alpha(), (self.width, self.height)
+        )
+        self.original_image = self.image.copy()
+        self.rect = self.image.get_rect()
+        self.rect.center = (start_x, start_y)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.steer = 0.0
+
+    def turn(self, steer: float = 0.0) -> None:
+        """
+        Rotate the vehicle sprite to reflect steering input.
+        """
+        angle = -steer * config.TURN_STEER_SENS
+        self.image = pygame.transform.rotate(self.original_image, angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.steer = angle
+
+
+class PlayerCar(Vehicle):
+    def __init__(self, start_x: int, start_y: int) -> None:
         """
         Create a car sprite at the given position.
 
         Initializes the car's geometry, physics state, and draws its initial
         appearance onto its surface.
         """
-        super().__init__()
-        # Car dimensions
-        self.width = 60
-        self.height = 100
-
-        # Create a surface for the car
-        self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        self.rect = self.image.get_rect()
-        self.rect.center = (start_x, start_y)
+        super().__init__(start_x=start_x, start_y=start_y)
 
         # Physics / Control
         self.current_speed = 0
@@ -25,53 +54,15 @@ class Car(pygame.sprite.Sprite):
         self.velocity_x = 0
         self.smoothing = 0.2  # Smooth movement
 
-        self.draw_car()
-
-    def draw_car(self):
-        """
-        Draw the car body and details onto its surface.
-
-        Uses a neon-inspired palette with body panels, wheels, windshield, and
-        lights to form the sprite appearance.
-        """
-        # Clear surface
-        self.image.fill((0, 0, 0, 0))
-
-        # Colors (Neon/Cyberpunk Theme)
-        BODY_COLOR = (255, 0, 128)  # Neon Pink/Magenta
-        WINDSHIELD_COLOR = (0, 255, 255, 200)  # Cyan with alpha
-
-        pygame.draw.rect(self.image, BODY_COLOR, (10, 0, 40, 100), border_radius=10)
-
-        # Side pods / Rear wheels area
-        pygame.draw.rect(self.image, (200, 0, 100), (0, 60, 10, 30), border_radius=5)
-        pygame.draw.rect(self.image, (200, 0, 100), (50, 60, 10, 30), border_radius=5)
-
-        # Front wheels area
-        pygame.draw.rect(self.image, (200, 0, 100), (0, 10, 10, 20), border_radius=5)
-        pygame.draw.rect(self.image, (200, 0, 100), (50, 10, 10, 20), border_radius=5)
-
-        # Windshield
-        pygame.draw.polygon(
-            self.image, WINDSHIELD_COLOR, [(15, 30), (45, 30), (40, 50), (20, 50)]
-        )
-
-        # Headlights
-        pygame.draw.circle(self.image, (255, 255, 255), (15, 5), 3)
-        pygame.draw.circle(self.image, (255, 255, 255), (45, 5), 3)
-
-        # Rear lights
-        pygame.draw.rect(self.image, (255, 50, 50), (15, 95, 30, 5), border_radius=2)
-
     def update(
-        self,
-        steering,
-        is_braking,
-        max_speed,
-        acceleration,
-        friction,
-        brake_strength,
-        screen_width,
+            self,
+            steering,
+            is_braking,
+            max_speed,
+            acceleration,
+            friction,
+            brake_strength,
+            screen_width,
     ):
         """
         Update the car's speed and position for a frame.
@@ -108,3 +99,13 @@ class Car(pygame.sprite.Sprite):
         if self.rect.right > screen_width:
             self.rect.right = screen_width
             self.velocity_x = 0
+
+    def set_max_speed(self, max_speed):
+        self.max_speed = max_speed
+
+    def add_max_speed(self, speed_increment):
+        self.max_speed += speed_increment
+
+
+# Backwards compatibility alias.
+Car = PlayerCar

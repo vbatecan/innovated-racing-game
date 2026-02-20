@@ -6,18 +6,40 @@ WINDOW_SIZE = {
 }
 
 ROAD_SIZE = {
-    "width": 1280,
+    "width": 700,
     "height": 1080
 }
+LANE_COUNT = 3
+MIN_LANE_COUNT = 1
+MAX_LANE_COUNT = 6
+
+SHOW_CAMERA = False
+
 FONT_SIZE = 24
 CAR_SPEED = 10
 MAX_FPS = 60
-OBSTACLE_FREQUENCY = 1 # Per frame
+OBSTACLE_FREQUENCY = 1 # Per Max FPS
 STEERING_SENSITIVITY = 1.0
 AVAILABLE_FPS = [30, 60, 120]
 
 # Physics settings
 ACCELERATION = 0.2
-FRICTION = 0.05
+FRICTION = 0.01
 BRAKE_STRENGTH = 0.5
-BRAKE_SENSITIVITY = 5  # 1 (Hard) to 10 (Easy)
+BRAKE_SENSITIVITY = 5
+TURN_STEER_SENS = 30
+
+# Traffic vehicle scaling
+TRAFFIC_LANE_WIDTH_RATIO = 0.35
+TRAFFIC_MIN_SIZE = 24
+TRAFFIC_MAX_SOURCE_SCALE = 0.9
+
+SETTING_OPTIONS = [
+    "Car Speed",
+    "Max FPS",
+    "Show Camera",
+    "Obstacle Freq",
+    "Lane Count",
+    "Sensitivity",
+    "Brake Sens",
+]
