@@ -107,8 +107,8 @@ def main():
             # Only trigger boost on new thumbs up (rising edge)
             if detector.boosting and not prev_boosting and not boost_active and now > boost_cooldown_end:
                 boost_active = True
-                boost_end_time = now + 1000  # 1 second boost
-                boost_cooldown_end = now + 30000  # 30 seconds cooldown
+                boost_end_time = now + 1000 
+                boost_cooldown_end = now + 10000 
             if boost_active and now > boost_end_time:
                 boost_active = False
             prev_boosting = detector.boosting
