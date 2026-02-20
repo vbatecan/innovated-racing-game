@@ -136,12 +136,11 @@ def main():
                 True,
                 collided=pygame.sprite.collide_mask,
             ):
-                player_car.rect.center = (
-                    WINDOW_SIZE["width"] // 2,
-                    WINDOW_SIZE["height"] - 120,
-                )
+                # Stop all movement, but do not reset position
                 player_car.current_speed = 0
                 player_car.velocity_x = 0
+                if hasattr(player_car, 'velocity'):
+                    player_car.velocity = 0
                 score.deduct(settings.car_collision_deduction_pts)
 
         # Drawing

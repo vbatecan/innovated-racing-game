@@ -397,19 +397,44 @@ class ObstacleManager:
         Returns:
             None: Adds a new obstacle sprite to the managed group.
         """
-        lane = self.road.random_lane()
-        obstacle_image = self._get_random_obstacle_image(lane)
-        obstacle_width = self.obstacle_width
-        obstacle_height = self.obstacle_height
-        if obstacle_image is not None:
-            # Always use the intended spawn size for the rect and mask
-            obstacle_width = obstacle_image.get_width()
-            obstacle_height = obstacle_image.get_height()
+        # Avoid spawning in a lane that already has an obstacle near the top
+        max_attempts = 10
+        for _ in range(max_attempts):
+            lane = self.road.random_lane()
+            obstacle_image = self._get_random_obstacle_image(lane)
+            obstacle_width = self.obstacle_width
+            obstacle_height = self.obstacle_height
+            if obstacle_image is not None:
+                obstacle_width = obstacle_image.get_width()
+                obstacle_height = obstacle_image.get_height()
 
-        spawn_x = self._lane_spawn_x(lane, obstacle_width)
-        spawn_y = -obstacle_height
+            spawn_x = self._lane_spawn_x(lane, obstacle_width)
+            spawn_y = -obstacle_height
+
+            # Check for overlap with existing obstacles in the same lane
+            overlap = False
+            for obs in self.obstacles:
+                # Check if obs is in the same lane (by x overlap)
+                if (obs.rect.left < spawn_x + obstacle_width and
+                    obs.rect.right > spawn_x and
+                    abs(obs.rect.y - spawn_y) < obstacle_height * 2):
+                    overlap = True
+                    break
+            if not overlap:
+                break
+        else:
+            # If all attempts failed, just pick a random lane
+            lane = self.road.random_lane()
+            obstacle_image = self._get_random_obstacle_image(lane)
+            obstacle_width = self.obstacle_width
+            obstacle_height = self.obstacle_height
+            if obstacle_image is not None:
+                obstacle_width = obstacle_image.get_width()
+                obstacle_height = obstacle_image.get_height()
+            spawn_x = self._lane_spawn_x(lane, obstacle_width)
+            spawn_y = -obstacle_height
+
         traffic_speed = self._sample_traffic_speed(speed)
-        # Always pass the correct width/height to Obstacle so mask/rect match
         obstacle = Obstacle(
             spawn_x,
             spawn_y,
