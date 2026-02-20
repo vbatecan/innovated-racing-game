@@ -33,6 +33,7 @@ class Controller:
         self.annotated_frame = None
         self.lock = threading.Lock()
         self.thread: Thread | None = None
+        self.boosting = False  # Ensure boosting attribute always exists
 
         self.lm = vision.HandLandmarker.create_from_options(
             HandLandmarkerOptions(
@@ -186,11 +187,30 @@ class Controller:
                         extended += 1
                 return extended >= 3
 
+
             left_hand = self.latest_result.hand_landmarks[0]
             right_hand = self.latest_result.hand_landmarks[1]
             left_open = is_palm_open(left_hand)
             right_open = is_palm_open(right_hand)
             self.breaking = left_open or right_open
+
+            # --- Thumbs Up Detection ---
+            def is_thumb_up(hand_landmarks):
+                # Thumb tip (4) above MCP (2) and other fingers curled
+                thumb_tip = hand_landmarks[4]
+                thumb_mcp = hand_landmarks[2]
+                # Y axis: top is smaller value
+                thumb_up = thumb_tip.y < thumb_mcp.y
+                # Other fingers curled: tip below pip
+                curled = 0
+                for tip_i, pip_i in zip([8, 12, 16, 20], [6, 10, 14, 18]):
+                    if hand_landmarks[tip_i].y > hand_landmarks[pip_i].y:
+                        curled += 1
+                return thumb_up and curled >= 3
+
+            left_thumb = is_thumb_up(left_hand)
+            # Only left thumb up triggers boost
+            self.boosting = left_thumb
 
             brake_color = (0, 0, 255) if self.breaking else (0, 255, 0)
             status_text = "BRAKING!" if self.breaking else "THROTTLE ON"

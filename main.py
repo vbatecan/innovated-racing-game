@@ -31,6 +31,10 @@ def main():
     Sets up Pygame, the player car, map, controller, and settings menu, then
     processes input, updates game state, and renders each frame until exit.
     """
+    boost_active = False
+    boost_end_time = 0
+    boost_cooldown_end = 0  # Time when next boost is allowed
+    prev_boosting = False  # Track previous boosting state for edge detection
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_SIZE["width"], WINDOW_SIZE["height"]))
     pygame.display.set_caption("Hand Gesture Racing Game")
@@ -87,6 +91,7 @@ def main():
             settings.visible = show_settings
 
         if not settings.visible:
+
             detector.brake_threshold = settings.get_brake_threshold()
 
             frame = detector.get_frame()
@@ -96,7 +101,18 @@ def main():
                     pass
             elif not settings.show_camera:
                 pass
-            
+
+            # --- BOOST FEATURE ---
+            now = pygame.time.get_ticks()
+            # Only trigger boost on new thumbs up (rising edge)
+            if detector.boosting and not prev_boosting and not boost_active and now > boost_cooldown_end:
+                boost_active = True
+                boost_end_time = now + 1000 
+                boost_cooldown_end = now + 10000 
+            if boost_active and now > boost_end_time:
+                boost_active = False
+            prev_boosting = detector.boosting
+
             # Arrow key down will break.
             is_breaking = detector.breaking
             keys = pygame.key.get_pressed()
@@ -109,11 +125,18 @@ def main():
             )
             player_car.turn(max(-2, min(target_steer, 2)))
 
+            # Apply boost to acceleration and max speed if active
+            acceleration = settings.ACCELERATION
+            max_speed = player_car.max_speed
+            if boost_active:
+                acceleration *= 3  # 3x acceleration
+                max_speed *= 1.7   # 70% higher top speed during boost
+
             player_car.update(
                 steering=target_steer,
                 is_braking=is_breaking,
-                max_speed=player_car.max_speed,
-                acceleration=settings.ACCELERATION,
+                max_speed=max_speed,
+                acceleration=acceleration,
                 friction=settings.FRICTION,
                 brake_strength=settings.BRAKE_STRENGTH,
                 screen_width=WINDOW_SIZE["width"],
@@ -136,12 +159,11 @@ def main():
                 True,
                 collided=pygame.sprite.collide_mask,
             ):
-                player_car.rect.center = (
-                    WINDOW_SIZE["width"] // 2,
-                    WINDOW_SIZE["height"] - 120,
-                )
+                # Stop all movement, but do not reset position
                 player_car.current_speed = 0
                 player_car.velocity_x = 0
+                if hasattr(player_car, 'velocity'):
+                    player_car.velocity = 0
                 score.deduct(settings.car_collision_deduction_pts)
 
         # Drawing
