@@ -133,7 +133,7 @@ def main():
             target_steer, turn = steer(
                 keys, settings.steering_sensitivity, target_steer
             )
-            player_car.turn(max(-2, min(target_steer, 2)))
+            player_car.turn(max(-2, min(target_steer, 2)), player_car.turn_smoothing)
 
             # Apply boost to acceleration and max speed if active
             acceleration = settings.ACCELERATION * gear_accel_ratio[current_gear]

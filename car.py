@@ -26,16 +26,29 @@ class Vehicle(pygame.sprite.Sprite):
         self.rect.center = (start_x, start_y)
         self.mask = pygame.mask.from_surface(self.image)
         self.steer = 0.0
+        self.current_angle = 0.0
 
-    def turn(self, steer: float = 0.0) -> None:
+    def turn(self, steer: float = 0.0, smoothing: float = 0.0) -> None:
         """
         Rotate the vehicle sprite to reflect steering input.
+        
+        Args:
+            steer: Target steering value (-2 to 2 typically)
+            smoothing: Smoothing factor for rotation (0 = instant, higher = smoother)
         """
-        angle = -steer * config.TURN_STEER_SENS
-        self.image = pygame.transform.rotate(self.original_image, angle)
+        target_angle = -steer * config.TURN_STEER_SENS
+        
+        if smoothing > 0:
+            # Smooth interpolation towards target angle
+            self.current_angle += (target_angle - self.current_angle) * smoothing
+        else:
+            # Instant turn (no smoothing)
+            self.current_angle = target_angle
+        
+        self.image = pygame.transform.rotate(self.original_image, self.current_angle)
         self.rect = self.image.get_rect(center=self.rect.center)
         self.mask = pygame.mask.from_surface(self.image)
-        self.steer = angle
+        self.steer = self.current_angle
 
 
 class PlayerCar(Vehicle):
@@ -53,6 +66,7 @@ class PlayerCar(Vehicle):
         self.max_speed = 10  # This will be overridden or used as a cap
         self.velocity_x = 0
         self.smoothing = 0.2  # Smooth movement
+        self.turn_smoothing = 0.15  # Smooth turning
 
     def update(
             self,
