@@ -24,7 +24,9 @@ class PlayerHUD:
         self.max_speed = player_car.max_speed
         self.is_braking = controller.breaking
         self.steer = controller.steer
-        self.gear: str = self._compute_gear(self.speed, self.max_speed)
+        self.gear: str = "1"
+        self.left_shift_active = controller.left_shift_active
+        self.right_shift_active = controller.right_shift_active
         self.acceleration = 0.0
         self._last_speed = float(self.speed)
         self.score: Optional[int] = None
@@ -48,6 +50,7 @@ class PlayerHUD:
         self,
         player_car: PlayerCar,
         controller: Controller,
+        gear: Optional[str] = None,
         score: Optional[int] = None,
         fps: Optional[int] = None,
         max_fps: Optional[int] = None,
@@ -57,7 +60,12 @@ class PlayerHUD:
         self.max_speed = player_car.max_speed
         self.is_braking = controller.breaking
         self.steer = controller.steer
-        self.gear = self._compute_gear(self.speed, self.max_speed)
+        self.left_shift_active = controller.left_shift_active
+        self.right_shift_active = controller.right_shift_active
+        if gear is not None:
+            self.gear = gear
+        else:
+            self.gear = self._compute_gear(self.speed, self.max_speed)
         self.score = score
         self.fps = fps
         self.max_fps = max_fps
@@ -108,6 +116,13 @@ class PlayerHUD:
         )
         text_y += line_height
 
+        shift_text = "Shift: L1(-) / R1(+)"
+        screen.blit(
+            self.font.render(shift_text, True, self._muted_color),
+            (x + padding, text_y),
+        )
+        text_y += line_height
+
         steer_text = f"Steer: {self.steer:+.2f}"
         screen.blit(
             self.font.render(steer_text, True, self._text_color),
@@ -141,7 +156,7 @@ class PlayerHUD:
         icon_size = 46
         icon_x = x + padding
         icon_y = y + self.size[1] - padding - 8 - icon_size - 10
-        self._draw_gesture_icons(screen, (icon_x, icon_y))
+        self._draw_gesture_icons(screen, (icon_x, icon_y), max_width=left_w)
 
         self._draw_speed_bar(
             screen, x + padding, y + self.size[1] - padding - 8, max_width=left_w
@@ -251,11 +266,19 @@ class PlayerHUD:
         screen.blit(value_text, value_text.get_rect(center=(cx, cy + 10)))
 
     def _draw_gesture_icons(
-        self, screen: pygame.Surface, top_left: tuple[int, int]
+        self,
+        screen: pygame.Surface,
+        top_left: tuple[int, int],
+        max_width: Optional[int] = None,
     ) -> None:
         x, y = top_left
         size = 46
         gap = 10
+        icon_count = 4
+        if max_width is not None and max_width > 0:
+            while size > 28 and (size * icon_count + gap * (icon_count - 1)) > max_width:
+                size -= 2
+                gap = max(6, gap - 1)
 
         # Brake / Stop icon.
         if self.is_braking:
@@ -271,6 +294,41 @@ class PlayerHUD:
             self._draw_arrow_icon(screen, (steer_x, y), size, direction="right")
         else:
             self._draw_arrow_icon(screen, (steer_x, y), size, direction="center")
+
+        # Shift gesture status icons: L1 (downshift), R1 (upshift).
+        shift_down_x = steer_x + size + gap
+        shift_up_x = shift_down_x + size + gap
+        self._draw_shift_icon(
+            screen,
+            (shift_down_x, y),
+            size,
+            label="L1-",
+            active=self.left_shift_active,
+        )
+        self._draw_shift_icon(
+            screen,
+            (shift_up_x, y),
+            size,
+            label="R1+",
+            active=self.right_shift_active,
+        )
+
+    def _draw_shift_icon(
+        self,
+        screen: pygame.Surface,
+        top_left: tuple[int, int],
+        size: int,
+        label: str,
+        active: bool,
+    ) -> None:
+        x, y = top_left
+        rect = pygame.Rect(x, y, size, size)
+        border_color = self._accent_color if active else self._muted_color
+        fill_color = (30, 60, 80) if active else (20, 20, 20)
+        pygame.draw.rect(screen, fill_color, rect)
+        pygame.draw.rect(screen, border_color, rect, 2)
+        text = self.font.render(label, True, self._text_color)
+        screen.blit(text, text.get_rect(center=rect.center))
 
     def _draw_stop_sign(
         self, screen: pygame.Surface, top_left: tuple[int, int], size: int
