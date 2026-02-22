@@ -16,7 +16,7 @@ class PlayerHUD:
         controller: Controller,
         font: pygame.font.Font,
         position: tuple[int, int] = (10, 10),
-        size: tuple[int, int] = (360, 190),
+        size: tuple[int, int] = (500, 280),
         camera_preview_size: tuple[int, int] = (200, 150),
         show_camera_preview: bool = True,
     ) -> None:

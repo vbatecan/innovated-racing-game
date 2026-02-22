@@ -194,9 +194,12 @@ def main():
         obs_text = font.render(
             f"Obs Freq: {settings.obstacle_frequency}", True, (200, 200, 200)
         )
-        screen.blit(obs_text, (10, 90))
-        lane_text = font.render(f"Lanes: {settings.lane_count}", True, (200, 200, 200))
-        screen.blit(lane_text, (10, 120))
+        obs_y = hud.position[1] + hud.size[1] + 10
+        screen.blit(obs_text, (10, obs_y))
+        lane_text = font.render(
+            f"Lanes: {settings.lane_count}", True, (200, 200, 200)
+        )
+        screen.blit(lane_text, (10, obs_y + font.get_linesize()))
 
         if settings.visible:
 
