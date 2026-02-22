@@ -35,6 +35,10 @@ def main():
     boost_end_time = 0
     boost_cooldown_end = 0  # Time when next boost is allowed
     prev_boosting = False  # Track previous boosting state for edge detection
+    max_manual_gear = 5
+    current_gear = 1
+    gear_speed_ratio = {1: 0.45, 2: 0.62, 3: 0.78, 4: 0.9, 5: 1.0}
+    gear_accel_ratio = {1: 1.3, 2: 1.15, 3: 1.0, 4: 0.9, 5: 0.8}
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_SIZE["width"], WINDOW_SIZE["height"]))
     pygame.display.set_caption("Hand Gesture Racing Game")
@@ -119,6 +123,12 @@ def main():
             if keys[pygame.K_DOWN]:
                 is_breaking = True
 
+            shift_down, shift_up = detector.consume_shift_request()
+            if shift_down and not shift_up:
+                current_gear = max(1, current_gear - 1)
+            elif shift_up and not shift_down:
+                current_gear = min(max_manual_gear, current_gear + 1)
+
             target_steer = detector.steer * settings.steering_sensitivity
             target_steer, turn = steer(
                 keys, settings.steering_sensitivity, target_steer
@@ -126,8 +136,8 @@ def main():
             player_car.turn(max(-2, min(target_steer, 2)))
 
             # Apply boost to acceleration and max speed if active
-            acceleration = settings.ACCELERATION
-            max_speed = player_car.max_speed
+            acceleration = settings.ACCELERATION * gear_accel_ratio[current_gear]
+            max_speed = player_car.max_speed * gear_speed_ratio[current_gear]
             if boost_active:
                 acceleration *= 3  # 3x acceleration
                 max_speed *= 1.7   # 70% higher top speed during boost
@@ -174,6 +184,7 @@ def main():
         hud.update_from_game(
             player_car,
             detector,
+            gear=str(current_gear),
             score=score.get_score(),
             fps=int(fps),
             max_fps=settings.max_fps,
@@ -183,9 +194,12 @@ def main():
         obs_text = font.render(
             f"Obs Freq: {settings.obstacle_frequency}", True, (200, 200, 200)
         )
-        screen.blit(obs_text, (10, 90))
-        lane_text = font.render(f"Lanes: {settings.lane_count}", True, (200, 200, 200))
-        screen.blit(lane_text, (10, 120))
+        obs_y = hud.position[1] + hud.size[1] + 10
+        screen.blit(obs_text, (10, obs_y))
+        lane_text = font.render(
+            f"Lanes: {settings.lane_count}", True, (200, 200, 200)
+        )
+        screen.blit(lane_text, (10, obs_y + font.get_linesize()))
 
         if settings.visible:
 
