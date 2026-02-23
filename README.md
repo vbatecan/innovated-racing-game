@@ -4,8 +4,8 @@
 
 - [x] **Reliable Braking**: Implement a distinct braking gesture (e.g., Crossed Arms, Open Palms, or specific hand sign).
 - [ ] **Dynamic Throttle**: Control speed based on hand distance from camera or body lean angle.
-- [ ] **Gear Shifting**: Add immersive gestures for shifting (e.g., "Punch" forward to upshift, tap shoulder to downshift).
-- [ ] **Handbrake**: Extreme turn mechanic triggered by a specific gesture (e.g., both hands raised).
+- [x] **Gear Shifting**: Add immersive gestures for shifting (e.g., "Punch" forward to upshift, tap shoulder to downshift).
+- [x] **Handbrake**: Extreme turn mechanic triggered by a specific gesture (e.g., both hands raised).
 
 ## Multiplayer (Single Camera)
 
@@ -30,10 +30,10 @@
 
 ## To Draw
 
-- [ ] Rocks
-- [ ] Cars, Trucks, L300
-- [ ] Biomes
-- [ ] Cross Animals
+- [x] Rocks
+- [x] Cars, Trucks, L300
+- [x] Biomes
+- [x] Cross Animals
 
 ## User Experience (UX) & Quality of Life
 
