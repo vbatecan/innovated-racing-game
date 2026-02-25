@@ -478,11 +478,8 @@ class ObstacleManager:
                 obstacle_height = obstacle_image.get_height()
 
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            # Spawn in the middle portion of the road (30-60% from top)
-            spawn_y = random.randint(
-                int(self.road.height * 0.3),
-                int(self.road.height * 0.6)
-            )
+            # Spawn just above the screen for smooth entry
+            spawn_y = -obstacle_height - random.randint(0, 100)
 
             # Check for overlap with existing obstacles in the same lane
             overlap = False
@@ -490,7 +487,7 @@ class ObstacleManager:
                 # Check if obs is in the same lane (by x overlap)
                 if (obs.rect.left < spawn_x + obstacle_width and
                     obs.rect.right > spawn_x and
-                    abs(obs.rect.y - spawn_y) < obstacle_height * 2):
+                    abs(obs.rect.y - spawn_y) < obstacle_height * 3):
                     overlap = True
                     break
             if not overlap:
@@ -505,11 +502,8 @@ class ObstacleManager:
                 obstacle_width = obstacle_image.get_width()
                 obstacle_height = obstacle_image.get_height()
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            # Spawn in the middle portion of the road (30-60% from top)
-            spawn_y = random.randint(
-                int(self.road.height * 0.3),
-                int(self.road.height * 0.6)
-            )
+            # Spawn just above the screen for smooth entry
+            spawn_y = -obstacle_height - random.randint(0, 100)
 
         traffic_speed = self._sample_traffic_speed(speed)
         obstacle = Obstacle(
