@@ -131,6 +131,11 @@ class Road:
 
         self.lane_count = 1
         self.set_lane_count(lane_count)
+        
+        # Load background images for map switching
+        self.bg_images = self._load_background_images()
+        self.bg_y_offset = 0
+        self.current_map_index = 0
 
     def set_lane_count(self, lane_count: int) -> None:
         """
@@ -200,6 +205,60 @@ class Road:
         if max_left <= min_left:
             return lane.left + max(0, (lane.width - obstacle_width) // 2)
         return random.randint(min_left, max_left)
+    
+    def _load_background_images(self) -> list[pygame.Surface]:
+        """
+        Load background map images from resources/models/maps/.
+        
+        Returns:
+            list[pygame.Surface]: List of loaded and scaled background images.
+        """
+        bg_images = []
+        map_paths = [
+            Path("resources/models/maps/city_road1.png"),
+            Path("resources/models/maps/highway.png"),
+        ]
+        
+        for map_path in map_paths:
+            if map_path.exists():
+                try:
+                    image = pygame.image.load(str(map_path))
+                    # Scale image to fit window size
+                    scaled_image = pygame.transform.scale(image, (self.window_width, self.height))
+                    if pygame.display.get_surface() is not None:
+                        scaled_image = scaled_image.convert()
+                    bg_images.append(scaled_image)
+                except pygame.error:
+                    pass
+        
+        return bg_images
+    
+    def update_background_scroll(self, speed: int) -> None:
+        """
+        Update the background image scroll offset.
+        
+        Args:
+            speed (int): Current map speed.
+        """
+        if self.bg_images:
+            self.bg_y_offset += speed
+            # Loop the background when it scrolls past its height
+            if self.bg_y_offset >= self.height:
+                self.bg_y_offset -= self.height
+    
+    def set_map_by_score(self, score: int) -> None:
+        """
+        Switch background map based on score (every 5000 points).
+        
+        Args:
+            score (int): Current game score.
+        """
+        if not self.bg_images:
+            return
+        
+        # Calculate which map to show based on score (switch every 5000 points)
+        map_index = (score // 5000) % len(self.bg_images)
+        self.current_map_index = map_index
 
     def draw_background(self, surface: pygame.Surface) -> None:
         """
@@ -211,8 +270,18 @@ class Road:
         Returns:
             None: Draws directly to `surface`.
         """
-        surface.fill(self.BG_COLOR)
-        pygame.draw.rect(surface, self.ROAD_COLOR, (self.x, 0, self.width, self.height))
+        # If background images are loaded, draw them with scrolling
+        if self.bg_images and 0 <= self.current_map_index < len(self.bg_images):
+            current_bg = self.bg_images[self.current_map_index]
+            # Draw two copies of the background for seamless scrolling
+            y1 = self.bg_y_offset
+            y2 = self.bg_y_offset - self.height
+            surface.blit(current_bg, (0, y1))
+            surface.blit(current_bg, (0, y2))
+        else:
+            # Fallback to solid colors if no images loaded
+            surface.fill(self.BG_COLOR)
+            pygame.draw.rect(surface, self.ROAD_COLOR, (self.x, 0, self.width, self.height))
 
     def draw_lane_markers(self, surface: pygame.Surface, scroll_y: int) -> None:
         """
@@ -490,6 +559,7 @@ class Map:
         self.height = window_size["height"]
         self.speed = 1
         self.scroll_y = 0
+        self.current_score = 0
 
         self.road = Road(window_size, config.ROAD_SIZE["width"], lane_count=lane_count)
         self.obstacle_manager = ObstacleManager(self.road)
@@ -538,6 +608,16 @@ class Map:
             None: Mutates road lane configuration.
         """
         self.road.set_lane_count(lane_count)
+    
+    def update_score(self, score: int) -> None:
+        """
+        Update the current score and switch maps if needed.
+        
+        Args:
+            score (int): Current game score.
+        """
+        self.current_score = score
+        self.road.set_map_by_score(score)
 
     def update(self) -> None:
         """
@@ -549,6 +629,7 @@ class Map:
         self.scroll_y += self.speed
         if self.scroll_y >= self.road.total_marker_segment:
             self.scroll_y -= self.road.total_marker_segment
+        self.road.update_background_scroll(self.speed)
         self.obstacle_manager.update(self.speed)
 
     def draw(self, surface: pygame.Surface) -> None:
