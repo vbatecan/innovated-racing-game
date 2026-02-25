@@ -66,8 +66,14 @@ class Obstacle(pygame.sprite.Sprite):
         # Per-vehicle base approach speed so traffic always moves on-screen.
         self.traffic_speed = max(0.5, float(traffic_speed))
         self._y_pos = float(y)
+        self.direction_factor = 1.0
 
-    def update(self, player_speed: float, screen_height: int) -> None:
+    def update(
+        self,
+        player_speed: float,
+        screen_height: int,
+        is_braking: bool = False,
+    ) -> None:
         """
         Move the obstacle using relative speed and delete if off-screen.
 
@@ -81,7 +87,9 @@ class Obstacle(pygame.sprite.Sprite):
         # even at low player speed and scales up as gameplay gets faster.
         blended_speed = self.traffic_speed + (0.2 * float(player_speed))
         self.speed = max(1.0, min(24.0, blended_speed))
-        self._y_pos += self.speed
+        target_direction = -1.0 if is_braking else 1.0
+        self.direction_factor += (target_direction - self.direction_factor) * 0.18
+        self._y_pos += self.speed * self.direction_factor
         self.rect.y = int(self._y_pos)
 
         if (
@@ -131,6 +139,11 @@ class Road:
 
         self.lane_count = 1
         self.set_lane_count(lane_count)
+        
+        # Load background images for map switching
+        self.bg_images = self._load_background_images()
+        self.bg_y_offset = 0
+        self.current_map_index = 0
 
     def set_lane_count(self, lane_count: int) -> None:
         """
@@ -200,6 +213,59 @@ class Road:
         if max_left <= min_left:
             return lane.left + max(0, (lane.width - obstacle_width) // 2)
         return random.randint(min_left, max_left)
+    
+    def _load_background_images(self) -> list[pygame.Surface]:
+        """
+        Load background map images from resources/models/maps/.
+        
+        Returns:
+            list[pygame.Surface]: List of loaded and scaled background images.
+        """
+        bg_images = []
+        map_paths = [
+            Path("resources/models/maps/city_roadfinal.png"),
+        ]
+        
+        for map_path in map_paths:
+            if map_path.exists():
+                try:
+                    image = pygame.image.load(str(map_path))
+                    # Scale image to fit window size
+                    scaled_image = pygame.transform.scale(image, (self.window_width, self.height))
+                    if pygame.display.get_surface() is not None:
+                        scaled_image = scaled_image.convert()
+                    bg_images.append(scaled_image)
+                except pygame.error:
+                    pass
+        
+        return bg_images
+    
+    def update_background_scroll(self, speed: int) -> None:
+        """
+        Update the background image scroll offset.
+        
+        Args:
+            speed (int): Current map speed.
+        """
+        if self.bg_images:
+            self.bg_y_offset += speed
+            # Loop the background when it scrolls past its height
+            if self.bg_y_offset >= self.height:
+                self.bg_y_offset -= self.height
+    
+    def set_map_by_score(self, score: int) -> None:
+        """
+        Switch background map based on score (every 5000 points).
+        
+        Args:
+            score (int): Current game score.
+        """
+        if not self.bg_images:
+            return
+        
+        # Calculate which map to show based on score (switch every 5000 points)
+        map_index = (score // 5000) % len(self.bg_images)
+        self.current_map_index = map_index
 
     def draw_background(self, surface: pygame.Surface) -> None:
         """
@@ -211,8 +277,18 @@ class Road:
         Returns:
             None: Draws directly to `surface`.
         """
-        surface.fill(self.BG_COLOR)
-        pygame.draw.rect(surface, self.ROAD_COLOR, (self.x, 0, self.width, self.height))
+        # If background images are loaded, draw them with scrolling
+        if self.bg_images and 0 <= self.current_map_index < len(self.bg_images):
+            current_bg = self.bg_images[self.current_map_index]
+            # Draw two copies of the background for seamless scrolling
+            y1 = self.bg_y_offset
+            y2 = self.bg_y_offset - self.height
+            surface.blit(current_bg, (0, y1))
+            surface.blit(current_bg, (0, y2))
+        else:
+            # Fallback to solid colors if no images loaded
+            surface.fill(self.BG_COLOR)
+            pygame.draw.rect(surface, self.ROAD_COLOR, (self.x, 0, self.width, self.height))
 
     def draw_lane_markers(self, surface: pygame.Surface, scroll_y: int) -> None:
         """
@@ -273,8 +349,8 @@ class ObstacleManager:
     def __init__(
         self,
         road: Road,
-        spawn_frequency: int = 30,
-        max_obstacles: int = 5,
+        spawn_frequency: int = 60,
+        max_obstacles: int = 3,
         obstacle_size: tuple[int, int] = (40, 40),
     ):
         """
@@ -385,7 +461,7 @@ class ObstacleManager:
         pixel/frame so traffic always appears active on-screen.
         """
         _ = player_speed
-        return random.uniform(1.5, 6.0)
+        return random.uniform(0.5, 2.5)
 
     def _spawn_obstacle(self, speed: int) -> None:
         """
@@ -409,7 +485,8 @@ class ObstacleManager:
                 obstacle_height = obstacle_image.get_height()
 
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            spawn_y = -obstacle_height
+            # Spawn just above the screen for smooth entry
+            spawn_y = -obstacle_height - random.randint(0, 100)
 
             # Check for overlap with existing obstacles in the same lane
             overlap = False
@@ -417,7 +494,7 @@ class ObstacleManager:
                 # Check if obs is in the same lane (by x overlap)
                 if (obs.rect.left < spawn_x + obstacle_width and
                     obs.rect.right > spawn_x and
-                    abs(obs.rect.y - spawn_y) < obstacle_height * 2):
+                    abs(obs.rect.y - spawn_y) < obstacle_height * 3):
                     overlap = True
                     break
             if not overlap:
@@ -432,7 +509,8 @@ class ObstacleManager:
                 obstacle_width = obstacle_image.get_width()
                 obstacle_height = obstacle_image.get_height()
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            spawn_y = -obstacle_height
+            # Spawn just above the screen for smooth entry
+            spawn_y = -obstacle_height - random.randint(0, 100)
 
         traffic_speed = self._sample_traffic_speed(speed)
         obstacle = Obstacle(
@@ -446,7 +524,7 @@ class ObstacleManager:
         )
         self.obstacles.add(obstacle)
 
-    def update(self, speed: int) -> None:
+    def update(self, speed: int, is_braking: bool = False) -> None:
         """
         Advance timers, spawn obstacles, and update active obstacle movement.
 
@@ -457,12 +535,12 @@ class ObstacleManager:
             None: Mutates obstacle state and sprite group membership.
         """
         self.timer += 1
-        if self.timer >= self.spawn_frequency:
+        if not is_braking and self.timer >= self.spawn_frequency:
             self.timer = 0
             if len(self.obstacles) < self.max_obstacles:
                 self._spawn_obstacle(speed)
 
-        self.obstacles.update(speed, self.road.height)
+        self.obstacles.update(speed, self.road.height, is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
         """
@@ -490,6 +568,7 @@ class Map:
         self.height = window_size["height"]
         self.speed = 1
         self.scroll_y = 0
+        self.current_score = 0
 
         self.road = Road(window_size, config.ROAD_SIZE["width"], lane_count=lane_count)
         self.obstacle_manager = ObstacleManager(self.road)
@@ -538,8 +617,18 @@ class Map:
             None: Mutates road lane configuration.
         """
         self.road.set_lane_count(lane_count)
+    
+    def update_score(self, score: int) -> None:
+        """
+        Update the current score and switch maps if needed.
+        
+        Args:
+            score (int): Current game score.
+        """
+        self.current_score = score
+        self.road.set_map_by_score(score)
 
-    def update(self) -> None:
+    def update(self, is_braking: bool = False) -> None:
         """
         Advance the road scroll and update obstacles.
 
@@ -549,7 +638,8 @@ class Map:
         self.scroll_y += self.speed
         if self.scroll_y >= self.road.total_marker_segment:
             self.scroll_y -= self.road.total_marker_segment
-        self.obstacle_manager.update(self.speed)
+        self.road.update_background_scroll(self.speed)
+        self.obstacle_manager.update(self.speed, is_braking=is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
         """
