@@ -154,7 +154,7 @@ def main():
 
             game_map.speed = int(player_car.current_speed)
             game_map.update_score(score.get_score())
-            game_map.update()
+            game_map.update(is_braking=is_breaking)
 
             road_min_x, road_max_x = game_map.get_road_borders()
             if player_car.rect.left < road_min_x or player_car.rect.right > road_max_x:

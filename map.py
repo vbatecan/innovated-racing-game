@@ -66,8 +66,14 @@ class Obstacle(pygame.sprite.Sprite):
         # Per-vehicle base approach speed so traffic always moves on-screen.
         self.traffic_speed = max(0.5, float(traffic_speed))
         self._y_pos = float(y)
+        self.direction_factor = 1.0
 
-    def update(self, player_speed: float, screen_height: int) -> None:
+    def update(
+        self,
+        player_speed: float,
+        screen_height: int,
+        is_braking: bool = False,
+    ) -> None:
         """
         Move the obstacle using relative speed and delete if off-screen.
 
@@ -81,7 +87,9 @@ class Obstacle(pygame.sprite.Sprite):
         # even at low player speed and scales up as gameplay gets faster.
         blended_speed = self.traffic_speed + (0.2 * float(player_speed))
         self.speed = max(1.0, min(24.0, blended_speed))
-        self._y_pos += self.speed
+        target_direction = -1.0 if is_braking else 1.0
+        self.direction_factor += (target_direction - self.direction_factor) * 0.18
+        self._y_pos += self.speed * self.direction_factor
         self.rect.y = int(self._y_pos)
 
         if (
@@ -516,7 +524,7 @@ class ObstacleManager:
         )
         self.obstacles.add(obstacle)
 
-    def update(self, speed: int) -> None:
+    def update(self, speed: int, is_braking: bool = False) -> None:
         """
         Advance timers, spawn obstacles, and update active obstacle movement.
 
@@ -527,12 +535,12 @@ class ObstacleManager:
             None: Mutates obstacle state and sprite group membership.
         """
         self.timer += 1
-        if self.timer >= self.spawn_frequency:
+        if not is_braking and self.timer >= self.spawn_frequency:
             self.timer = 0
             if len(self.obstacles) < self.max_obstacles:
                 self._spawn_obstacle(speed)
 
-        self.obstacles.update(speed, self.road.height)
+        self.obstacles.update(speed, self.road.height, is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
         """
@@ -620,7 +628,7 @@ class Map:
         self.current_score = score
         self.road.set_map_by_score(score)
 
-    def update(self) -> None:
+    def update(self, is_braking: bool = False) -> None:
         """
         Advance the road scroll and update obstacles.
 
@@ -631,7 +639,7 @@ class Map:
         if self.scroll_y >= self.road.total_marker_segment:
             self.scroll_y -= self.road.total_marker_segment
         self.road.update_background_scroll(self.speed)
-        self.obstacle_manager.update(self.speed)
+        self.obstacle_manager.update(self.speed, is_braking=is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
         """
