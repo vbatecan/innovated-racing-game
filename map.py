@@ -342,8 +342,8 @@ class ObstacleManager:
     def __init__(
         self,
         road: Road,
-        spawn_frequency: int = 30,
-        max_obstacles: int = 5,
+        spawn_frequency: int = 60,
+        max_obstacles: int = 3,
         obstacle_size: tuple[int, int] = (40, 40),
     ):
         """
@@ -454,7 +454,7 @@ class ObstacleManager:
         pixel/frame so traffic always appears active on-screen.
         """
         _ = player_speed
-        return random.uniform(1.5, 6.0)
+        return random.uniform(0.5, 2.5)
 
     def _spawn_obstacle(self, speed: int) -> None:
         """
@@ -478,7 +478,11 @@ class ObstacleManager:
                 obstacle_height = obstacle_image.get_height()
 
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            spawn_y = -obstacle_height
+            # Spawn in the middle portion of the road (30-60% from top)
+            spawn_y = random.randint(
+                int(self.road.height * 0.3),
+                int(self.road.height * 0.6)
+            )
 
             # Check for overlap with existing obstacles in the same lane
             overlap = False
@@ -501,7 +505,11 @@ class ObstacleManager:
                 obstacle_width = obstacle_image.get_width()
                 obstacle_height = obstacle_image.get_height()
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            spawn_y = -obstacle_height
+            # Spawn in the middle portion of the road (30-60% from top)
+            spawn_y = random.randint(
+                int(self.road.height * 0.3),
+                int(self.road.height * 0.6)
+            )
 
         traffic_speed = self._sample_traffic_speed(speed)
         obstacle = Obstacle(
