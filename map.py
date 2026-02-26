@@ -124,8 +124,11 @@ class Crack(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self._y_pos = float(y)
 
-    def update(self, map_speed: int, screen_height: int) -> None:
+    def update(self, map_speed: int, screen_height: int, is_braking: bool = False) -> None:
         """Move crack downward with map scroll and remove when off-screen."""
+        if is_braking:
+            return
+
         self._y_pos += max(1.0, float(map_speed))
         self.rect.y = int(self._y_pos)
         if self.rect.top > screen_height + self.rect.height:
@@ -660,14 +663,15 @@ class CrackManager:
         crack = Crack(spawn_x, spawn_y, crack_width, crack_height, image=crack_image)
         self.cracks.add(crack)
 
-    def update(self, map_speed: int) -> None:
-        self.timer += 1
-        if self.timer >= self.spawn_frequency:
-            self.timer = 0
-            if len(self.cracks) < self.max_cracks:
-                self._spawn_crack()
+    def update(self, map_speed: int, is_braking: bool = False) -> None:
+        if not is_braking:
+            self.timer += 1
+            if self.timer >= self.spawn_frequency:
+                self.timer = 0
+                if len(self.cracks) < self.max_cracks:
+                    self._spawn_crack()
 
-        self.cracks.update(map_speed, self.road.height)
+        self.cracks.update(map_speed, self.road.height, is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
         self.cracks.draw(surface)
@@ -763,7 +767,7 @@ class Map:
         if self.scroll_y >= self.road.total_marker_segment:
             self.scroll_y -= self.road.total_marker_segment
         self.road.update_background_scroll(self.speed)
-        self.crack_manager.update(self.speed)
+        self.crack_manager.update(self.speed, is_braking=is_braking)
         self.obstacle_manager.update(self.speed, is_braking=is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
