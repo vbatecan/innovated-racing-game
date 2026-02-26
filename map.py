@@ -442,6 +442,11 @@ class ObstacleManager:
         self.model_dir = Path("resources/models")
         self.model_scale_cache: dict[tuple[int, int], pygame.Surface] = {}
         self.obstacle_models = self._load_obstacle_models()
+        self.blocking_groups: list[pygame.sprite.Group] = []
+
+    def set_blocking_groups(self, groups: list[pygame.sprite.Group]) -> None:
+        """Set sprite groups that obstacle spawns must avoid overlapping."""
+        self.blocking_groups = groups
 
     def _load_obstacle_models(self) -> list[pygame.Surface]:
         """Load top-level obstacle model PNGs from resources/models."""
@@ -568,6 +573,19 @@ class ObstacleManager:
                     abs(obs.rect.y - spawn_y) < obstacle_height * 3):
                     overlap = True
                     break
+
+            if not overlap:
+                spawn_rect = pygame.Rect(spawn_x, spawn_y, obstacle_width, obstacle_height)
+                for group in self.blocking_groups:
+                    for blocked_sprite in group:
+                        if (
+                            spawn_rect.left < blocked_sprite.rect.right
+                            and spawn_rect.right > blocked_sprite.rect.left
+                        ):
+                            overlap = True
+                            break
+                    if overlap:
+                        break
             if not overlap:
                 break
         else:
@@ -729,6 +747,11 @@ class BRManager:
         self.model_dir = Path("resources/models/obstacles")
         self.br_models = self._load_br_models()
         self.model_scale_cache: dict[tuple[int, int], pygame.Surface] = {}
+        self.blocking_groups: list[pygame.sprite.Group] = []
+
+    def set_blocking_groups(self, groups: list[pygame.sprite.Group]) -> None:
+        """Set sprite groups that BR spawns must avoid overlapping."""
+        self.blocking_groups = groups
 
     def _load_br_models(self) -> list[pygame.Surface]:
         if not self.model_dir.exists():
@@ -791,6 +814,19 @@ class BRManager:
                 ):
                     overlap = True
                     break
+
+            if not overlap:
+                spawn_rect = pygame.Rect(spawn_x, spawn_y, br_width, br_height)
+                for group in self.blocking_groups:
+                    for blocked_sprite in group:
+                        if (
+                            spawn_rect.left < blocked_sprite.rect.right
+                            and spawn_rect.right > blocked_sprite.rect.left
+                        ):
+                            overlap = True
+                            break
+                    if overlap:
+                        break
             if not overlap:
                 break
 
@@ -830,6 +866,8 @@ class Map:
         self.obstacle_manager = ObstacleManager(self.road)
         self.crack_manager = CrackManager(self.road)
         self.br_manager = BRManager(self.road)
+        self.obstacle_manager.set_blocking_groups([self.br_manager.brs])
+        self.br_manager.set_blocking_groups([self.obstacle_manager.obstacles])
 
     @property
     def obstacles(self) -> pygame.sprite.Group:
