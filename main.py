@@ -62,6 +62,7 @@ def main():
 
     score = Score()
     score.set_score(0)
+    lives = config.STARTING_LIVES
 
     hud = PlayerHUD(player_car, detector, font)
 
@@ -188,6 +189,37 @@ def main():
             ):
                 out_of_control_until = now + 400
 
+            br_hits = pygame.sprite.spritecollide(
+                player_car,
+                game_map.brs,
+                True,
+                collided=pygame.sprite.collide_mask,
+            )
+            if br_hits:
+                lives = max(0, lives - 1)
+                player_car.current_speed = 0
+                player_car.velocity_x = 0
+
+                if lives <= 0:
+                    lives = config.STARTING_LIVES
+                    score.reset_score()
+                    player_car.rect.center = (
+                        WINDOW_SIZE["width"] // 2,
+                        WINDOW_SIZE["height"] - 240,
+                    )
+                    player_car.current_speed = 0
+                    player_car.velocity_x = 0
+                    player_car.current_angle = 0.0
+                    player_car.turn(0.0, 0.0)
+                    game_map.clear_hazards()
+                    current_gear = 1
+                    boost_active = False
+                    boost_end_time = 0
+                    boost_cooldown_end = 0
+                    prev_boosting = False
+                    out_of_control_until = 0
+                    score_timer = pygame.time.get_ticks()
+
         # Drawing
         game_map.draw(screen)
         sprite_group.draw(screen)
@@ -198,6 +230,7 @@ def main():
             detector,
             gear=str(current_gear),
             score=score.get_score(),
+            lives=lives,
             fps=int(fps),
             max_fps=settings.max_fps,
         )

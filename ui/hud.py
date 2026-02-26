@@ -30,6 +30,7 @@ class PlayerHUD:
         self.acceleration = 0.0
         self._last_speed = float(self.speed)
         self.score: Optional[int] = None
+        self.lives: Optional[int] = None
         self.fps: Optional[int] = None
         self.max_fps: Optional[int] = None
         self._camera_frame = None
@@ -52,6 +53,7 @@ class PlayerHUD:
         controller: Controller,
         gear: Optional[str] = None,
         score: Optional[int] = None,
+        lives: Optional[int] = None,
         fps: Optional[int] = None,
         max_fps: Optional[int] = None,
     ) -> None:
@@ -67,6 +69,7 @@ class PlayerHUD:
         else:
             self.gear = self._compute_gear(self.speed, self.max_speed)
         self.score = score
+        self.lives = lives
         self.fps = fps
         self.max_fps = max_fps
         if self.fps is not None and self.fps > 0:
@@ -141,6 +144,17 @@ class PlayerHUD:
         if self.score is not None:
             screen.blit(
                 self.font.render(f"Score: {self.score}", True, self._text_color),
+                (x + padding, text_y),
+            )
+            text_y += line_height
+
+        if self.lives is not None:
+            max_hearts = 5
+            filled = "♥" * max(0, min(max_hearts, int(self.lives)))
+            empty = "♡" * max(0, max_hearts - max(0, min(max_hearts, int(self.lives))))
+            lives_text = f"Lives: {filled}{empty}"
+            screen.blit(
+                self.font.render(lives_text, True, self._warn_color),
                 (x + padding, text_y),
             )
             text_y += line_height

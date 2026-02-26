@@ -135,6 +135,41 @@ class Crack(pygame.sprite.Sprite):
             self.kill()
 
 
+class BRHazard(pygame.sprite.Sprite):
+    """BR hazard that scrolls toward the player."""
+
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        image: pygame.Surface | None = None,
+    ):
+        super().__init__()
+        if image is None:
+            self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+            pygame.draw.rect(self.image, (200, 30, 30), (0, 0, width, height), border_radius=5)
+        else:
+            if image.get_width() != width or image.get_height() != height:
+                self.image = pygame.transform.smoothscale(image, (width, height))
+            else:
+                self.image = image
+
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.mask = pygame.mask.from_surface(self.image)
+        self._y_pos = float(y)
+
+    def update(self, map_speed: int, screen_height: int, is_braking: bool = False) -> None:
+        if is_braking:
+            return
+
+        self._y_pos += max(1.0, float(map_speed))
+        self.rect.y = int(self._y_pos)
+        if self.rect.top > screen_height + self.rect.height:
+            self.kill()
+
+
 class Road:
     """Road geometry and rendering for lane-based driving."""
 
@@ -677,6 +712,105 @@ class CrackManager:
         self.cracks.draw(surface)
 
 
+class BRManager:
+    """Spawn, update, and render BR hazards with a strict on-screen cap."""
+
+    def __init__(
+        self,
+        road: Road,
+        spawn_frequency: int = config.BR_SPAWN_FREQUENCY,
+        max_brs: int = config.MAX_BRS,
+    ):
+        self.road = road
+        self.spawn_frequency = max(1, int(spawn_frequency))
+        self.max_brs = max(1, int(max_brs))
+        self.brs = pygame.sprite.Group()
+        self.timer = 0
+        self.model_dir = Path("resources/models/obstacles")
+        self.br_models = self._load_br_models()
+        self.model_scale_cache: dict[tuple[int, int], pygame.Surface] = {}
+
+    def _load_br_models(self) -> list[pygame.Surface]:
+        if not self.model_dir.exists():
+            return []
+
+        models: list[pygame.Surface] = []
+        for model_path in sorted(self.model_dir.glob("BR*.png")):
+            try:
+                image = pygame.image.load(str(model_path))
+                if pygame.display.get_surface() is not None:
+                    image = image.convert_alpha()
+                models.append(image)
+            except pygame.error:
+                continue
+        return models
+
+    def _get_random_br_image(self, lane: Lane) -> pygame.Surface | None:
+        if not self.br_models:
+            return None
+
+        model_index = random.randrange(len(self.br_models))
+        source = self.br_models[model_index]
+
+        lane_fit_width = max(1, lane.width - 20)
+        target_width = min(lane_fit_width, int(lane.width * config.BR_LANE_WIDTH_RATIO))
+        target_width = max(config.TRAFFIC_MIN_SIZE, target_width)
+
+        cache_key = (model_index, target_width)
+        cached = self.model_scale_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        source_width, source_height = source.get_size()
+        scaled_height = max(20, int(source_height * (target_width / source_width)))
+        scaled = pygame.transform.smoothscale(source, (target_width, scaled_height))
+        self.model_scale_cache[cache_key] = scaled
+        return scaled
+
+    def _spawn_br(self) -> None:
+        max_attempts = 10
+        for _ in range(max_attempts):
+            lane = self.road.random_lane()
+            br_image = self._get_random_br_image(lane)
+
+            br_width = max(20, int(lane.width * config.BR_LANE_WIDTH_RATIO))
+            br_height = max(20, int(br_width * 0.9))
+            if br_image is not None:
+                br_width = br_image.get_width()
+                br_height = br_image.get_height()
+
+            spawn_x = ObstacleManager._lane_spawn_x(lane, br_width, min_padding=10)
+            spawn_y = -br_height - random.randint(40, 220)
+
+            overlap = False
+            for br in self.brs:
+                if (
+                    br.rect.left < spawn_x + br_width
+                    and br.rect.right > spawn_x
+                    and abs(br.rect.y - spawn_y) < br_height * 3
+                ):
+                    overlap = True
+                    break
+            if not overlap:
+                break
+
+        br = BRHazard(spawn_x, spawn_y, br_width, br_height, image=br_image)
+        self.brs.add(br)
+
+    def update(self, map_speed: int, is_braking: bool = False) -> None:
+        if not is_braking:
+            self.timer += 1
+            if self.timer >= self.spawn_frequency:
+                self.timer = 0
+                if len(self.brs) < self.max_brs:
+                    self._spawn_br()
+
+        self.brs.update(map_speed, self.road.height, is_braking)
+
+    def draw(self, surface: pygame.Surface) -> None:
+        self.brs.draw(surface)
+
+
 class Map:
     def __init__(self, window_size: dict[str, int], lane_count: int = config.LANE_COUNT):
         """
@@ -695,6 +829,7 @@ class Map:
         self.road = Road(window_size, config.ROAD_SIZE["width"], lane_count=lane_count)
         self.obstacle_manager = ObstacleManager(self.road)
         self.crack_manager = CrackManager(self.road)
+        self.br_manager = BRManager(self.road)
 
     @property
     def obstacles(self) -> pygame.sprite.Group:
@@ -734,6 +869,11 @@ class Map:
         """Expose crack hazard sprites for collision checks."""
         return self.crack_manager.cracks
 
+    @property
+    def brs(self) -> pygame.sprite.Group:
+        """Expose BR hazard sprites for collision checks."""
+        return self.br_manager.brs
+
     def set_lane_count(self, lane_count: int) -> None:
         """
         Apply a new runtime lane count to the road model.
@@ -768,6 +908,7 @@ class Map:
             self.scroll_y -= self.road.total_marker_segment
         self.road.update_background_scroll(self.speed)
         self.crack_manager.update(self.speed, is_braking=is_braking)
+        self.br_manager.update(self.speed, is_braking=is_braking)
         self.obstacle_manager.update(self.speed, is_braking=is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
@@ -783,8 +924,15 @@ class Map:
         self.road.draw_background(surface)
         self.road.draw_lane_markers(surface, self.scroll_y)
         self.crack_manager.draw(surface)
+        self.br_manager.draw(surface)
         self.obstacle_manager.draw(surface)
         self.road.draw_borders(surface)
+
+    def clear_hazards(self) -> None:
+        """Remove all active hazards from the map."""
+        self.obstacles.empty()
+        self.cracks.empty()
+        self.brs.empty()
 
     def get_road_borders(self) -> tuple[int, int]:
         """
