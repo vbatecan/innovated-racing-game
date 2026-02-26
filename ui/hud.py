@@ -148,17 +148,6 @@ class PlayerHUD:
             )
             text_y += line_height
 
-        if self.lives is not None:
-            max_hearts = 5
-            filled = "♥" * max(0, min(max_hearts, int(self.lives)))
-            empty = "♡" * max(0, max_hearts - max(0, min(max_hearts, int(self.lives))))
-            lives_text = f"Lives: {filled}{empty}"
-            screen.blit(
-                self.font.render(lives_text, True, self._warn_color),
-                (x + padding, text_y),
-            )
-            text_y += line_height
-
         if self.fps is not None and self.max_fps is not None:
             fps_text = f"FPS: {self.fps} / {self.max_fps}"
             screen.blit(
@@ -196,6 +185,29 @@ class PlayerHUD:
 
         self._draw_speedometer(screen, speed_center, speed_radius)
         self._draw_accelometer(screen, accel_center, accel_radius)
+        self._draw_lives_bottom_left(screen)
+
+    def _draw_lives_bottom_left(self, screen: pygame.Surface) -> None:
+        if self.lives is None:
+            return
+
+        max_hearts = 5
+        clamped_lives = max(0, min(max_hearts, int(self.lives)))
+        filled = "♥" * clamped_lives
+        empty = "♡" * (max_hearts - clamped_lives)
+
+        heart_text = f"{filled}{empty}"
+        label = self.font.render("Lives", True, self._text_color)
+        hearts = self.font.render(heart_text, True, self._warn_color)
+
+        margin = 16
+        label_x = margin
+        hearts_x = margin
+        hearts_y = screen.get_height() - margin - hearts.get_height()
+        label_y = hearts_y - label.get_height() - 4
+
+        screen.blit(label, (label_x, label_y))
+        screen.blit(hearts, (hearts_x, hearts_y))
 
     def _draw_speed_bar(
         self, screen: pygame.Surface, x: int, y: int, max_width: Optional[int] = None
