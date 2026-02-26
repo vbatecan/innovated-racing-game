@@ -8,8 +8,8 @@ class Vehicle(pygame.sprite.Sprite):
         self,
         start_x: int,
         start_y: int,
-        width: int = 60,
-        height: int = 60,
+        width: int = 80,
+        height: int = 80,
         image_path: str = "resources/car.png",
     ) -> None:
         """
