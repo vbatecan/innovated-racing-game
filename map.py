@@ -439,7 +439,7 @@ class ObstacleManager:
         if max_left <= min_left:
             return lane.left + max(0, (lane.width - obstacle_width) // 2)
         return random.randint(min_left, max_left)
-
+    
     def set_spawn_frequency(self, frequency: int) -> None:
         """
         Set obstacle spawn interval in frames, clamped to at least one frame.
