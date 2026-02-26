@@ -95,15 +95,11 @@ class PlayerHUD:
         line_height = self.font.get_linesize()
         text_y = y + padding
 
-        # Layout: left = telemetry + speedometer + gesture icons, right = camera preview.
-        camera_w, _camera_h = self.camera_preview_size
-        right_x = x + self.size[0] - padding - camera_w
-        left_w = max(0, right_x - (x + padding) - padding)
+        # Layout: panel is dedicated to telemetry/info only.
+        left_w = max(0, self.size[0] - (padding * 2))
 
         if self.show_camera_preview:
-            self._draw_camera_preview(
-                screen, (right_x, y + padding), self.camera_preview_size
-            )
+            self._draw_camera_preview_bottom_right(screen, self.camera_preview_size)
 
         speed_text = f"Speed: {self.speed:.1f} / {self.max_speed:.1f}"
         screen.blit(
@@ -440,3 +436,13 @@ class PlayerHUD:
         surf = pygame.surfarray.make_surface(frame_rgb.swapaxes(0, 1))
         surf = pygame.transform.smoothscale(surf, (w, h))
         screen.blit(surf, (x, y))
+
+    def _draw_camera_preview_bottom_right(
+        self,
+        screen: pygame.Surface,
+        size: tuple[int, int],
+    ) -> None:
+        margin = 16
+        w, h = size
+        top_left = (screen.get_width() - w - margin, screen.get_height() - h - margin)
+        self._draw_camera_preview(screen, top_left, size)
