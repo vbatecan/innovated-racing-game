@@ -137,8 +137,7 @@ def main():
                 keys, settings.steering_sensitivity, target_steer
             )
             if now < out_of_control_until:
-                jitter = random.uniform(-0.35, 0.35)
-                target_steer = max(-2, min(2, out_of_control_steer + jitter))
+                target_steer = out_of_control_steer
             player_car.turn(max(-2, min(target_steer, 2)), player_car.turn_smoothing)
 
             # Apply boost to acceleration and max speed if active
@@ -189,8 +188,8 @@ def main():
                 True,
                 collided=pygame.sprite.collide_mask,
             ):
-                out_of_control_until = now + 2000
-                out_of_control_steer = random.choice([-1.6, 1.6])
+                out_of_control_until = now + 400
+                out_of_control_steer = random.choice([-1.8, 1.8])
 
         # Drawing
         game_map.draw(screen)
