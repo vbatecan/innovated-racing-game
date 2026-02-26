@@ -80,7 +80,7 @@ def main():
     while running:
         game_map.speed = settings.car_speed
         game_map.obstacle_frequency = int(
-            settings.max_fps / settings.obstacle_frequency
+            (settings.max_fps * 2) / settings.obstacle_frequency
         )
         game_map.set_lane_count(settings.lane_count)
 
