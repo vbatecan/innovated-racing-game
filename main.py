@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 from typing import Tuple
 
 import cv2
@@ -35,6 +36,8 @@ def main():
     boost_end_time = 0
     boost_cooldown_end = 0  # Time when next boost is allowed
     prev_boosting = False  # Track previous boosting state for edge detection
+    out_of_control_until = 0
+    out_of_control_steer = 0.0
     max_manual_gear = 5
     current_gear = 1
     gear_speed_ratio = {1: 0.45, 2: 0.62, 3: 0.78, 4: 0.9, 5: 1.0}
@@ -133,6 +136,9 @@ def main():
             target_steer, turn = steer(
                 keys, settings.steering_sensitivity, target_steer
             )
+            if now < out_of_control_until:
+                jitter = random.uniform(-0.35, 0.35)
+                target_steer = max(-2, min(2, out_of_control_steer + jitter))
             player_car.turn(max(-2, min(target_steer, 2)), player_car.turn_smoothing)
 
             # Apply boost to acceleration and max speed if active
@@ -176,6 +182,15 @@ def main():
                 if hasattr(player_car, 'velocity'):
                     player_car.velocity = 0
                 score.deduct(settings.car_collision_deduction_pts)
+
+            if pygame.sprite.spritecollide(
+                player_car,
+                game_map.cracks,
+                True,
+                collided=pygame.sprite.collide_mask,
+            ):
+                out_of_control_until = now + 2000
+                out_of_control_steer = random.choice([-1.6, 1.6])
 
         # Drawing
         game_map.draw(screen)

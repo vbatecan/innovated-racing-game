@@ -99,6 +99,39 @@ class Obstacle(pygame.sprite.Sprite):
             self.kill()
 
 
+class Crack(pygame.sprite.Sprite):
+    """Road crack hazard that scrolls toward the player."""
+
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        image: pygame.Surface | None = None,
+    ):
+        super().__init__()
+        if image is None:
+            self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+            pygame.draw.ellipse(self.image, (35, 35, 35), (0, 0, width, height))
+        else:
+            if image.get_width() != width or image.get_height() != height:
+                self.image = pygame.transform.smoothscale(image, (width, height))
+            else:
+                self.image = image
+
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.mask = pygame.mask.from_surface(self.image)
+        self._y_pos = float(y)
+
+    def update(self, map_speed: int, screen_height: int) -> None:
+        """Move crack downward with map scroll and remove when off-screen."""
+        self._y_pos += max(1.0, float(map_speed))
+        self.rect.y = int(self._y_pos)
+        if self.rect.top > screen_height + self.rect.height:
+            self.kill()
+
+
 class Road:
     """Road geometry and rendering for lane-based driving."""
 
@@ -351,7 +384,7 @@ class ObstacleManager:
         road: Road,
         spawn_frequency: int = 60,
         max_obstacles: int = 3,
-        obstacle_size: tuple[int, int] = (40, 40),
+        obstacle_size: tuple[int, int] = (30, 30),
     ):
         """
         Initialize obstacle spawning limits and sprite storage.
@@ -404,7 +437,7 @@ class ObstacleManager:
         model_index = random.randrange(len(self.obstacle_models))
         source = self.obstacle_models[model_index]
 
-        lane_fit_width = max(1, lane.width - 24)
+        lane_fit_width = max(1, lane.width - 20)
         target_width = min(
             lane_fit_width, int(lane.width * config.TRAFFIC_LANE_WIDTH_RATIO)
         )
@@ -476,7 +509,7 @@ class ObstacleManager:
         # Avoid spawning in a lane that already has an obstacle near the top
         max_attempts = 10
         for _ in range(max_attempts):
-            lane = self.road.random_lane()
+            lane = self.road.get_lane(self.road.lane_count // 2)
             obstacle_image = self._get_random_obstacle_image(lane)
             obstacle_width = self.obstacle_width
             obstacle_height = self.obstacle_height
@@ -501,7 +534,7 @@ class ObstacleManager:
                 break
         else:
             # If all attempts failed, just pick a random lane
-            lane = self.road.random_lane()
+            lane = self.road.get_lane(self.road.lane_count // 2)
             obstacle_image = self._get_random_obstacle_image(lane)
             obstacle_width = self.obstacle_width
             obstacle_height = self.obstacle_height
@@ -555,6 +588,91 @@ class ObstacleManager:
         self.obstacles.draw(surface)
 
 
+class CrackManager:
+    """Spawn, update, and render low-volume road crack hazards."""
+
+    def __init__(
+        self,
+        road: Road,
+        spawn_frequency: int = config.CRACK_SPAWN_FREQUENCY,
+        max_cracks: int = config.MAX_CRACKS,
+    ):
+        self.road = road
+        self.spawn_frequency = max(1, int(spawn_frequency))
+        self.max_cracks = max(1, int(max_cracks))
+        self.cracks = pygame.sprite.Group()
+        self.timer = 0
+        self.model_dir = Path("resources/models/obstacles")
+        self.crack_models = self._load_crack_models()
+        self.model_scale_cache: dict[tuple[int, int], pygame.Surface] = {}
+
+    def _load_crack_models(self) -> list[pygame.Surface]:
+        """Load crack sprites from the obstacle resource directory."""
+        if not self.model_dir.exists():
+            return []
+
+        models: list[pygame.Surface] = []
+        for model_path in sorted(self.model_dir.glob("Crack*.png")):
+            try:
+                image = pygame.image.load(str(model_path))
+                if pygame.display.get_surface() is not None:
+                    image = image.convert_alpha()
+                models.append(image)
+            except pygame.error:
+                continue
+        return models
+
+    def _get_random_crack_image(self, lane: Lane) -> pygame.Surface | None:
+        if not self.crack_models:
+            return None
+
+        model_index = random.randrange(len(self.crack_models))
+        source = self.crack_models[model_index]
+        lane_fit_width = max(1, lane.width - 20)
+        target_width = min(
+            lane_fit_width, int(lane.width * config.CRACK_LANE_WIDTH_RATIO)
+        )
+        target_width = max(config.TRAFFIC_MIN_SIZE, target_width)
+
+        cache_key = (model_index, target_width)
+        cached = self.model_scale_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        source_width, source_height = source.get_size()
+        scaled_height = max(12, int(source_height * (target_width / source_width)))
+        scaled = pygame.transform.smoothscale(source, (target_width, scaled_height))
+        self.model_scale_cache[cache_key] = scaled
+        return scaled
+
+    def _spawn_crack(self) -> None:
+        lane = self.road.random_lane()
+        crack_image = self._get_random_crack_image(lane)
+
+        crack_width = max(20, int(lane.width * config.CRACK_LANE_WIDTH_RATIO))
+        crack_height = max(12, crack_width // 2)
+        if crack_image is not None:
+            crack_width = crack_image.get_width()
+            crack_height = crack_image.get_height()
+
+        spawn_x = ObstacleManager._lane_spawn_x(lane, crack_width, min_padding=14)
+        spawn_y = -crack_height - random.randint(40, 260)
+        crack = Crack(spawn_x, spawn_y, crack_width, crack_height, image=crack_image)
+        self.cracks.add(crack)
+
+    def update(self, map_speed: int) -> None:
+        self.timer += 1
+        if self.timer >= self.spawn_frequency:
+            self.timer = 0
+            if len(self.cracks) < self.max_cracks:
+                self._spawn_crack()
+
+        self.cracks.update(map_speed, self.road.height)
+
+    def draw(self, surface: pygame.Surface) -> None:
+        self.cracks.draw(surface)
+
+
 class Map:
     def __init__(self, window_size: dict[str, int], lane_count: int = config.LANE_COUNT):
         """
@@ -572,6 +690,7 @@ class Map:
 
         self.road = Road(window_size, config.ROAD_SIZE["width"], lane_count=lane_count)
         self.obstacle_manager = ObstacleManager(self.road)
+        self.crack_manager = CrackManager(self.road)
 
     @property
     def obstacles(self) -> pygame.sprite.Group:
@@ -606,6 +725,11 @@ class Map:
         """
         self.obstacle_manager.set_spawn_frequency(value)
 
+    @property
+    def cracks(self) -> pygame.sprite.Group:
+        """Expose crack hazard sprites for collision checks."""
+        return self.crack_manager.cracks
+
     def set_lane_count(self, lane_count: int) -> None:
         """
         Apply a new runtime lane count to the road model.
@@ -639,6 +763,7 @@ class Map:
         if self.scroll_y >= self.road.total_marker_segment:
             self.scroll_y -= self.road.total_marker_segment
         self.road.update_background_scroll(self.speed)
+        self.crack_manager.update(self.speed)
         self.obstacle_manager.update(self.speed, is_braking=is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
@@ -653,6 +778,7 @@ class Map:
         """
         self.road.draw_background(surface)
         self.road.draw_lane_markers(surface, self.scroll_y)
+        self.crack_manager.draw(surface)
         self.obstacle_manager.draw(surface)
         self.road.draw_borders(surface)
 
