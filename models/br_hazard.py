@@ -28,7 +28,7 @@ class BRHazard(pygame.sprite.Sprite):
         self._y_pos = float(y)
 
     def update(self, map_speed: int, screen_height: int) -> None:
-        self._y_pos += max(1.0, float(map_speed))
+        self._y_pos += max(0.0, float(map_speed))
         self.rect.y = int(self._y_pos)
         if self.rect.top > screen_height + self.rect.height:
             self.kill()
