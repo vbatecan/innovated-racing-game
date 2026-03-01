@@ -19,6 +19,7 @@ class PlayerCar(Vehicle):
         self.velocity_x = 0
         self.smoothing = 0.2  # Smooth movement
         self.turn_smoothing = 0.15  # Smooth turning
+        self.x = float(start_x)  # Float position for sub-pixel accuracy
 
     def update(
             self,
@@ -55,15 +56,18 @@ class PlayerCar(Vehicle):
         # Smooth interpolation
         self.velocity_x += (target_vx - self.velocity_x) * self.smoothing
 
-        # Apply movement
-        self.rect.x += int(self.velocity_x)
+        # Apply movement with float precision
+        self.x += self.velocity_x
+        self.rect.x = int(self.x)
 
         # Boundaries
         if self.rect.left < 0:
             self.rect.left = 0
+            self.x = float(self.rect.x)
             self.velocity_x = 0
         if self.rect.right > screen_width:
             self.rect.right = screen_width
+            self.x = float(self.rect.x)
             self.velocity_x = 0
 
     def set_max_speed(self, max_speed):
