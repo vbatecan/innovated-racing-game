@@ -57,7 +57,7 @@ MAP_BORDER_OVERRIDES = {
     # Example:
     # "city_roadfinal.png": {"left_ratio": 0.34, "right_ratio": 0.66},
     "city_roadfinal.png": {"left_ratio": 0.37, "right_ratio": 0.63},
-    "desert.png": {"left_ratio": 0.43, "right_ratio": 0.57},
+    "desert.png": {"left_ratio": 0.42, "right_ratio": 0.58},
     "highway.png": {"left_ratio": 0.37, "right_ratio": 0.63},
 }
 
