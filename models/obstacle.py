@@ -63,16 +63,12 @@ class Obstacle(pygame.sprite.Sprite):
         """
         # Blend player speed with per-vehicle traffic speed so traffic remains active
         # even at low player speed and scales up as gameplay gets faster.
-        blended_speed = self.traffic_speed + (0.2 * float(player_speed))
-        self.speed = max(1.0, min(24.0, blended_speed))
-        target_direction = 1.0
-        # TODO: The vehicles moves backwards when player speed is very low, which can cause some weird behavior.
+        # blended_speed = self.traffic_speed + (0.2 * float(player_speed))
+        self.speed = max(1.0, min(24.0, self.traffic_speed))
+        target_direction = 1 if self.speed > 0 else -1
         self.direction_factor += (target_direction - self.direction_factor) * 0.18
         self._y_pos += self.speed * self.direction_factor
         self.rect.y = int(self._y_pos)
 
-        if (
-                self.rect.top > screen_height + self.rect.height
-                or self.rect.bottom < -self.rect.height
-        ):
+        if self.rect.top > screen_height + self.rect.height or self.rect.bottom < -self.rect.height:
             self.kill()
