@@ -4,9 +4,9 @@ from pathlib import Path
 import config
 import pygame
 
-from environment.models.crack import Crack
-from environment.models.lane import Lane
-from environment.models.road import Road
+from models.crack import Crack
+from models.lane import Lane
+from models.road import Road
 from environment.obstacle_manager import ObstacleManager
 
 

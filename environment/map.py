@@ -1,13 +1,9 @@
-import random
-from dataclasses import dataclass
-from pathlib import Path
-
 import config
 import pygame
 
 from environment.br_manager import BRManager
 from environment.crack_manager import CrackManager
-from environment.models.road import Road
+from models.road import Road
 from environment.obstacle_manager import ObstacleManager
 
 

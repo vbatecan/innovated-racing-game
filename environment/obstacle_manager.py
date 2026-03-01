@@ -4,9 +4,9 @@ from pathlib import Path
 import pygame
 
 import config
-from environment.models.lane import Lane
-from environment.models.obstacle import Obstacle
-from environment.models.road import Road
+from models.lane import Lane
+from models.obstacle import Obstacle
+from models.road import Road
 
 
 class ObstacleManager:
