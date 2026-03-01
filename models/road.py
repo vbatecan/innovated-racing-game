@@ -208,9 +208,9 @@ class Road:
         bg_images = []
         self.map_border_bounds = []
         map_paths = [
-            # Path("resources/models/maps/city_roadfinal.png"),
+            Path("resources/models/maps/city_roadfinal.png"),
             Path("resources/models/maps/desert.png"),
-            # Path("resources/models/maps/highway.png")
+            Path("resources/models/maps/highway.png")
         ]
 
         for map_path in map_paths:
