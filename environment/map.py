@@ -24,7 +24,6 @@ class Map:
         self.speed = 1
         self.scroll_y = 0
         self.current_score = 0
-        self._brake_freeze_until = 0
 
         self.road = Road(window_size, config.ROAD_SIZE["width"], lane_count=lane_count)
         self.obstacle_manager = ObstacleManager(self.road)
@@ -114,10 +113,7 @@ class Map:
         Returns:
             None: Mutates map scroll and obstacle state.
         """
-        now = pygame.time.get_ticks()
-        if is_braking:
-            self._brake_freeze_until = now + max(0, int(config.BRAKE_HAZARD_FREEZE_MS))
-        freeze_barriers = is_braking or now < self._brake_freeze_until
+        freeze_barriers = is_braking
 
         barrier_speed = 0 if freeze_barriers else self.speed
         obstacle_speed = 0 if is_braking else self.speed
