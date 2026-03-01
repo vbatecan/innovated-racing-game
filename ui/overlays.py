@@ -10,6 +10,7 @@ def draw_last_chance_overlay(
     title_font: pygame.font.Font,
     body_font: pygame.font.Font,
     question: Question,
+    selected_option: int = 0,
 ) -> None:
     overlay = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 180))
@@ -28,14 +29,21 @@ def draw_last_chance_overlay(
     title = title_font.render("LAST CHANCE!", True, (255, 220, 120))
     prompt = body_font.render(question.prompt, True, (255, 255, 255))
     key_range = ", ".join(str(i) for i in range(1, question.answer_count + 1))
-    hint = body_font.render(f"Press {key_range} to answer", True, (180, 180, 180))
+    hint = body_font.render(
+        f"Press {key_range} / Swipe up/down / Close index finger to confirm",
+        True,
+        (180, 180, 180),
+    )
 
     screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 24))
     screen.blit(prompt, (panel.centerx - prompt.get_width() // 2, panel.y + 92))
 
     option_y = panel.y + 150
     for index, option in enumerate(question.options, start=1):
-        option_text = body_font.render(f"{index}) {option}", True, (240, 240, 240))
+        is_selected = (index - 1) == selected_option
+        option_color = (255, 255, 100) if is_selected else (240, 240, 240)
+        prefix = "> " if is_selected else "  "
+        option_text = body_font.render(f"{prefix}{index}) {option}", True, option_color)
         screen.blit(option_text, (panel.x + 64, option_y))
         option_y += 42
 

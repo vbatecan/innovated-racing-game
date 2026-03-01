@@ -1,20 +1,20 @@
 import logging
 import math
 import os
-import random
 from typing import Tuple
 
 import cv2
+import random
 import pygame
 from pygame.key import ScancodeWrapper
 
 import config
-from models.player_car import PlayerCar
-from models.question import Question
 from config import SHOW_CAMERA, WINDOW_SIZE
 from controller import Controller
 from environment.map import Map
 from environment.question_manager import QuestionManager
+from models.player_car import PlayerCar
+from models.question import Question
 from models.score import Score
 from settings import Settings
 from ui.hud import PlayerHUD
@@ -97,6 +97,8 @@ def main():
     lives = float(max(1, int(config.STARTING_LIVES)))
     game_state = "playing"
     active_question: Question | None = None
+    selected_option = 0
+    question_input_unlock_at = 0
     question_manager = QuestionManager()
 
     hud = PlayerHUD(player_car, detector, font)
@@ -122,7 +124,8 @@ def main():
         nonlocal boost_active, boost_end_time, boost_cooldown_end, prev_boosting
         nonlocal out_of_control_until, oil_swerve_until, oil_swerve_started_at, oil_swerve_phase
         nonlocal score_timer, score_interval, last_speedup
-        nonlocal game_state, active_question
+        nonlocal game_state, active_question, selected_option
+        nonlocal question_input_unlock_at
 
         lives = float(max(1, int(config.STARTING_LIVES)))
         score.reset_score()
@@ -150,12 +153,32 @@ def main():
         settings.visible = False
         game_state = "playing"
         active_question = None
+        selected_option = 0
+        question_input_unlock_at = 0
 
     def trigger_last_chance_question() -> None:
-        nonlocal game_state, active_question
+        nonlocal game_state, active_question, selected_option
+        nonlocal question_input_unlock_at
         game_state = "question"
         active_question = question_manager.get_random_question()
+        selected_option = 0
+        question_input_unlock_at = pygame.time.get_ticks() + 700
         settings.visible = False
+
+    def resolve_question_answer(answer_index: int) -> None:
+        nonlocal lives, game_state, active_question, selected_option, question_input_unlock_at
+        if active_question is None:
+            return
+
+        if question_manager.validate_answer(active_question, answer_index):
+            lives = 1.0
+            game_state = "playing"
+        else:
+            game_state = "game_over"
+
+        active_question = None
+        selected_option = 0
+        question_input_unlock_at = 0
 
     def apply_collision_damage(damage: float = 1.0) -> None:
         nonlocal lives
@@ -168,6 +191,7 @@ def main():
 
     while running:
         is_breaking = False
+        detector.set_require_two_hands(game_state == "playing")
         game_map.speed = settings.car_speed
         game_map.obstacle_frequency = int(
             (settings.max_fps * 2) / settings.obstacle_frequency
@@ -186,13 +210,7 @@ def main():
                 if event.type == pygame.KEYDOWN and active_question is not None:
                     selected_answer = key_to_option_index(event.key)
                     if selected_answer is not None and selected_answer < active_question.answer_count:
-                        if question_manager.validate_answer(active_question, selected_answer):
-                            lives = 1.0
-                            game_state = "playing"
-                            active_question = None
-                        else:
-                            game_state = "game_over"
-                            active_question = None
+                        resolve_question_answer(selected_answer)
                 continue
 
             if game_state == "game_over":
@@ -208,6 +226,18 @@ def main():
                 settings.visible,
             )
             settings.visible = show_settings
+
+        if game_state == "question" and active_question is not None:
+            now = pygame.time.get_ticks()
+            question_input_ready = now >= question_input_unlock_at
+            swipe_up, swipe_down = detector.consume_swipe_request()
+            if question_input_ready and swipe_up:
+                selected_option = max(0, selected_option - 1)
+            if question_input_ready and swipe_down:
+                selected_option = min(active_question.answer_count - 1, selected_option + 1)
+
+            if question_input_ready and detector.consume_question_select_request():
+                resolve_question_answer(selected_option)
 
         if game_state == "playing" and not settings.visible:
 
@@ -397,6 +427,7 @@ def main():
                 overlay_title_font,
                 overlay_body_font,
                 active_question,
+                selected_option,
             )
         elif game_state == "game_over":
             draw_game_over_overlay(

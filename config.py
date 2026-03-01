@@ -61,7 +61,7 @@ MAP_BORDER_OVERRIDES = {
 }
 
 # Player life system
-STARTING_LIVES = 5
+STARTING_LIVES = 1
 MAX_HEARTS = STARTING_LIVES
 
 # Last-chance questions
