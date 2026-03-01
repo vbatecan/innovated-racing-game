@@ -130,6 +130,8 @@ def main():
             keys = pygame.key.get_pressed()
             if keys[pygame.K_DOWN]:
                 is_breaking = True
+            if now < oil_swerve_until:
+                is_breaking = False
 
             shift_down, shift_up = detector.consume_shift_request()
             if shift_down and not shift_up:
