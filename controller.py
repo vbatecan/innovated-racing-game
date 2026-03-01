@@ -173,27 +173,6 @@ class Controller:
         """
         return landmark.x, landmark.y
 
-    def _is_palm_open(self, hand_landmarks) -> bool:
-        """
-        Detect an open-palm braking gesture.
-
-        A palm is considered open if at least three finger tips are noticeably
-        farther from the wrist than their corresponding PIP joints.
-        """
-        wrist = hand_landmarks[0]
-        tip_indices = [8, 12, 16, 20]
-        pip_indices = [6, 10, 14, 18]
-        wrist_x, wrist_y = self._landmark_point(wrist)
-        extended = 0
-        for tip_i, pip_i in zip(tip_indices, pip_indices):
-            tip = hand_landmarks[tip_i]
-            pip = hand_landmarks[pip_i]
-            tip_dist_sq = (tip.x - wrist_x) ** 2 + (tip.y - wrist_y) ** 2
-            pip_dist_sq = (pip.x - wrist_x) ** 2 + (pip.y - wrist_y) ** 2
-            if tip_dist_sq > pip_dist_sq * 1.05:
-                extended += 1
-        return extended >= 3
-
     @staticmethod
     def _is_index_only(hand_landmarks) -> bool:
         """
@@ -325,7 +304,7 @@ class Controller:
         left_wrist = left_hand[0]
         right_wrist = right_hand[0]
 
-        self.breaking = self._is_palm_open(left_hand) or self._is_palm_open(right_hand)
+        self.breaking = not self.left_shift_active and not self.right_shift_active
         self._update_shift_state(left_hand, right_hand)
         self.boosting = self._is_thumb_up(left_hand)  # Left hand only for boost.
 
