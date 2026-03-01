@@ -117,20 +117,21 @@ class Map:
         now = pygame.time.get_ticks()
         if is_braking:
             self._brake_freeze_until = now + max(0, int(config.BRAKE_HAZARD_FREEZE_MS))
-        freeze_hazards = is_braking or now < self._brake_freeze_until
+        freeze_barriers = is_braking or now < self._brake_freeze_until
 
-        effective_speed = 0 if freeze_hazards else self.speed
+        barrier_speed = 0 if freeze_barriers else self.speed
+        obstacle_speed = 0 if is_braking else self.speed
 
-        if not freeze_hazards:
-            self.scroll_y += effective_speed
+        if not freeze_barriers:
+            self.scroll_y += barrier_speed
             if self.scroll_y >= self.road.total_marker_segment:
                 self.scroll_y -= self.road.total_marker_segment
-            self.road.update_background_scroll(effective_speed)
+            self.road.update_background_scroll(barrier_speed)
 
-        self.crack_manager.update(effective_speed, is_braking=freeze_hazards)
-        self.br_manager.update(effective_speed, is_braking=freeze_hazards)
-        self.oil_spill_manager.update(effective_speed, is_braking=freeze_hazards)
-        self.obstacle_manager.update(effective_speed, is_braking=freeze_hazards)
+        self.crack_manager.update(barrier_speed, is_braking=freeze_barriers)
+        self.br_manager.update(barrier_speed, is_braking=freeze_barriers)
+        self.oil_spill_manager.update(barrier_speed, is_braking=freeze_barriers)
+        self.obstacle_manager.update(obstacle_speed, is_braking=is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
         """
