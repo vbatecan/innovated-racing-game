@@ -68,17 +68,33 @@ MAX_HEARTS = STARTING_LIVES
 # True/False format: {"prompt": str, "answer": bool}
 TRUE_FALSE_QUESTIONS = [
     {
-        "prompt": "Using seatbelts reduces injury risk in crashes.",
+        "prompt": "A data structure is used to organize and store data.",
         "answer": True,
     },
     {
-        "prompt": "It is safe to drive while texting if traffic is light.",
+        "prompt": "An array can store multiple values.",
+        "answer": True,
+    },
+    {
+        "prompt": "A stack follows LIFO (Last In, First Out).",
         "answer": False,
     },
     {
-        "prompt": "Maintaining safe following distance helps prevent collisions.",
+        "prompt": "A queue follows FIFO (First In, First Out).",
         "answer": True,
     },
+    {
+        "prompt": "A linked list is a linear data structure.",
+        "answer": True,
+    },
+    {
+        "prompt": "A binary tree can have at most three children per node.",
+        "answer": False,
+    },
+    {
+        "prompt": "A hash table uses key-value pairs for data storage.",
+        "answer": True,
+    }
 ]
 
 # Multiple-choice format:
