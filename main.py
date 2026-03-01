@@ -62,7 +62,7 @@ def main():
 
     score = Score()
     score.set_score(0)
-    lives = config.STARTING_LIVES
+    lives = float(config.STARTING_LIVES)
 
     hud = PlayerHUD(player_car, detector, font)
 
@@ -179,7 +179,7 @@ def main():
                 player_car.velocity_x = 0
                 if hasattr(player_car, 'velocity'):
                     player_car.velocity = 0
-                lives = max(0, lives - 1)
+                lives = max(0.0, lives - 1.0)
 
                 if lives <= 0:
                     lives = config.STARTING_LIVES
@@ -201,13 +201,39 @@ def main():
                     out_of_control_until = 0
                     score_timer = pygame.time.get_ticks()
 
-            if pygame.sprite.spritecollide(
+            crack_hits = pygame.sprite.spritecollide(
                 player_car,
                 game_map.cracks,
                 True,
                 collided=pygame.sprite.collide_mask,
-            ):
+            )
+            if crack_hits:
                 out_of_control_until = now + 400
+                player_car.current_speed = max(0.0, float(player_car.current_speed) * 0.5)
+                player_car.velocity_x *= 0.6
+                if hasattr(player_car, 'velocity'):
+                    player_car.velocity = max(0.0, float(player_car.velocity) * 0.5)
+                lives = max(0.0, lives - (0.5 * len(crack_hits)))
+
+                if lives <= 0:
+                    lives = float(config.STARTING_LIVES)
+                    score.reset_score()
+                    player_car.rect.center = (
+                        WINDOW_SIZE["width"] // 2,
+                        WINDOW_SIZE["height"] - 240,
+                    )
+                    player_car.current_speed = 0
+                    player_car.velocity_x = 0
+                    player_car.current_angle = 0.0
+                    player_car.turn(0.0, 0.0)
+                    game_map.clear_hazards()
+                    current_gear = 1
+                    boost_active = False
+                    boost_end_time = 0
+                    boost_cooldown_end = 0
+                    prev_boosting = False
+                    out_of_control_until = 0
+                    score_timer = pygame.time.get_ticks()
 
             br_hits = pygame.sprite.spritecollide(
                 player_car,
@@ -216,12 +242,12 @@ def main():
                 collided=pygame.sprite.collide_mask,
             )
             if br_hits:
-                lives = max(0, lives - 1)
+                lives = max(0.0, lives - 1.0)
                 player_car.current_speed = 0
                 player_car.velocity_x = 0
 
                 if lives <= 0:
-                    lives = config.STARTING_LIVES
+                    lives = float(config.STARTING_LIVES)
                     score.reset_score()
                     player_car.rect.center = (
                         WINDOW_SIZE["width"] // 2,

@@ -30,7 +30,7 @@ class PlayerHUD:
         self.acceleration = 0.0
         self._last_speed = float(self.speed)
         self.score: Optional[int] = None
-        self.lives: Optional[int] = None
+        self.lives: Optional[float] = None
         self.fps: Optional[int] = None
         self.max_fps: Optional[int] = None
         self._camera_frame = None
@@ -53,7 +53,7 @@ class PlayerHUD:
         controller: Controller,
         gear: Optional[str] = None,
         score: Optional[int] = None,
-        lives: Optional[int] = None,
+        lives: Optional[float] = None,
         fps: Optional[int] = None,
         max_fps: Optional[int] = None,
     ) -> None:
@@ -188,11 +188,16 @@ class PlayerHUD:
             return
 
         max_hearts = 5
-        clamped_lives = max(0, min(max_hearts, int(self.lives)))
-        filled = "♥" * clamped_lives
-        empty = "♡" * (max_hearts - clamped_lives)
+        clamped_lives = max(0.0, min(float(max_hearts), float(self.lives)))
+        full_hearts = int(clamped_lives)
+        has_half = (clamped_lives - full_hearts) >= 0.5
+        empty_hearts = max_hearts - full_hearts - (1 if has_half else 0)
 
-        heart_text = f"{filled}{empty}"
+        filled = "♥" * full_hearts
+        half = "½" if has_half else ""
+        empty = "♡" * max(0, empty_hearts)
+
+        heart_text = f"{filled}{half}{empty}"
         label = self.font.render("Lives", True, self._text_color)
         hearts = self.font.render(heart_text, True, self._warn_color)
 
