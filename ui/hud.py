@@ -5,7 +5,7 @@ import math
 
 import pygame
 
-from car import PlayerCar
+from models.player_car import PlayerCar
 from controller import Controller
 
 
@@ -30,6 +30,7 @@ class PlayerHUD:
         self.acceleration = 0.0
         self._last_speed = float(self.speed)
         self.score: Optional[int] = None
+        self.lives: Optional[int] = None
         self.fps: Optional[int] = None
         self.max_fps: Optional[int] = None
         self._camera_frame = None
@@ -52,6 +53,7 @@ class PlayerHUD:
         controller: Controller,
         gear: Optional[str] = None,
         score: Optional[int] = None,
+        lives: Optional[int] = None,
         fps: Optional[int] = None,
         max_fps: Optional[int] = None,
     ) -> None:
@@ -67,6 +69,7 @@ class PlayerHUD:
         else:
             self.gear = self._compute_gear(self.speed, self.max_speed)
         self.score = score
+        self.lives = lives
         self.fps = fps
         self.max_fps = max_fps
         if self.fps is not None and self.fps > 0:
@@ -92,15 +95,11 @@ class PlayerHUD:
         line_height = self.font.get_linesize()
         text_y = y + padding
 
-        # Layout: left = telemetry + speedometer + gesture icons, right = camera preview.
-        camera_w, _camera_h = self.camera_preview_size
-        right_x = x + self.size[0] - padding - camera_w
-        left_w = max(0, right_x - (x + padding) - padding)
+        # Layout: panel is dedicated to telemetry/info only.
+        left_w = max(0, self.size[0] - (padding * 2))
 
         if self.show_camera_preview:
-            self._draw_camera_preview(
-                screen, (right_x, y + padding), self.camera_preview_size
-            )
+            self._draw_camera_preview_bottom_right(screen, self.camera_preview_size)
 
         speed_text = f"Speed: {self.speed:.1f} / {self.max_speed:.1f}"
         screen.blit(
@@ -182,6 +181,29 @@ class PlayerHUD:
 
         self._draw_speedometer(screen, speed_center, speed_radius)
         self._draw_accelometer(screen, accel_center, accel_radius)
+        self._draw_lives_bottom_left(screen)
+
+    def _draw_lives_bottom_left(self, screen: pygame.Surface) -> None:
+        if self.lives is None:
+            return
+
+        max_hearts = 5
+        clamped_lives = max(0, min(max_hearts, int(self.lives)))
+        filled = "♥" * clamped_lives
+        empty = "♡" * (max_hearts - clamped_lives)
+
+        heart_text = f"{filled}{empty}"
+        label = self.font.render("Lives", True, self._text_color)
+        hearts = self.font.render(heart_text, True, self._warn_color)
+
+        margin = 16
+        label_x = margin
+        hearts_x = margin
+        hearts_y = screen.get_height() - margin - hearts.get_height()
+        label_y = hearts_y - label.get_height() - 4
+
+        screen.blit(label, (label_x, label_y))
+        screen.blit(hearts, (hearts_x, hearts_y))
 
     def _draw_speed_bar(
         self, screen: pygame.Surface, x: int, y: int, max_width: Optional[int] = None
@@ -414,3 +436,13 @@ class PlayerHUD:
         surf = pygame.surfarray.make_surface(frame_rgb.swapaxes(0, 1))
         surf = pygame.transform.smoothscale(surf, (w, h))
         screen.blit(surf, (x, y))
+
+    def _draw_camera_preview_bottom_right(
+        self,
+        screen: pygame.Surface,
+        size: tuple[int, int],
+    ) -> None:
+        margin = 16
+        w, h = size
+        top_left = (screen.get_width() - w - margin, screen.get_height() - h - margin)
+        self._draw_camera_preview(screen, top_left, size)

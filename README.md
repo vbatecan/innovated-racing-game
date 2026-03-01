@@ -16,12 +16,12 @@
 
 ## Gameplay Loop
 
-- [ ] **Dynamic Obstacles**:
+- [x] **Dynamic Obstacles**:
   - Static: Rocks, Barriers.
   - Dynamic: Traffic, crossing animals.
   - Hazards: Oil slicks (inverts controls).
 - [ ] **Power-ups**: Collectibles that require specific gestures to activate (e.g., "Boost", "Shield").
-- [ ] **Biomes & Progression**: Procedural environment changes (City -> Highway -> Desert) to convey distance.
+- [x] **Biomes & Progression**: Procedural environment changes (City -> Highway -> Desert) to convey distance.
 - [ ] **Game Modes**: Time Attack, Survival (Distance Run), and Head-to-Head Rivals.
 
 ## Bugs
