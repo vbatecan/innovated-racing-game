@@ -187,6 +187,8 @@ class Road:
         self.current_map_index = 0
         self.next_map_index = 0
         self.transition_alpha = 0
+        self.active_border_left = self.default_x
+        self.active_border_right = self.default_x + self.default_width
 
         self._apply_map_borders(self.current_map_index)
 
@@ -228,8 +230,8 @@ class Road:
         else:
             left, right = self._default_border_bounds()
 
-        self.x = left
-        self.width = max(1, right - left)
+        self.active_border_left = left
+        self.active_border_right = right
 
     def set_lane_count(self, lane_count: int) -> None:
         self.lane_count = max(
@@ -266,7 +268,7 @@ class Road:
         map_paths = [
             Path("resources/models/maps/city_roadfinal.png"),
             Path("resources/models/maps/desert.png"),
-            Path("resources/models/maps/highway.png"),
+            Path("resources/models/maps/highway.png")
         ]
 
         for map_path in map_paths:
@@ -384,9 +386,7 @@ class Road:
         )
 
     def get_borders(self) -> tuple[int, int]:
-        if 0 <= self.current_map_index < len(self.map_border_bounds):
-            return self.map_border_bounds[self.current_map_index]
-        return self._default_border_bounds()
+        return self.active_border_left, self.active_border_right
 
 
 class ObstacleManager:

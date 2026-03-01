@@ -56,6 +56,8 @@ class Road:
         self.bg_images = self._load_background_images()
         self.bg_y_offset = 0
         self.current_map_index = 0
+        self.active_border_left = self.default_x
+        self.active_border_right = self.default_x + self.default_width
 
         self._apply_map_borders(self.current_map_index)
 
@@ -97,8 +99,8 @@ class Road:
         else:
             left, right = self._default_border_bounds()
 
-        self.x = left
-        self.width = max(1, right - left)
+        self.active_border_left = left
+        self.active_border_right = right
 
     def set_lane_count(self, lane_count: int) -> None:
         """
@@ -169,6 +171,33 @@ class Road:
             return lane.left + max(0, (lane.width - obstacle_width) // 2)
         return random.randint(min_left, max_left)
 
+    def clamp_spawn_x_to_borders(
+        self, spawn_x: int, object_width: int, min_padding: int = 0
+    ) -> int:
+        """
+        Clamp a sprite's left X so it stays inside active map borders.
+
+        Args:
+            spawn_x (int): Proposed sprite left X coordinate.
+            object_width (int): Sprite width in pixels.
+            min_padding (int): Extra inset from each border.
+
+        Returns:
+            int: Border-safe sprite left X coordinate.
+        """
+        left_border, right_border = self.get_borders()
+        padding = max(0, int(min_padding))
+
+        min_left = left_border + padding
+        max_left = right_border - int(object_width) - padding
+
+        if max_left >= min_left:
+            return max(min_left, min(int(spawn_x), max_left))
+
+        centered = left_border + ((right_border - left_border - int(object_width)) // 2)
+        fallback_left = max(left_border, right_border - int(object_width))
+        return max(left_border, min(centered, fallback_left))
+
     def _load_background_images(self) -> list[pygame.Surface]:
         """
         Load background map images from resources/models/maps/.
@@ -179,9 +208,9 @@ class Road:
         bg_images = []
         self.map_border_bounds = []
         map_paths = [
-            Path("resources/models/maps/city_roadfinal.png"),
+            # Path("resources/models/maps/city_roadfinal.png"),
             Path("resources/models/maps/desert.png"),
-            Path("resources/models/maps/highway.png"),
+            # Path("resources/models/maps/highway.png")
         ]
 
         for map_path in map_paths:
@@ -293,6 +322,4 @@ class Road:
         Returns:
             tuple[int, int]: `(left_x, right_x)` border positions.
         """
-        if 0 <= self.current_map_index < len(self.map_border_bounds):
-            return self.map_border_bounds[self.current_map_index]
-        return self._default_border_bounds()
+        return self.active_border_left, self.active_border_right
