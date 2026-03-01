@@ -184,7 +184,7 @@ def main():
                 screen_width=WINDOW_SIZE["width"],
             )
 
-            game_map.speed = int(player_car.current_speed)
+            game_map.speed = float(player_car.current_speed)
             game_map.update_score(score.get_score())
             game_map.update(is_braking=is_breaking)
 
