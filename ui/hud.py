@@ -188,7 +188,11 @@ class PlayerHUD:
         if self.lives is None:
             return
 
-        max_hearts = config.MAX_HEARTS
+        max_hearts = max(
+            1,
+            int(config.MAX_HEARTS),
+            int(config.STARTING_LIVES),
+        )
         clamped_lives = max(0.0, min(float(max_hearts), float(self.lives)))
         full_hearts = int(clamped_lives)
         has_half = (clamped_lives - full_hearts) >= 0.5

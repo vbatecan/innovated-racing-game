@@ -10,12 +10,15 @@ from pygame.key import ScancodeWrapper
 
 import config
 from models.player_car import PlayerCar
+from models.question import Question
 from config import SHOW_CAMERA, WINDOW_SIZE
 from controller import Controller
 from environment.map import Map
+from environment.question_manager import QuestionManager
 from models.score import Score
 from settings import Settings
 from ui.hud import PlayerHUD
+from ui.overlays import draw_game_over_overlay, draw_last_chance_overlay
 
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
@@ -24,6 +27,30 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def key_to_option_index(event_key: int) -> int | None:
+    key_map = {
+        pygame.K_1: 0,
+        pygame.K_KP1: 0,
+        pygame.K_2: 1,
+        pygame.K_KP2: 1,
+        pygame.K_3: 2,
+        pygame.K_KP3: 2,
+        pygame.K_4: 3,
+        pygame.K_KP4: 3,
+        pygame.K_5: 4,
+        pygame.K_KP5: 4,
+        pygame.K_6: 5,
+        pygame.K_KP6: 5,
+        pygame.K_7: 6,
+        pygame.K_KP7: 6,
+        pygame.K_8: 7,
+        pygame.K_KP8: 7,
+        pygame.K_9: 8,
+        pygame.K_KP9: 8,
+    }
+    return key_map.get(event_key)
 
 
 def main():
@@ -67,9 +94,14 @@ def main():
 
     score = Score()
     score.set_score(0)
-    lives = float(config.STARTING_LIVES)
+    lives = float(max(1, int(config.STARTING_LIVES)))
+    game_state = "playing"
+    active_question: Question | None = None
+    question_manager = QuestionManager()
 
     hud = PlayerHUD(player_car, detector, font)
+    overlay_title_font = pygame.font.Font(None, max(40, config.FONT_SIZE * 2))
+    overlay_body_font = pygame.font.Font(None, max(30, config.FONT_SIZE + 10))
 
     running = True
 
@@ -84,6 +116,56 @@ def main():
     interval_decrement = 10  # ms to decrease interval every 5 seconds
     last_speedup = pygame.time.get_ticks()
 
+    def reset_run_state() -> None:
+        nonlocal lives
+        nonlocal current_gear
+        nonlocal boost_active, boost_end_time, boost_cooldown_end, prev_boosting
+        nonlocal out_of_control_until, oil_swerve_until, oil_swerve_started_at, oil_swerve_phase
+        nonlocal score_timer, score_interval, last_speedup
+        nonlocal game_state, active_question
+
+        lives = float(max(1, int(config.STARTING_LIVES)))
+        score.reset_score()
+        player_car.rect.center = (
+            WINDOW_SIZE["width"] // 2,
+            WINDOW_SIZE["height"] - 240,
+        )
+        player_car.current_speed = 0
+        player_car.velocity_x = 0
+        player_car.current_angle = 0.0
+        player_car.turn(0.0, 0.0)
+        game_map.clear_hazards()
+        current_gear = 1
+        boost_active = False
+        boost_end_time = 0
+        boost_cooldown_end = 0
+        prev_boosting = False
+        out_of_control_until = 0
+        oil_swerve_until = 0
+        oil_swerve_started_at = 0
+        oil_swerve_phase = 0.0
+        score_interval = 1000
+        score_timer = pygame.time.get_ticks()
+        last_speedup = pygame.time.get_ticks()
+        settings.visible = False
+        game_state = "playing"
+        active_question = None
+
+    def trigger_last_chance_question() -> None:
+        nonlocal game_state, active_question
+        game_state = "question"
+        active_question = question_manager.get_random_question()
+        settings.visible = False
+
+    def apply_collision_damage(damage: float = 1.0) -> None:
+        nonlocal lives
+        if game_state != "playing":
+            return
+        if lives <= 1.0:
+            trigger_last_chance_question()
+            return
+        lives = max(1.0, lives - float(damage))
+
     while running:
         is_breaking = False
         game_map.speed = settings.car_speed
@@ -93,6 +175,31 @@ def main():
         game_map.set_lane_count(settings.lane_count)
 
         for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                running = False
+                continue
+
+            if game_state == "question":
+                if event.type == pygame.KEYDOWN and active_question is not None:
+                    selected_answer = key_to_option_index(event.key)
+                    if selected_answer is not None and selected_answer < active_question.answer_count:
+                        if question_manager.validate_answer(active_question, selected_answer):
+                            lives = 1.0
+                            game_state = "playing"
+                            active_question = None
+                        else:
+                            game_state = "game_over"
+                            active_question = None
+                continue
+
+            if game_state == "game_over":
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    reset_run_state()
+                continue
+
             running, selected_setting, show_settings = settings.handle_event(
                 event,
                 running,
@@ -102,7 +209,7 @@ def main():
             )
             settings.visible = show_settings
 
-        if not settings.visible:
+        if game_state == "playing" and not settings.visible:
 
             detector.brake_threshold = settings.get_brake_threshold()
 
@@ -206,35 +313,11 @@ def main():
                 True,
                 collided=pygame.sprite.collide_mask,
             ):
-                # Stop all movement, but do not reset position
                 player_car.current_speed = 0
                 player_car.velocity_x = 0
                 if hasattr(player_car, 'velocity'):
                     player_car.velocity = 0
-                lives = max(0.0, lives - 1.0)
-
-                if lives <= 0:
-                    lives = float(config.STARTING_LIVES)
-                    score.reset_score()
-                    player_car.rect.center = (
-                        WINDOW_SIZE["width"] // 2,
-                        WINDOW_SIZE["height"] - 240,
-                    )
-                    player_car.current_speed = 0
-                    player_car.velocity_x = 0
-                    player_car.current_angle = 0.0
-                    player_car.turn(0.0, 0.0)
-                    game_map.clear_hazards()
-                    current_gear = 1
-                    boost_active = False
-                    boost_end_time = 0
-                    boost_cooldown_end = 0
-                    prev_boosting = False
-                    out_of_control_until = 0
-                    oil_swerve_until = 0
-                    oil_swerve_started_at = 0
-                    oil_swerve_phase = 0.0
-                    score_timer = pygame.time.get_ticks()
+                apply_collision_damage(1.0)
 
             crack_hits = pygame.sprite.spritecollide(
                 player_car,
@@ -247,30 +330,7 @@ def main():
                 player_car.current_speed = max(0.0, float(player_car.current_speed) * 0.5)
                 player_car.velocity_x *= 0.6
                 player_car.velocity_x = max(0.0, float(player_car.velocity_x) * 0.5)
-                lives = max(0.0, lives - (0.5 * len(crack_hits)))
-
-                if lives <= 0:
-                    lives = float(config.STARTING_LIVES)
-                    score.reset_score()
-                    player_car.rect.center = (
-                        WINDOW_SIZE["width"] // 2,
-                        WINDOW_SIZE["height"] - 240,
-                    )
-                    player_car.current_speed = 0
-                    player_car.velocity_x = 0
-                    player_car.current_angle = 0.0
-                    player_car.turn(0.0, 0.0)
-                    game_map.clear_hazards()
-                    current_gear = 1
-                    boost_active = False
-                    boost_end_time = 0
-                    boost_cooldown_end = 0
-                    prev_boosting = False
-                    out_of_control_until = 0
-                    oil_swerve_until = 0
-                    oil_swerve_started_at = 0
-                    oil_swerve_phase = 0.0
-                    score_timer = pygame.time.get_ticks()
+                apply_collision_damage(1.0)
 
             br_hits = pygame.sprite.spritecollide(
                 player_car,
@@ -295,32 +355,9 @@ def main():
                 )
 
             if br_hits:
-                lives = max(0.0, lives - 1.0)
                 player_car.current_speed = 0
                 player_car.velocity_x = 0
-
-                if lives <= 0:
-                    lives = float(config.STARTING_LIVES)
-                    score.reset_score()
-                    player_car.rect.center = (
-                        WINDOW_SIZE["width"] // 2,
-                        WINDOW_SIZE["height"] - 240,
-                    )
-                    player_car.current_speed = 0
-                    player_car.velocity_x = 0
-                    player_car.current_angle = 0.0
-                    player_car.turn(0.0, 0.0)
-                    game_map.clear_hazards()
-                    current_gear = 1
-                    boost_active = False
-                    boost_end_time = 0
-                    boost_cooldown_end = 0
-                    prev_boosting = False
-                    out_of_control_until = 0
-                    oil_swerve_until = 0
-                    oil_swerve_started_at = 0
-                    oil_swerve_phase = 0.0
-                    score_timer = pygame.time.get_ticks()
+                apply_collision_damage(1.0)
 
         # Drawing
         game_map.draw(screen)
@@ -354,23 +391,38 @@ def main():
                 screen, font, settings, selected_setting, config.SETTING_OPTIONS
             )
 
+        if game_state == "question" and active_question is not None:
+            draw_last_chance_overlay(
+                screen,
+                overlay_title_font,
+                overlay_body_font,
+                active_question,
+            )
+        elif game_state == "game_over":
+            draw_game_over_overlay(
+                screen,
+                overlay_title_font,
+                overlay_body_font,
+                score.get_score(),
+            )
+
         pygame.display.flip()
 
         # Scoring system: add 2 points every score_interval ms, speed up over time, 
         # but pause if breaking
         now = pygame.time.get_ticks()
-        if not is_breaking:
+        if game_state == "playing" and not is_breaking:
             if now - score_timer >= score_interval:
                 score.add_score(1 * round(player_car.current_speed / 2))
                 score_timer = now
 
         # Every 5 seconds, decrease interval (speed up scoring), but not below min_interval
-        if now - last_speedup >= 5000 and score_interval > min_interval:
+        if game_state == "playing" and now - last_speedup >= 5000 and score_interval > min_interval:
             score_interval = max(min_interval, score_interval - interval_decrement)
             last_speedup = now
 
         # Every 100 points, speed up scoring (decrease interval), but not below min_interval
-        if score.get_score() > 0 and score.get_score() % 100 == 0:
+        if game_state == "playing" and score.get_score() > 0 and score.get_score() % 100 == 0:
             score_interval = max(min_interval, score_interval - interval_decrement)
 
         # sa every 400 points, nag-add 1 to speed

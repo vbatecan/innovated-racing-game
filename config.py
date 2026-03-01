@@ -62,7 +62,29 @@ MAP_BORDER_OVERRIDES = {
 
 # Player life system
 STARTING_LIVES = 5
-MAX_HEARTS = 5
+MAX_HEARTS = STARTING_LIVES
+
+# Last-chance questions
+# True/False format: {"prompt": str, "answer": bool}
+TRUE_FALSE_QUESTIONS = [
+    {
+        "prompt": "Using seatbelts reduces injury risk in crashes.",
+        "answer": True,
+    },
+    {
+        "prompt": "It is safe to drive while texting if traffic is light.",
+        "answer": False,
+    },
+    {
+        "prompt": "Maintaining safe following distance helps prevent collisions.",
+        "answer": True,
+    },
+]
+
+# Multiple-choice format:
+# {"prompt": str, "options": [str, ...], "correct_index": int}
+# Keep empty if not used yet.
+MULTIPLE_CHOICE_QUESTIONS = []
 
 SETTING_OPTIONS = [
     "Car Speed",
