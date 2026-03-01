@@ -51,6 +51,8 @@ class Controller:
         self.swipe_down_detected = False
         self.question_select_requested = False
         self._prev_question_select_active = False
+        self._question_select_closed_frames = 0
+        self.question_select_required_frames = 3
         self._prev_right_hand_y = None
         self.swipe_threshold = 0.02
         self.require_two_hands = True
@@ -158,6 +160,7 @@ class Controller:
         self.swipe_down_detected = False
         self.question_select_requested = False
         self._prev_question_select_active = False
+        self._question_select_closed_frames = 0
         self._prev_right_hand_y = None
 
     def _resolve_left_right_hands(self):
@@ -222,10 +225,16 @@ class Controller:
 
     @staticmethod
     def _is_index_closed(hand_landmarks) -> bool:
-        """Detect if the index finger is bent/closed."""
+        """Detect a deliberate "index finger down" pose with stricter checks."""
         index_tip = hand_landmarks[8]
         index_pip = hand_landmarks[6]
-        return index_tip.y > (index_pip.y + 0.01)
+        index_mcp = hand_landmarks[5]
+
+        tip_below_pip = index_tip.y > (index_pip.y + 0.03)
+        tip_below_mcp = index_tip.y > (index_mcp.y + 0.05)
+        pip_below_mcp = index_pip.y > (index_mcp.y + 0.01)
+
+        return tip_below_pip and tip_below_mcp and pip_below_mcp
 
     def _update_shift_state(self, left_hand, right_hand) -> None:
         """
@@ -368,16 +377,26 @@ class Controller:
             self.swipe_down_detected = False
             self.question_select_requested = False
             self._prev_question_select_active = False
+            self._question_select_closed_frames = 0
             self._prev_right_hand_y = None
             return
 
         primary_hand = hands[0]
         self._detect_swipes(primary_hand)
         index_closed = any(self._is_index_closed(hand) for hand in hands)
-        self.question_select_requested = (
-            index_closed and not self._prev_question_select_active
+
+        if index_closed:
+            self._question_select_closed_frames += 1
+        else:
+            self._question_select_closed_frames = 0
+
+        select_active = (
+            self._question_select_closed_frames >= self.question_select_required_frames
         )
-        self._prev_question_select_active = index_closed
+        self.question_select_requested = (
+            select_active and not self._prev_question_select_active
+        )
+        self._prev_question_select_active = select_active
 
         self.steer = 0.0
         self.breaking = False
