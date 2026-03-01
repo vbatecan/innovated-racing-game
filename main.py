@@ -7,7 +7,7 @@ import pygame
 from pygame.key import ScancodeWrapper
 
 import config
-from models.vehicle import PlayerCar
+from models.player_car import PlayerCar
 from config import SHOW_CAMERA, WINDOW_SIZE
 from controller import Controller
 from environment.map import Map

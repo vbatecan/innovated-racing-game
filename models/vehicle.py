@@ -1,17 +1,16 @@
 import pygame
 
 import config
-from models.player_car import PlayerCar
 
 
 class Vehicle(pygame.sprite.Sprite):
     def __init__(
-        self,
-        start_x: int,
-        start_y: int,
-        width: int = 80,
-        height: int = 80,
-        image_path: str = "resources/car.png",
+            self,
+            start_x: int,
+            start_y: int,
+            width: int = 80,
+            height: int = 80,
+            image_path: str = "resources/car.png",
     ) -> None:
         """
         Create a generic vehicle sprite that can be reused by player/NPC classes.
@@ -38,20 +37,15 @@ class Vehicle(pygame.sprite.Sprite):
             smoothing: Smoothing factor for rotation (0 = instant, higher = smoother)
         """
         target_angle = -steer * config.TURN_STEER_SENS
-        
+
         if smoothing > 0:
             # Smooth interpolation towards target angle
             self.current_angle += (target_angle - self.current_angle) * smoothing
         else:
             # Instant turn (no smoothing)
             self.current_angle = target_angle
-        
+
         self.image = pygame.transform.rotate(self.original_image, self.current_angle)
         self.rect = self.image.get_rect(center=self.rect.center)
         self.mask = pygame.mask.from_surface(self.image)
         self.steer = self.current_angle
-
-
-
-# Backwards compatibility alias.
-Car = PlayerCar
