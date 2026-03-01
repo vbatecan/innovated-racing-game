@@ -25,13 +25,8 @@ class Crack(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self._y_pos = float(y)
 
-    def update(
-            self, map_speed: int, screen_height: int, is_braking: bool = False
-    ) -> None:
+    def update(self, map_speed: int, screen_height: int) -> None:
         """Move crack downward with map scroll and remove when off-screen."""
-        if is_braking:
-            return
-
         self._y_pos += max(1.0, float(map_speed))
         self.rect.y = int(self._y_pos)
         if self.rect.top > screen_height + self.rect.height:

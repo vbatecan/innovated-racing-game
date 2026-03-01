@@ -38,7 +38,10 @@ class PlayerCar(Vehicle):
         steering response, and keeps the car within the screen width.
         """
         if is_braking:
-            self.current_speed -= brake_strength
+            max_speed_ref = max(1.0, float(max_speed))
+            speed_ratio = max(0.0, min(1.0, self.current_speed / max_speed_ref))
+            dynamic_brake = float(brake_strength) * (0.35 + (0.65 * speed_ratio))
+            self.current_speed -= dynamic_brake
         else:
             self.current_speed += acceleration
 

@@ -51,7 +51,6 @@ class Obstacle(pygame.sprite.Sprite):
             self,
             player_speed: float,
             screen_height: int,
-            is_braking: bool = False,
     ) -> None:
         """
         Move the obstacle using relative speed and delete if off-screen.
@@ -62,9 +61,6 @@ class Obstacle(pygame.sprite.Sprite):
         Returns:
             None: Updates sprite position in place.
         """
-        if is_braking:
-            return
-
         # Blend player speed with per-vehicle traffic speed so traffic remains active
         # even at low player speed and scales up as gameplay gets faster.
         blended_speed = self.traffic_speed + (0.2 * float(player_speed))
