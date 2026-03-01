@@ -7,11 +7,11 @@ import pygame
 from pygame.key import ScancodeWrapper
 
 import config
-from car import PlayerCar
+from models.vehicle import PlayerCar
 from config import SHOW_CAMERA, WINDOW_SIZE
 from controller import Controller
 from environment.map import Map
-from score import Score
+from models.score import Score
 from settings import Settings
 from ui.hud import PlayerHUD
 

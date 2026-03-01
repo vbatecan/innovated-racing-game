@@ -5,7 +5,7 @@ import math
 
 import pygame
 
-from car import PlayerCar
+from models.vehicle import PlayerCar
 from controller import Controller
 
 
