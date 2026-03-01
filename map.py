@@ -182,6 +182,7 @@ class Road:
     ROAD_COLOR = (30, 30, 40)
     LINE_COLOR = (0, 255, 255)
     MARKER_COLOR = (255, 255, 0)
+    MAP_BLEND_WINDOW = 0.35
 
     def __init__(
         self,
@@ -220,6 +221,8 @@ class Road:
         self.bg_images = self._load_background_images()
         self.bg_y_offset = 0
         self.current_map_index = 0
+        self.next_map_index = 0
+        self.transition_alpha = 0
 
     def set_lane_count(self, lane_count: int) -> None:
         """
@@ -335,7 +338,7 @@ class Road:
 
     def set_map_by_score(self, score: int) -> None:
         """
-        Switch background map based on score (every 5000 points).
+        Set active/background blend maps based on score progression.
 
         Args:
             score (int): Current game score.
@@ -343,9 +346,21 @@ class Road:
         if not self.bg_images:
             return
 
-        # Calculate which map to show based on score (switch every 5000 points)
-        map_index = (score // config.MAP_SWITCH_SCORE) % len(self.bg_images)
+        switch_score = max(1, int(config.MAP_SWITCH_SCORE))
+        map_count = len(self.bg_images)
+        map_index = (score // switch_score) % map_count
+        cycle_progress = (score % switch_score) / float(switch_score)
+        blend_window = max(0.05, min(self.MAP_BLEND_WINDOW, 0.95))
+        blend_start = 1.0 - blend_window
+
         self.current_map_index = map_index
+        if cycle_progress >= blend_start:
+            blend_progress = (cycle_progress - blend_start) / blend_window
+            self.next_map_index = (map_index + 1) % map_count
+            self.transition_alpha = int(max(0.0, min(1.0, blend_progress)) * 255)
+        else:
+            self.next_map_index = map_index
+            self.transition_alpha = 0
 
     def draw_background(self, surface: pygame.Surface) -> None:
         """
@@ -365,6 +380,17 @@ class Road:
             y2 = self.bg_y_offset - self.height
             surface.blit(current_bg, (0, y1))
             surface.blit(current_bg, (0, y2))
+
+            if (
+                self.transition_alpha > 0
+                and 0 <= self.next_map_index < len(self.bg_images)
+                and self.next_map_index != self.current_map_index
+            ):
+                next_bg = self.bg_images[self.next_map_index]
+                next_bg_blended = next_bg.copy()
+                next_bg_blended.set_alpha(self.transition_alpha)
+                surface.blit(next_bg_blended, (0, y1))
+                surface.blit(next_bg_blended, (0, y2))
         else:
             # Fallback to solid colors if no images loaded
             surface.fill(self.BG_COLOR)
