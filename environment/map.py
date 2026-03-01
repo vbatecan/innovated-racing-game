@@ -113,21 +113,18 @@ class Map:
         Returns:
             None: Mutates map scroll and obstacle state.
         """
-        freeze_barriers = is_braking
+        _ = is_braking
+        effective_speed = max(0.0, float(self.speed))
 
-        barrier_speed = 0 if freeze_barriers else self.speed
-        obstacle_speed = 0 if is_braking else self.speed
+        self.scroll_y += effective_speed
+        if self.scroll_y >= self.road.total_marker_segment:
+            self.scroll_y -= self.road.total_marker_segment
+        self.road.update_background_scroll(effective_speed)
 
-        if not freeze_barriers:
-            self.scroll_y += barrier_speed
-            if self.scroll_y >= self.road.total_marker_segment:
-                self.scroll_y -= self.road.total_marker_segment
-            self.road.update_background_scroll(barrier_speed)
-
-        self.crack_manager.update(barrier_speed, is_braking=freeze_barriers)
-        self.br_manager.update(barrier_speed, is_braking=freeze_barriers)
-        self.oil_spill_manager.update(barrier_speed, is_braking=freeze_barriers)
-        self.obstacle_manager.update(obstacle_speed, is_braking=is_braking)
+        self.crack_manager.update(effective_speed)
+        self.br_manager.update(effective_speed)
+        self.oil_spill_manager.update(effective_speed)
+        self.obstacle_manager.update(effective_speed)
 
     def draw(self, surface: pygame.Surface) -> None:
         """

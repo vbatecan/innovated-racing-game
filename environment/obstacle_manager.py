@@ -214,7 +214,7 @@ class ObstacleManager:
         )
         self.obstacles.add(obstacle)
 
-    def update(self, speed: int, is_braking: bool = False) -> None:
+    def update(self, speed: int) -> None:
         """
         Advance timers, spawn obstacles, and update active obstacle movement.
 
@@ -225,12 +225,12 @@ class ObstacleManager:
             None: Mutates obstacle state and sprite group membership.
         """
         self.timer += 1
-        if not is_braking and self.timer >= self.spawn_frequency:
+        if self.timer >= self.spawn_frequency:
             self.timer = 0
             if len(self.obstacles) < self.max_obstacles:
                 self._spawn_obstacle(speed)
 
-        self.obstacles.update(speed, self.road.height, is_braking)
+        self.obstacles.update(speed, self.road.height)
 
     def draw(self, surface: pygame.Surface) -> None:
         """

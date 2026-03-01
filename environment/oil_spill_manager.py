@@ -114,15 +114,14 @@ class OilSpillManager:
         oil_spill = OilSpill(spawn_x, spawn_y, oil_width, oil_height, image=oil_image)
         self.oil_spills.add(oil_spill)
 
-    def update(self, map_speed: int, is_braking: bool = False) -> None:
-        if not is_braking:
-            self.timer += 1
-            if self.timer >= self.spawn_frequency:
-                self.timer = 0
-                if len(self.oil_spills) < self.max_oil_spills:
-                    self._spawn_oil_spill()
+    def update(self, map_speed: int) -> None:
+        self.timer += 1
+        if self.timer >= self.spawn_frequency:
+            self.timer = 0
+            if len(self.oil_spills) < self.max_oil_spills:
+                self._spawn_oil_spill()
 
-        self.oil_spills.update(map_speed, self.road.height, is_braking)
+        self.oil_spills.update(map_speed, self.road.height)
 
     def draw(self, surface: pygame.Surface) -> None:
         self.oil_spills.draw(surface)

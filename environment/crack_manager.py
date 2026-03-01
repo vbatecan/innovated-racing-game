@@ -85,15 +85,14 @@ class CrackManager:
         crack = Crack(spawn_x, spawn_y, crack_width, crack_height, image=crack_image)
         self.cracks.add(crack)
 
-    def update(self, map_speed: int, is_braking: bool = False) -> None:
-        if not is_braking:
-            self.timer += 1
-            if self.timer >= self.spawn_frequency:
-                self.timer = 0
-                if len(self.cracks) < self.max_cracks:
-                    self._spawn_crack()
+    def update(self, map_speed: int) -> None:
+        self.timer += 1
+        if self.timer >= self.spawn_frequency:
+            self.timer = 0
+            if len(self.cracks) < self.max_cracks:
+                self._spawn_crack()
 
-        self.cracks.update(map_speed, self.road.height, is_braking)
+        self.cracks.update(map_speed, self.road.height)
 
     def draw(self, surface: pygame.Surface) -> None:
         self.cracks.draw(surface)

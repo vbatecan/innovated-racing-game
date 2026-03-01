@@ -116,15 +116,14 @@ class BRManager:
         br = BRHazard(spawn_x, spawn_y, br_width, br_height, image=br_image)
         self.brs.add(br)
 
-    def update(self, map_speed: int, is_braking: bool = False) -> None:
-        if not is_braking:
-            self.timer += 1
-            if self.timer >= self.spawn_frequency:
-                self.timer = 0
-                if len(self.brs) < self.max_brs:
-                    self._spawn_br()
+    def update(self, map_speed: int) -> None:
+        self.timer += 1
+        if self.timer >= self.spawn_frequency:
+            self.timer = 0
+            if len(self.brs) < self.max_brs:
+                self._spawn_br()
 
-        self.brs.update(map_speed, self.road.height, is_braking)
+        self.brs.update(map_speed, self.road.height)
 
     def draw(self, surface: pygame.Surface) -> None:
         self.brs.draw(surface)
