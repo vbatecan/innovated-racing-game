@@ -13,7 +13,6 @@ except ImportError:
 
 @dataclass(frozen=True)
 class Lane:
-    """Immutable lane segment defined by horizontal boundaries."""
 
     index: int
     left: int
@@ -21,7 +20,6 @@ class Lane:
 
     @property
     def width(self) -> int:
-        """Return the pixel width of the lane."""
         return max(1, self.right - self.left)
 
 
@@ -36,18 +34,6 @@ class Obstacle(pygame.sprite.Sprite):
         image: pygame.Surface | None = None,
         traffic_speed: float = 0.0,
     ):
-        """
-        Create an obstacle sprite.
-
-        Args:
-            x (int): Initial X position (left) of the obstacle sprite.
-            y (int): Initial Y position (top) of the obstacle sprite.
-            width (int): Obstacle width in pixels.
-            height (int): Obstacle height in pixels.
-            speed (int): Initial vertical movement speed per frame.
-            image (pygame.Surface | None): Optional pre-built obstacle image.
-            traffic_speed (float): World traffic speed used for relative movement.
-        """
         super().__init__()
         if image is None:
             self.image = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -74,15 +60,6 @@ class Obstacle(pygame.sprite.Sprite):
         screen_height: int,
         is_braking: bool = False,
     ) -> None:
-        """
-        Move the obstacle using relative speed and delete if off-screen.
-
-        The traffic vehicle's screen speed is computed from:
-        `player_speed - traffic_speed`.
-
-        Returns:
-            None: Updates sprite position in place.
-        """
         blended_speed = self.traffic_speed + (0.2 * float(player_speed))
         self.speed = max(1.0, min(24.0, blended_speed))
         target_direction = -1.0 if is_braking else 1.0
@@ -98,7 +75,6 @@ class Obstacle(pygame.sprite.Sprite):
 
 
 class Crack(pygame.sprite.Sprite):
-    """Road crack hazard that scrolls toward the player."""
 
     def __init__(
         self,
@@ -125,7 +101,6 @@ class Crack(pygame.sprite.Sprite):
     def update(
         self, map_speed: int, screen_height: int, is_braking: bool = False
     ) -> None:
-        """Move crack downward with map scroll and remove when off-screen."""
         if is_braking:
             return
 
@@ -136,7 +111,6 @@ class Crack(pygame.sprite.Sprite):
 
 
 class BRHazard(pygame.sprite.Sprite):
-    """BR hazard that scrolls toward the player."""
 
     def __init__(
         self,
@@ -175,7 +149,6 @@ class BRHazard(pygame.sprite.Sprite):
 
 
 class Road:
-    """Road geometry and rendering for lane-based driving."""
 
     BG_COLOR = (20, 20, 30)
     ROAD_COLOR = (30, 30, 40)
@@ -192,17 +165,6 @@ class Road:
         marker_gap: int = 50,
         marker_width: int = 10,
     ):
-        """
-        Build a centered road model with configurable lane and marker sizes.
-
-        Args:
-            window_size (dict[str, int]): Screen dimensions with `width` and `height`.
-            road_width (int): Total road width in pixels.
-            lane_count (int): Initial number of lanes.
-            marker_height (int): Height of each dashed lane marker.
-            marker_gap (int): Vertical gap between lane markers.
-            marker_width (int): Width of each lane marker.
-        """
         self.window_width = window_size["width"]
         self.height = window_size["height"]
         self.width = road_width
@@ -223,38 +185,14 @@ class Road:
         self.transition_alpha = 0
 
     def set_lane_count(self, lane_count: int) -> None:
-        """
-        Clamp and apply the active number of lanes.
-
-        Args:
-            lane_count (int): Requested lane count.
-
-        Returns:
-            None: Mutates the current road lane configuration.
-        """
         self.lane_count = max(
             config.MIN_LANE_COUNT, min(int(lane_count), config.MAX_LANE_COUNT)
         )
 
     def lane_width(self) -> float:
-        """
-        Return the width of one lane in pixels.
-
-        Returns:
-            float: Width of a single lane.
-        """
         return self.width / float(self.lane_count)
 
     def get_lane(self, lane_index: int) -> Lane:
-        """
-        Return lane boundaries for a specific lane index.
-
-        Args:
-            lane_index (int): Zero-based lane index.
-
-        Returns:
-            Lane: Lane object with clamped index and boundaries.
-        """
         clamped_index = max(0, min(lane_index, self.lane_count - 1))
         lane_w = self.lane_width()
         left = int(self.x + clamped_index * lane_w)
@@ -264,25 +202,9 @@ class Road:
         return Lane(index=clamped_index, left=left, right=right)
 
     def random_lane(self) -> Lane:
-        """
-        Pick and return a random lane.
-
-        Returns:
-            Lane: Randomly selected lane.
-        """
         return self.get_lane(random.randrange(self.lane_count))
 
     def random_lane_spawn_x(self, obstacle_width: int, min_padding: int = 10) -> int:
-        """
-        Compute a valid obstacle spawn X within a random lane.
-
-        Args:
-            obstacle_width (int): Width of the obstacle being spawned.
-            min_padding (int): Minimum horizontal inset from lane boundaries.
-
-        Returns:
-            int: Valid obstacle X position inside the chosen lane.
-        """
         lane = self.random_lane()
         lane_padding = min(min_padding, max(0, (lane.width - obstacle_width) // 2))
         max_left = lane.right - obstacle_width - lane_padding
@@ -292,12 +214,6 @@ class Road:
         return random.randint(min_left, max_left)
 
     def _load_background_images(self) -> list[pygame.Surface]:
-        """
-        Load background map images from resources/models/maps/.
-
-        Returns:
-            list[pygame.Surface]: List of loaded and scaled background images.
-        """
         bg_images = []
         map_paths = [
             Path("resources/models/maps/city_roadfinal.png"),
@@ -323,7 +239,6 @@ class Road:
 
     @staticmethod
     def _suppress_road_markings(image: pygame.Surface) -> pygame.Surface:
-        """Reduce bright painted lane markings baked into map textures."""
         if np is None:
             return image
 
@@ -340,24 +255,12 @@ class Road:
         return pygame.surfarray.make_surface(rgb)
 
     def update_background_scroll(self, speed: int) -> None:
-        """
-        Update the background image scroll offset.
-
-        Args:
-            speed (int): Current map speed.
-        """
         if self.bg_images:
             self.bg_y_offset += speed
             if self.bg_y_offset >= self.height:
                 self.bg_y_offset -= self.height
 
     def set_map_by_score(self, score: int) -> None:
-        """
-        Set active/background blend maps based on score progression.
-
-        Args:
-            score (int): Current game score.
-        """
         if not self.bg_images:
             return
 
@@ -378,15 +281,6 @@ class Road:
             self.transition_alpha = 0
 
     def draw_background(self, surface: pygame.Surface) -> None:
-        """
-        Render the background and asphalt road body.
-
-        Args:
-            surface (pygame.Surface): Target drawing surface.
-
-        Returns:
-            None: Draws directly to `surface`.
-        """
         if self.bg_images and 0 <= self.current_map_index < len(self.bg_images):
             current_bg = self.bg_images[self.current_map_index]
             y1 = self.bg_y_offset
@@ -411,16 +305,6 @@ class Road:
             )
 
     def draw_lane_markers(self, surface: pygame.Surface, scroll_y: int) -> None:
-        """
-        Draw animated dashed lane separators based on scroll offset.
-
-        Args:
-            surface (pygame.Surface): Target drawing surface.
-            scroll_y (int): Current vertical scroll offset for animation.
-
-        Returns:
-            None: Draws directly to `surface`.
-        """
         start_y = -self.total_marker_segment + scroll_y
         for lane_boundary in range(1, self.lane_count):
             lane_x = int(self.x + lane_boundary * self.lane_width())
@@ -435,15 +319,6 @@ class Road:
                 marker_y += self.total_marker_segment
 
     def draw_borders(self, surface: pygame.Surface) -> None:
-        """
-        Draw left and right road boundary lines.
-
-        Args:
-            surface (pygame.Surface): Target drawing surface.
-
-        Returns:
-            None: Draws directly to `surface`.
-        """
         pygame.draw.line(
             surface, self.LINE_COLOR, (self.x, 0), (self.x, self.height), 5
         )
@@ -456,17 +331,10 @@ class Road:
         )
 
     def get_borders(self) -> tuple[int, int]:
-        """
-        Return the absolute X positions of the road borders.
-
-        Returns:
-            tuple[int, int]: `(left_x, right_x)` border positions.
-        """
         return self.x, self.x + self.width
 
 
 class ObstacleManager:
-    """Spawn, update, and render road obstacles."""
 
     def __init__(
         self,
@@ -475,15 +343,6 @@ class ObstacleManager:
         max_obstacles: int = 3,
         obstacle_size: tuple[int, int] = (30, 30),
     ):
-        """
-        Initialize obstacle spawning limits and sprite storage.
-
-        Args:
-            road (Road): Road geometry used for lane-based spawns.
-            spawn_frequency (int): Frames between spawn attempts.
-            max_obstacles (int): Maximum simultaneous active obstacles.
-            obstacle_size (tuple[int, int]): Obstacle `(width, height)` in pixels.
-        """
         self.road = road
         self.max_obstacles = max_obstacles
         self.obstacle_width, self.obstacle_height = obstacle_size
@@ -496,11 +355,9 @@ class ObstacleManager:
         self.blocking_groups: list[pygame.sprite.Group] = []
 
     def set_blocking_groups(self, groups: list[pygame.sprite.Group]) -> None:
-        """Set sprite groups that obstacle spawns must avoid overlapping."""
         self.blocking_groups = groups
 
     def _load_obstacle_models(self) -> list[pygame.Surface]:
-        """Load top-level obstacle model PNGs from resources/models."""
         if not self.model_dir.exists():
             return []
 
@@ -516,15 +373,6 @@ class ObstacleManager:
         return models
 
     def _get_random_obstacle_image(self, lane: Lane) -> pygame.Surface | None:
-        """
-        Return a random obstacle model scaled to fit the target lane.
-
-        Args:
-            lane (Lane): Target lane where the obstacle will spawn.
-
-        Returns:
-            pygame.Surface | None: Scaled model image, or None if unavailable.
-        """
         if not self.obstacle_models:
             return None
 
@@ -559,7 +407,6 @@ class ObstacleManager:
 
     @staticmethod
     def _lane_spawn_x(lane: Lane, obstacle_width: int, min_padding: int = 10) -> int:
-        """Return a valid spawn X for an obstacle inside the specified lane."""
         lane_padding = min(min_padding, max(0, (lane.width - obstacle_width) // 2))
         max_left = lane.right - obstacle_width - lane_padding
         min_left = lane.left + lane_padding
@@ -568,38 +415,14 @@ class ObstacleManager:
         return random.randint(min_left, max_left)
 
     def set_spawn_frequency(self, frequency: int) -> None:
-        """
-        Set obstacle spawn interval in frames, clamped to at least one frame.
-
-        Args:
-            frequency (int): Frames between spawn attempts.
-
-        Returns:
-            None: Updates the internal spawn timer interval.
-        """
         self.spawn_frequency = max(1, int(frequency))
 
     @staticmethod
     def _sample_traffic_speed(player_speed: int) -> float:
-        """
-        Generate a per-vehicle traffic speed in world units.
-
-        The spawned vehicle initially approaches the player by at least one
-        pixel/frame so traffic always appears active on-screen.
-        """
         _ = player_speed
         return random.uniform(0.5, 2.5)
 
     def _spawn_obstacle(self, speed: int) -> None:
-        """
-        Create one obstacle at the top of a random lane.
-
-        Args:
-            speed (int): Current player/map speed used to derive traffic speed.
-
-        Returns:
-            None: Adds a new obstacle sprite to the managed group.
-        """
         max_attempts = 10
         for _ in range(max_attempts):
             lane = self.road.get_lane(self.road.lane_count // 2)
@@ -663,15 +486,6 @@ class ObstacleManager:
         self.obstacles.add(obstacle)
 
     def update(self, speed: int, is_braking: bool = False) -> None:
-        """
-        Advance timers, spawn obstacles, and update active obstacle movement.
-
-        Args:
-            speed (int): Current map speed applied to all active obstacles.
-
-        Returns:
-            None: Mutates obstacle state and sprite group membership.
-        """
         self.timer += 1
         if not is_braking and self.timer >= self.spawn_frequency:
             self.timer = 0
@@ -681,20 +495,10 @@ class ObstacleManager:
         self.obstacles.update(speed, self.road.height, is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
-        """
-        Draw all active obstacle sprites.
-
-        Args:
-            surface (pygame.Surface): Target drawing surface.
-
-        Returns:
-            None: Draws directly to `surface`.
-        """
         self.obstacles.draw(surface)
 
 
 class CrackManager:
-    """Spawn, update, and render low-volume road crack hazards."""
 
     def __init__(
         self,
@@ -712,7 +516,6 @@ class CrackManager:
         self.model_scale_cache: dict[tuple[int, int], pygame.Surface] = {}
 
     def _load_crack_models(self) -> list[pygame.Surface]:
-        """Load crack sprites from the obstacle resource directory."""
         if not self.model_dir.exists():
             return []
 
@@ -780,7 +583,6 @@ class CrackManager:
 
 
 class BRManager:
-    """Spawn, update, and render BR hazards with a strict on-screen cap."""
 
     def __init__(
         self,
@@ -799,7 +601,6 @@ class BRManager:
         self.blocking_groups: list[pygame.sprite.Group] = []
 
     def set_blocking_groups(self, groups: list[pygame.sprite.Group]) -> None:
-        """Set sprite groups that BR spawns must avoid overlapping."""
         self.blocking_groups = groups
 
     def _load_br_models(self) -> list[pygame.Surface]:
@@ -900,13 +701,6 @@ class Map:
     def __init__(
         self, window_size: dict[str, int], lane_count: int = config.LANE_COUNT
     ):
-        """
-        Initialize the scrolling road and obstacle system.
-
-        Args:
-            window_size (dict[str, int]): Screen dimensions with `width` and `height`.
-            lane_count (int): Initial lane count used by the road.
-        """
         self.width = window_size["width"]
         self.height = window_size["height"]
         self.speed = 1
@@ -922,76 +716,32 @@ class Map:
 
     @property
     def obstacles(self) -> pygame.sprite.Group:
-        """
-        Expose obstacle sprites for collision checks.
-
-        Returns:
-            pygame.sprite.Group: Active obstacle sprites.
-        """
         return self.obstacle_manager.obstacles
 
     @property
     def obstacle_frequency(self) -> int:
-        """
-        Get the current obstacle spawn frequency in frames.
-
-        Returns:
-            int: Spawn interval in frames.
-        """
         return self.obstacle_manager.spawn_frequency
 
     @obstacle_frequency.setter
     def obstacle_frequency(self, value: int) -> None:
-        """
-        Set obstacle spawn frequency in frames.
-
-        Args:
-            value (int): Frames between spawn attempts.
-
-        Returns:
-            None: Updates obstacle manager frequency.
-        """
         self.obstacle_manager.set_spawn_frequency(value)
 
     @property
     def cracks(self) -> pygame.sprite.Group:
-        """Expose crack hazard sprites for collision checks."""
         return self.crack_manager.cracks
 
     @property
     def brs(self) -> pygame.sprite.Group:
-        """Expose BR hazard sprites for collision checks."""
         return self.br_manager.brs
 
     def set_lane_count(self, lane_count: int) -> None:
-        """
-        Apply a new runtime lane count to the road model.
-
-        Args:
-            lane_count (int): Requested lane count.
-
-        Returns:
-            None: Mutates road lane configuration.
-        """
         self.road.set_lane_count(lane_count)
 
     def update_score(self, score: int) -> None:
-        """
-        Update the current score and switch maps if needed.
-
-        Args:
-            score (int): Current game score.
-        """
         self.current_score = score
         self.road.set_map_by_score(score)
 
     def update(self, is_braking: bool = False) -> None:
-        """
-        Advance the road scroll and update obstacles.
-
-        Returns:
-            None: Mutates map scroll and obstacle state.
-        """
         self.scroll_y += self.speed
         if self.scroll_y >= self.road.total_marker_segment:
             self.scroll_y -= self.road.total_marker_segment
@@ -1001,31 +751,15 @@ class Map:
         self.obstacle_manager.update(self.speed, is_braking=is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
-        """
-        Draw the map background and hazards to the surface.
-
-        Args:
-            surface (pygame.Surface): Target drawing surface.
-
-        Returns:
-            None: Draws directly to `surface`.
-        """
         self.road.draw_background(surface)
         self.crack_manager.draw(surface)
         self.br_manager.draw(surface)
         self.obstacle_manager.draw(surface)
 
     def clear_hazards(self) -> None:
-        """Remove all active hazards from the map."""
         self.obstacles.empty()
         self.cracks.empty()
         self.brs.empty()
 
     def get_road_borders(self) -> tuple[int, int]:
-        """
-        Return the left and right x-coordinates of the road.
-
-        Returns:
-            tuple[int, int]: `(left_x, right_x)` road boundaries.
-        """
         return self.road.get_borders()
