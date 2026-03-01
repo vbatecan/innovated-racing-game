@@ -5,6 +5,7 @@ import math
 
 import pygame
 
+import config
 from models.player_car import PlayerCar
 from controller import Controller
 
@@ -187,7 +188,7 @@ class PlayerHUD:
         if self.lives is None:
             return
 
-        max_hearts = 5
+        max_hearts = config.MAX_HEARTS
         clamped_lives = max(0.0, min(float(max_hearts), float(self.lives)))
         full_hearts = int(clamped_lives)
         has_half = (clamped_lives - full_hearts) >= 0.5

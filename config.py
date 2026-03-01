@@ -43,6 +43,7 @@ MAP_SWITCH_SCORE = 500
 
 # Player life system
 STARTING_LIVES = 5
+MAX_HEARTS = 5
 
 SETTING_OPTIONS = [
     "Car Speed",
