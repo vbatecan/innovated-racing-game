@@ -122,7 +122,6 @@ class Map:
             None: Draws directly to `surface`.
         """
         self.road.draw_background(surface)
-        self.road.draw_lane_markers(surface, self.scroll_y)
         self.crack_manager.draw(surface)
         self.br_manager.draw(surface)
         self.obstacle_manager.draw(surface)

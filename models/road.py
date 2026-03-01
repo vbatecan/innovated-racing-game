@@ -16,13 +16,13 @@ class Road:
     MARKER_COLOR = (255, 255, 0)
 
     def __init__(
-            self,
-            window_size: dict[str, int],
-            road_width: int,
-            lane_count: int,
-            marker_height: int = 50,
-            marker_gap: int = 50,
-            marker_width: int = 10,
+        self,
+        window_size: dict[str, int],
+        road_width: int,
+        lane_count: int,
+        marker_height: int = 50,
+        marker_gap: int = 50,
+        marker_width: int = 10,
     ):
         """
         Build a centered road model with configurable lane and marker sizes.
@@ -204,30 +204,6 @@ class Road:
                 surface, self.ROAD_COLOR, (self.x, 0, self.width, self.height)
             )
 
-    def draw_lane_markers(self, surface: pygame.Surface, scroll_y: int) -> None:
-        """
-        Draw animated dashed lane separators based on scroll offset.
-
-        Args:
-            surface (pygame.Surface): Target drawing surface.
-            scroll_y (int): Current vertical scroll offset for animation.
-
-        Returns:
-            None: Draws directly to `surface`.
-        """
-        start_y = -self.total_marker_segment + scroll_y
-        for lane_boundary in range(1, self.lane_count):
-            lane_x = int(self.x + lane_boundary * self.lane_width())
-            marker_x = lane_x - self.marker_width // 2
-            marker_y = start_y
-            while marker_y < self.height:
-                pygame.draw.rect(
-                    surface,
-                    self.MARKER_COLOR,
-                    (marker_x, marker_y, self.marker_width, self.marker_height),
-                )
-                marker_y += self.total_marker_segment
-
     def draw_borders(self, surface: pygame.Surface) -> None:
         """
         Draw left and right road boundary lines.
@@ -238,15 +214,23 @@ class Road:
         Returns:
             None: Draws directly to `surface`.
         """
+
+        # Kanan
         pygame.draw.line(
-            surface, self.LINE_COLOR, (self.x, 0), (self.x, self.height), 5
+            surface,
+            self.LINE_COLOR,
+            (self.x, 0),
+            (self.x, self.height),
+            config.ROAD_LINE_BORDER_WIDTH,
         )
+
+        # Kaliwa
         pygame.draw.line(
             surface,
             self.LINE_COLOR,
             (self.x + self.width, 0),
             (self.x + self.width, self.height),
-            5,
+            config.ROAD_LINE_BORDER_WIDTH,
         )
 
     def get_borders(self) -> tuple[int, int]:
