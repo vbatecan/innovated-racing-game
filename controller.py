@@ -23,32 +23,6 @@ class Controller:
     derives control states from gestures, and exposes the latest annotated frame.
     """
 
-    HAND_CONNECTIONS = (
-        (0, 1),
-        (1, 2),
-        (2, 3),
-        (3, 4),
-        (0, 5),
-        (5, 6),
-        (6, 7),
-        (7, 8),
-        (0, 9),
-        (9, 10),
-        (10, 11),
-        (11, 12),
-        (0, 13),
-        (13, 14),
-        (14, 15),
-        (15, 16),
-        (0, 17),
-        (17, 18),
-        (18, 19),
-        (19, 20),
-        (5, 9),
-        (9, 13),
-        (13, 17),
-    )
-
     def __init__(self):
         """
         Initialize camera control and hand tracking state.
@@ -66,7 +40,7 @@ class Controller:
         self.annotated_frame = None
         self.lock = threading.Lock()
         self.thread: Thread | None = None
-        self.boosting = False  # Ensure boosting attribute always exists
+        self.boosting = False
         self.shift_up_requested = False
         self.shift_down_requested = False
         self.left_shift_active = False
@@ -158,7 +132,7 @@ class Controller:
         """
         Reset all derived control outputs to neutral defaults.
 
-        This is used when two valid hands are not available so gameplay logic
+        This is used when two valid hands are not available, so gameplay logic
         does not keep stale steering/gesture states.
         """
         self.steer = 0.0
@@ -261,10 +235,10 @@ class Controller:
         self.left_shift_active = self._is_index_only(left_hand)
         self.right_shift_active = self._is_index_only(right_hand)
         self.shift_down_requested = (
-            self.left_shift_active and not self._prev_left_shift_active
+                self.left_shift_active and not self._prev_left_shift_active
         )
         self.shift_up_requested = (
-            self.right_shift_active and not self._prev_right_shift_active
+                self.right_shift_active and not self._prev_right_shift_active
         )
         self._prev_left_shift_active = self.left_shift_active
         self._prev_right_shift_active = self.right_shift_active
@@ -333,7 +307,7 @@ class Controller:
             2,
         )
         for hand_landmarks in self.latest_result.hand_landmarks:
-            for a, b in self.HAND_CONNECTIONS:
+            for a, b in config.HAND_CONNECTIONS:
                 la = hand_landmarks[a]
                 lb = hand_landmarks[b]
                 ax, ay = int(la.x * w), int(la.y * h)
