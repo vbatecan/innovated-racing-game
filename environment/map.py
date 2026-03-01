@@ -24,6 +24,7 @@ class Map:
         self.speed = 1
         self.scroll_y = 0
         self.current_score = 0
+        self._brake_freeze_until = 0
 
         self.road = Road(window_size, config.ROAD_SIZE["width"], lane_count=lane_count)
         self.obstacle_manager = ObstacleManager(self.road)
@@ -113,18 +114,23 @@ class Map:
         Returns:
             None: Mutates map scroll and obstacle state.
         """
-        effective_speed = 0 if is_braking else self.speed
+        now = pygame.time.get_ticks()
+        if is_braking:
+            self._brake_freeze_until = now + max(0, int(config.BRAKE_HAZARD_FREEZE_MS))
+        freeze_hazards = is_braking or now < self._brake_freeze_until
 
-        if not is_braking:
+        effective_speed = 0 if freeze_hazards else self.speed
+
+        if not freeze_hazards:
             self.scroll_y += effective_speed
             if self.scroll_y >= self.road.total_marker_segment:
                 self.scroll_y -= self.road.total_marker_segment
             self.road.update_background_scroll(effective_speed)
 
-        self.crack_manager.update(effective_speed, is_braking=is_braking)
-        self.br_manager.update(effective_speed, is_braking=is_braking)
-        self.oil_spill_manager.update(effective_speed, is_braking=is_braking)
-        self.obstacle_manager.update(effective_speed, is_braking=is_braking)
+        self.crack_manager.update(effective_speed, is_braking=freeze_hazards)
+        self.br_manager.update(effective_speed, is_braking=freeze_hazards)
+        self.oil_spill_manager.update(effective_speed, is_braking=freeze_hazards)
+        self.obstacle_manager.update(effective_speed, is_braking=freeze_hazards)
 
     def draw(self, surface: pygame.Surface) -> None:
         """
