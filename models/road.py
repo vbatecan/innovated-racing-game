@@ -4,7 +4,7 @@ from pathlib import Path
 import pygame
 
 import config
-from environment.models.lane import Lane
+from models.lane import Lane
 
 
 class Road:
