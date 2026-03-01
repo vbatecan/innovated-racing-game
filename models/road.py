@@ -336,6 +336,37 @@ class Road:
                 area=pygame.Rect(0, src_top, self.window_width, blit_height),
             )
 
+    def _draw_seam_gradient(
+        self,
+        surface: pygame.Surface,
+        seam_y: int,
+        gradient_height: int = 64,
+        max_alpha: int = 70,
+    ) -> None:
+        half = max(1, int(gradient_height) // 2)
+        center = int(seam_y)
+        top = max(0, center - half)
+        bottom = min(self.height, center + half)
+
+        if bottom <= top:
+            return
+
+        band_height = bottom - top
+        overlay = pygame.Surface((self.window_width, band_height), pygame.SRCALPHA)
+        for y in range(band_height):
+            distance = abs((top + y) - center)
+            blend = max(0.0, 1.0 - (distance / float(half)))
+            alpha = int(max_alpha * blend)
+            if alpha > 0:
+                pygame.draw.line(
+                    overlay,
+                    (0, 0, 0, alpha),
+                    (0, y),
+                    (self.window_width, y),
+                )
+
+        surface.blit(overlay, (0, top))
+
     def draw_background(self, surface: pygame.Surface) -> None:
         """
         Render the background and asphalt road body.
@@ -364,6 +395,7 @@ class Road:
                 self._draw_scrolling_background_range(
                     surface, from_bg, seam_y, self.height
                 )
+                self._draw_seam_gradient(surface, seam_y)
             else:
                 current_bg = self.bg_images[self.current_map_index]
                 self._draw_scrolling_background(surface, current_bg)
