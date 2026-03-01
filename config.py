@@ -48,7 +48,18 @@ OIL_SWERVE_FREQUENCY = 0.5
 
 # Maps
 MAP_SWITCH_SCORE = 500
-ROAD_LINE_BORDER_WIDTH = 0
+ROAD_LINE_BORDER_WIDTH = 5
+MAP_BORDER_OVERRIDES = {
+    # Optional keys per map:
+    # - left / right: absolute x-pixel border positions
+    # - left_ratio / right_ratio: border positions as 0.0..1.0 of screen width
+    #
+    # Example:
+    # "city_roadfinal.png": {"left_ratio": 0.34, "right_ratio": 0.66},
+    "city_roadfinal.png": {"left_ratio": 0.37, "right_ratio": 0.63},
+    "desert.png": {"left_ratio": 0.25, "right_ratio": 0.75},
+    "highway.png": {"left_ratio": 0.25, "right_ratio": 0.75},
+}
 
 # Player life system
 STARTING_LIVES = 5

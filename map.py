@@ -1,6 +1,7 @@
 import random
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import config
 import pygame
@@ -167,8 +168,10 @@ class Road:
     ):
         self.window_width = window_size["width"]
         self.height = window_size["height"]
-        self.width = road_width
-        self.x = (self.window_width - self.width) // 2
+        self.default_width = road_width
+        self.default_x = (self.window_width - self.default_width) // 2
+        self.width = self.default_width
+        self.x = self.default_x
 
         self.marker_height = marker_height
         self.marker_gap = marker_gap
@@ -178,11 +181,55 @@ class Road:
         self.lane_count = 1
         self.set_lane_count(lane_count)
 
+        self.map_border_bounds: list[tuple[int, int]] = []
         self.bg_images = self._load_background_images()
         self.bg_y_offset = 0
         self.current_map_index = 0
         self.next_map_index = 0
         self.transition_alpha = 0
+
+        self._apply_map_borders(self.current_map_index)
+
+    def _default_border_bounds(self) -> tuple[int, int]:
+        return self.default_x, self.default_x + self.default_width
+
+    def _resolve_map_border_bounds(self, map_name: str) -> tuple[int, int]:
+        default_left, default_right = self._default_border_bounds()
+        overrides: dict[str, dict[str, Any]] = getattr(
+            config, "MAP_BORDER_OVERRIDES", {}
+        )
+        map_override = overrides.get(map_name, {})
+
+        left = map_override.get("left")
+        right = map_override.get("right")
+        left_ratio = map_override.get("left_ratio")
+        right_ratio = map_override.get("right_ratio")
+
+        if left is None and left_ratio is not None:
+            left = int(float(left_ratio) * self.window_width)
+        if right is None and right_ratio is not None:
+            right = int(float(right_ratio) * self.window_width)
+
+        if left is None:
+            left = default_left
+        if right is None:
+            right = default_right
+
+        left = max(0, min(int(left), self.window_width - 1))
+        right = max(1, min(int(right), self.window_width))
+        if right <= left:
+            return default_left, default_right
+
+        return left, right
+
+    def _apply_map_borders(self, map_index: int) -> None:
+        if 0 <= map_index < len(self.map_border_bounds):
+            left, right = self.map_border_bounds[map_index]
+        else:
+            left, right = self._default_border_bounds()
+
+        self.x = left
+        self.width = max(1, right - left)
 
     def set_lane_count(self, lane_count: int) -> None:
         self.lane_count = max(
@@ -215,6 +262,7 @@ class Road:
 
     def _load_background_images(self) -> list[pygame.Surface]:
         bg_images = []
+        self.map_border_bounds = []
         map_paths = [
             Path("resources/models/maps/city_roadfinal.png"),
             Path("resources/models/maps/desert.png"),
@@ -232,6 +280,9 @@ class Road:
                     if pygame.display.get_surface() is not None:
                         scaled_image = scaled_image.convert()
                     bg_images.append(scaled_image)
+                    self.map_border_bounds.append(
+                        self._resolve_map_border_bounds(map_path.name)
+                    )
                 except pygame.error:
                     pass
 
@@ -272,6 +323,7 @@ class Road:
         blend_start = 1.0 - blend_window
 
         self.current_map_index = map_index
+        self._apply_map_borders(map_index)
         if cycle_progress >= blend_start:
             blend_progress = (cycle_progress - blend_start) / blend_window
             self.next_map_index = (map_index + 1) % map_count
@@ -319,19 +371,22 @@ class Road:
                 marker_y += self.total_marker_segment
 
     def draw_borders(self, surface: pygame.Surface) -> None:
+        left_x, right_x = self.get_borders()
         pygame.draw.line(
-            surface, self.LINE_COLOR, (self.x, 0), (self.x, self.height), 5
+            surface, self.LINE_COLOR, (left_x, 0), (left_x, self.height), 5
         )
         pygame.draw.line(
             surface,
             self.LINE_COLOR,
-            (self.x + self.width, 0),
-            (self.x + self.width, self.height),
+            (right_x, 0),
+            (right_x, self.height),
             5,
         )
 
     def get_borders(self) -> tuple[int, int]:
-        return self.x, self.x + self.width
+        if 0 <= self.current_map_index < len(self.map_border_bounds):
+            return self.map_border_bounds[self.current_map_index]
+        return self._default_border_bounds()
 
 
 class ObstacleManager:
