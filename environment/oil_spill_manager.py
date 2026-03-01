@@ -80,6 +80,9 @@ class OilSpillManager:
                 oil_height = oil_image.get_height()
 
             spawn_x = ObstacleManager._lane_spawn_x(lane, oil_width, min_padding=8)
+            spawn_x = self.road.clamp_spawn_x_to_borders(
+                spawn_x, oil_width, min_padding=8
+            )
             spawn_y = -oil_height - random.randint(50, 240)
 
             overlap = False

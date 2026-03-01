@@ -83,6 +83,9 @@ class BRManager:
                 br_height = br_image.get_height()
 
             spawn_x = ObstacleManager._lane_spawn_x(lane, br_width, min_padding=10)
+            spawn_x = self.road.clamp_spawn_x_to_borders(
+                spawn_x, br_width, min_padding=10
+            )
             spawn_y = -br_height - random.randint(40, 220)
 
             overlap = False

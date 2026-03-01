@@ -156,6 +156,7 @@ class ObstacleManager:
                 obstacle_height = obstacle_image.get_height()
 
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
+            spawn_x = self.road.clamp_spawn_x_to_borders(spawn_x, obstacle_width)
             # Spawn just above the screen for smooth entry
             spawn_y = -obstacle_height - random.randint(0, 100)
 
@@ -197,6 +198,7 @@ class ObstacleManager:
                 obstacle_width = obstacle_image.get_width()
                 obstacle_height = obstacle_image.get_height()
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
+            spawn_x = self.road.clamp_spawn_x_to_borders(spawn_x, obstacle_width)
             # Spawn just above the screen for smooth entry
             spawn_y = -obstacle_height - random.randint(0, 100)
 

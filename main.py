@@ -189,12 +189,16 @@ def main():
             game_map.update(is_braking=is_breaking)
 
             road_min_x, road_max_x = game_map.get_road_borders()
-            if player_car.rect.left < road_min_x or player_car.rect.right > road_max_x:
-                player_car.rect.center = (
-                    WINDOW_SIZE["width"] // 2,
-                    WINDOW_SIZE["height"] - 120,
-                )
-                player_car.velocity_x = 0
+            if player_car.rect.left < road_min_x:
+                player_car.rect.left = road_min_x
+                player_car.x = float(player_car.rect.x)
+                if player_car.velocity_x < 0:
+                    player_car.velocity_x = 0
+            elif player_car.rect.right > road_max_x:
+                player_car.rect.right = road_max_x
+                player_car.x = float(player_car.rect.x)
+                if player_car.velocity_x > 0:
+                    player_car.velocity_x = 0
 
             if pygame.sprite.spritecollide(
                 player_car,

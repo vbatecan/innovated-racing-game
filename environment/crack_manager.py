@@ -78,6 +78,9 @@ class CrackManager:
             crack_height = crack_image.get_height()
 
         spawn_x = ObstacleManager._lane_spawn_x(lane, crack_width, min_padding=14)
+        spawn_x = self.road.clamp_spawn_x_to_borders(
+            spawn_x, crack_width, min_padding=14
+        )
         spawn_y = -crack_height - random.randint(40, 260)
         crack = Crack(spawn_x, spawn_y, crack_width, crack_height, image=crack_image)
         self.cracks.add(crack)
