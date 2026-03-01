@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 from typing import Tuple
 
@@ -36,6 +37,7 @@ def main():
     boost_cooldown_end = 0  # Time when next boost is allowed
     prev_boosting = False  # Track previous boosting state for edge detection
     out_of_control_until = 0
+    oil_swerve_until = 0
     max_manual_gear = 5
     current_gear = 1
     gear_speed_ratio = {1: 0.45, 2: 0.62, 3: 0.78, 4: 0.9, 5: 1.0}
@@ -137,6 +139,10 @@ def main():
             )
             if now < out_of_control_until:
                 target_steer = max(-2.0, min(2.0, -target_steer))
+            if now < oil_swerve_until:
+                swerve_wave = math.sin(now * config.OIL_SWERVE_FREQUENCY)
+                target_steer += swerve_wave * config.OIL_SWERVE_STRENGTH
+                target_steer = max(-2.0, min(2.0, target_steer))
             player_car.turn(max(-2, min(target_steer, 2)), player_car.turn_smoothing)
 
             # Apply boost to acceleration and max speed if active
@@ -182,7 +188,7 @@ def main():
                 lives = max(0.0, lives - 1.0)
 
                 if lives <= 0:
-                    lives = config.STARTING_LIVES
+                    lives = float(config.STARTING_LIVES)
                     score.reset_score()
                     player_car.rect.center = (
                         WINDOW_SIZE["width"] // 2,
@@ -199,6 +205,7 @@ def main():
                     boost_cooldown_end = 0
                     prev_boosting = False
                     out_of_control_until = 0
+                    oil_swerve_until = 0
                     score_timer = pygame.time.get_ticks()
 
             crack_hits = pygame.sprite.spritecollide(
@@ -233,6 +240,7 @@ def main():
                     boost_cooldown_end = 0
                     prev_boosting = False
                     out_of_control_until = 0
+                    oil_swerve_until = 0
                     score_timer = pygame.time.get_ticks()
 
             br_hits = pygame.sprite.spritecollide(
@@ -241,6 +249,19 @@ def main():
                 True,
                 collided=pygame.sprite.collide_mask,
             )
+
+            oil_hits = pygame.sprite.spritecollide(
+                player_car,
+                game_map.oil_spills,
+                True,
+                collided=pygame.sprite.collide_mask,
+            )
+            if oil_hits:
+                oil_swerve_until = max(
+                    oil_swerve_until,
+                    now + config.OIL_SWERVE_DURATION_MS,
+                )
+
             if br_hits:
                 lives = max(0.0, lives - 1.0)
                 player_car.current_speed = 0
@@ -264,6 +285,7 @@ def main():
                     boost_cooldown_end = 0
                     prev_boosting = False
                     out_of_control_until = 0
+                    oil_swerve_until = 0
                     score_timer = pygame.time.get_ticks()
 
         # Drawing

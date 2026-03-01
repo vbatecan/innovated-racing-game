@@ -3,6 +3,7 @@ import pygame
 
 from environment.br_manager import BRManager
 from environment.crack_manager import CrackManager
+from environment.oil_spill_manager import OilSpillManager
 from models.road import Road
 from environment.obstacle_manager import ObstacleManager
 
@@ -28,8 +29,12 @@ class Map:
         self.obstacle_manager = ObstacleManager(self.road)
         self.crack_manager = CrackManager(self.road)
         self.br_manager = BRManager(self.road)
+        self.oil_spill_manager = OilSpillManager(self.road)
         self.obstacle_manager.set_blocking_groups([self.br_manager.brs])
         self.br_manager.set_blocking_groups([self.obstacle_manager.obstacles])
+        self.oil_spill_manager.set_blocking_groups(
+            [self.obstacle_manager.obstacles, self.br_manager.brs, self.crack_manager.cracks]
+        )
 
     @property
     def obstacles(self) -> pygame.sprite.Group:
@@ -74,6 +79,11 @@ class Map:
         """Expose BR hazard sprites for collision checks."""
         return self.br_manager.brs
 
+    @property
+    def oil_spills(self) -> pygame.sprite.Group:
+        """Expose oil spill hazard sprites for collision checks."""
+        return self.oil_spill_manager.oil_spills
+
     def set_lane_count(self, lane_count: int) -> None:
         """
         Apply a new runtime lane count to the road model.
@@ -109,6 +119,7 @@ class Map:
         self.road.update_background_scroll(self.speed)
         self.crack_manager.update(self.speed, is_braking=is_braking)
         self.br_manager.update(self.speed, is_braking=is_braking)
+        self.oil_spill_manager.update(self.speed, is_braking=is_braking)
         self.obstacle_manager.update(self.speed, is_braking=is_braking)
 
     def draw(self, surface: pygame.Surface) -> None:
@@ -124,6 +135,7 @@ class Map:
         self.road.draw_background(surface)
         self.crack_manager.draw(surface)
         self.br_manager.draw(surface)
+        self.oil_spill_manager.draw(surface)
         self.obstacle_manager.draw(surface)
         self.road.draw_borders(surface)
 
@@ -132,6 +144,7 @@ class Map:
         self.obstacles.empty()
         self.cracks.empty()
         self.brs.empty()
+        self.oil_spills.empty()
 
     def get_road_borders(self) -> tuple[int, int]:
         """
