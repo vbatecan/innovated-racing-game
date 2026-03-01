@@ -10,7 +10,8 @@ MAX_LANE_COUNT = 6
 SHOW_CAMERA = False
 
 FONT_SIZE = 24
-CAR_SPEED = 10
+CAR_SPEED = 25
+MAX_CAR_SPEED = 30
 MAX_FPS = 60
 OBSTACLE_FREQUENCY = 1  # Per Max FPS
 STEERING_SENSITIVITY = 1.0
@@ -48,15 +49,12 @@ OIL_SWERVE_STRENGTH = 1.8
 OIL_SWERVE_FREQUENCY = 0.5
 
 # Maps
-MAP_SWITCH_SCORE = 500
-ROAD_LINE_BORDER_WIDTH = 5
+MAP_SWITCH_SCORE = 25
+MAP_TRANSITION_DISTANCE = 1400
+ROAD_LINE_BORDER_WIDTH = 1
 MAP_BORDER_OVERRIDES = {
-    # Optional keys per map:
     # - left / right: absolute x-pixel border positions
     # - left_ratio / right_ratio: border positions as 0.0..1.0 of screen width
-    #
-    # Example:
-    # "city_roadfinal.png": {"left_ratio": 0.34, "right_ratio": 0.66},
     "city_roadfinal.png": {"left_ratio": 0.37, "right_ratio": 0.63},
     "desert.png": {"left_ratio": 0.42, "right_ratio": 0.58},
     "highway.png": {"left_ratio": 0.37, "right_ratio": 0.63},

@@ -374,7 +374,7 @@ def main():
             score_interval = max(min_interval, score_interval - interval_decrement)
 
         # sa every 400 points, nag-add 1 to speed
-        if player_car.max_speed <= 20:
+        if player_car.max_speed <= config.MAX_CAR_SPEED:
             speed_bonus = score.get_score() // settings.speed_bonus
             player_car.set_max_speed(settings.car_speed + speed_bonus)
         

@@ -56,6 +56,10 @@ class Road:
         self.bg_images = self._load_background_images()
         self.bg_y_offset = 0
         self.current_map_index = 0
+        self.transition_from_map_index = 0
+        self.transition_to_map_index = 0
+        self.transition_progress_px = 0.0
+        self.is_transitioning = False
         self.active_border_left = self.default_x
         self.active_border_right = self.default_x + self.default_width
 
@@ -98,6 +102,22 @@ class Road:
             left, right = self.map_border_bounds[map_index]
         else:
             left, right = self._default_border_bounds()
+
+        self.active_border_left = left
+        self.active_border_right = right
+
+    def _get_map_borders(self, map_index: int) -> tuple[int, int]:
+        if 0 <= map_index < len(self.map_border_bounds):
+            return self.map_border_bounds[map_index]
+        return self._default_border_bounds()
+
+    def _apply_interpolated_borders(self, progress: float) -> None:
+        from_left, from_right = self._get_map_borders(self.transition_from_map_index)
+        to_left, to_right = self._get_map_borders(self.transition_to_map_index)
+        blend = max(0.0, min(1.0, float(progress)))
+
+        left = int(from_left + (to_left - from_left) * blend)
+        right = int(from_right + (to_right - from_right) * blend)
 
         self.active_border_left = left
         self.active_border_right = right
@@ -245,9 +265,21 @@ class Road:
             if self.bg_y_offset >= self.height:
                 self.bg_y_offset -= self.height
 
+        if self.is_transitioning:
+            self.transition_progress_px += max(0, int(speed))
+            transition_distance = max(1, int(config.MAP_TRANSITION_DISTANCE))
+            progress = self.transition_progress_px / float(transition_distance)
+
+            if progress >= 1.0:
+                self.is_transitioning = False
+                self.transition_progress_px = float(transition_distance)
+                self._apply_map_borders(self.transition_to_map_index)
+            else:
+                self._apply_interpolated_borders(progress)
+
     def set_map_by_score(self, score: int) -> None:
         """
-        Switch background map based on score (every 5000 points).
+        Switch background map based on score threshold.
 
         Args:
             score (int): Current game score.
@@ -257,8 +289,52 @@ class Road:
 
         # Calculate which map to show based on the score (switch every n points)
         map_index = (score // config.MAP_SWITCH_SCORE) % len(self.bg_images)
+        if map_index == self.current_map_index and not self.is_transitioning:
+            return
+
+        if self.is_transitioning and map_index == self.transition_to_map_index:
+            return
+
+        self.transition_from_map_index = (
+            self.transition_to_map_index if self.is_transitioning else self.current_map_index
+        )
+        self.transition_to_map_index = map_index
+        self.transition_progress_px = 0.0
+        self.is_transitioning = True
         self.current_map_index = map_index
-        self._apply_map_borders(map_index)
+        self._apply_interpolated_borders(0.0)
+
+    def _draw_scrolling_background(self, surface: pygame.Surface, image: pygame.Surface) -> None:
+        y1 = self.bg_y_offset
+        y2 = self.bg_y_offset - self.height
+        surface.blit(image, (0, y1))
+        surface.blit(image, (0, y2))
+
+    def _draw_scrolling_background_range(
+        self,
+        surface: pygame.Surface,
+        image: pygame.Surface,
+        clip_top: int,
+        clip_bottom: int,
+    ) -> None:
+        top = max(0, int(clip_top))
+        bottom = min(self.height, int(clip_bottom))
+        if bottom <= top:
+            return
+
+        for dest_top in (self.bg_y_offset - self.height, self.bg_y_offset):
+            src_top = max(0, top - dest_top)
+            src_bottom = min(self.height, bottom - dest_top)
+
+            if src_bottom <= src_top:
+                continue
+
+            blit_height = src_bottom - src_top
+            surface.blit(
+                image,
+                (0, dest_top + src_top),
+                area=pygame.Rect(0, src_top, self.window_width, blit_height),
+            )
 
     def draw_background(self, surface: pygame.Surface) -> None:
         """
@@ -272,12 +348,25 @@ class Road:
         """
         # If background images are loaded, draw them with scrolling
         if self.bg_images and 0 <= self.current_map_index < len(self.bg_images):
-            current_bg = self.bg_images[self.current_map_index]
-            # Draw two copies of the background for seamless scrolling
-            y1 = self.bg_y_offset
-            y2 = self.bg_y_offset - self.height
-            surface.blit(current_bg, (0, y1))
-            surface.blit(current_bg, (0, y2))
+            if self.is_transitioning and 0 <= self.transition_from_map_index < len(
+                self.bg_images
+            ):
+                transition_distance = max(1, int(config.MAP_TRANSITION_DISTANCE))
+                progress = max(
+                    0.0,
+                    min(1.0, self.transition_progress_px / float(transition_distance)),
+                )
+                seam_y = int(progress * self.height)
+                from_bg = self.bg_images[self.transition_from_map_index]
+                to_bg = self.bg_images[self.transition_to_map_index]
+
+                self._draw_scrolling_background_range(surface, to_bg, 0, seam_y)
+                self._draw_scrolling_background_range(
+                    surface, from_bg, seam_y, self.height
+                )
+            else:
+                current_bg = self.bg_images[self.current_map_index]
+                self._draw_scrolling_background(surface, current_bg)
         else:
             # Fallback to solid colors if no images loaded
             surface.fill(self.BG_COLOR)
