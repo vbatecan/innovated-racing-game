@@ -53,19 +53,22 @@ class Obstacle(pygame.sprite.Sprite):
             screen_height: int,
     ) -> None:
         """
-        Move the obstacle using relative speed and delete if off-screen.
+        Move the obstacle and delete if off-screen.
 
-        The traffic vehicle's screen speed is computed from:
-        `player_speed - traffic_speed`.
+        Vehicle speed is independent per obstacle (`traffic_speed`) and
+        on-screen movement is based on signed relative speed.
+
+        - If player is faster than traffic, obstacles move toward the player.
+        - If player brakes and becomes slower than traffic, obstacles move up.
 
         Returns:
             None: Updates sprite position in place.
         """
-        # Blend player speed with per-vehicle traffic speed so traffic remains active
-        # even at low player speed and scales up as gameplay gets faster.
-        # blended_speed = self.traffic_speed + (0.2 * float(player_speed))
-        self.speed = max(1.0, min(24.0, self.traffic_speed))
-        target_direction = 1 if self.speed > 0 else -1
+        capped_player_speed = max(0.0, float(player_speed))
+        traffic_world_speed = min(self.traffic_speed, 24.0)
+        relative_speed = capped_player_speed - traffic_world_speed
+        self.speed = min(24.0, abs(relative_speed))
+        target_direction = 1.0 if relative_speed >= 0.0 else -1.0
         self.direction_factor += (target_direction - self.direction_factor) * 0.18
         self._y_pos += self.speed * self.direction_factor
         self.rect.y = int(self._y_pos)
