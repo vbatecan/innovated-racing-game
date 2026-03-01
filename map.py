@@ -7,7 +7,7 @@ import pygame
 
 try:
     import numpy as np
-except ImportError:  # pragma: no cover - optional dependency
+except ImportError:
     np = None
 
 
@@ -49,13 +49,11 @@ class Obstacle(pygame.sprite.Sprite):
             traffic_speed (float): World traffic speed used for relative movement.
         """
         super().__init__()
-        # Always create the image at the correct size for the obstacle
         if image is None:
             self.image = pygame.Surface((width, height), pygame.SRCALPHA)
             self.image.fill((255, 50, 50))
             pygame.draw.rect(self.image, (255, 255, 0), (0, 0, width, 10))
         else:
-            # Defensive: ensure the image is the correct size for the rect
             if image.get_width() != width or image.get_height() != height:
                 self.image = pygame.transform.smoothscale(image, (width, height))
             else:
@@ -64,10 +62,8 @@ class Obstacle(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
-        # Always update the mask after scaling
         self.mask = pygame.mask.from_surface(self.image)
         self.speed = float(speed)
-        # Per-vehicle base approach speed so traffic always moves on-screen.
         self.traffic_speed = max(0.5, float(traffic_speed))
         self._y_pos = float(y)
         self.direction_factor = 1.0
@@ -87,8 +83,6 @@ class Obstacle(pygame.sprite.Sprite):
         Returns:
             None: Updates sprite position in place.
         """
-        # Blend player speed with per-vehicle traffic speed so traffic remains active
-        # even at low player speed and scales up as gameplay gets faster.
         blended_speed = self.traffic_speed + (0.2 * float(player_speed))
         self.speed = max(1.0, min(24.0, blended_speed))
         target_direction = -1.0 if is_braking else 1.0
@@ -222,7 +216,6 @@ class Road:
         self.lane_count = 1
         self.set_lane_count(lane_count)
 
-        # Load background images for map switching
         self.bg_images = self._load_background_images()
         self.bg_y_offset = 0
         self.current_map_index = 0
@@ -316,7 +309,6 @@ class Road:
             if map_path.exists():
                 try:
                     image = pygame.image.load(str(map_path))
-                    # Scale image to fit window size
                     scaled_image = pygame.transform.scale(
                         image, (self.window_width, self.height)
                     )
@@ -356,7 +348,6 @@ class Road:
         """
         if self.bg_images:
             self.bg_y_offset += speed
-            # Loop the background when it scrolls past its height
             if self.bg_y_offset >= self.height:
                 self.bg_y_offset -= self.height
 
@@ -396,10 +387,8 @@ class Road:
         Returns:
             None: Draws directly to `surface`.
         """
-        # If background images are loaded, draw them with scrolling
         if self.bg_images and 0 <= self.current_map_index < len(self.bg_images):
             current_bg = self.bg_images[self.current_map_index]
-            # Draw two copies of the background for seamless scrolling
             y1 = self.bg_y_offset
             y2 = self.bg_y_offset - self.height
             surface.blit(current_bg, (0, y1))
@@ -416,7 +405,6 @@ class Road:
                 surface.blit(next_bg_blended, (0, y1))
                 surface.blit(next_bg_blended, (0, y2))
         else:
-            # Fallback to solid colors if no images loaded
             surface.fill(self.BG_COLOR)
             pygame.draw.rect(
                 surface, self.ROAD_COLOR, (self.x, 0, self.width, self.height)
@@ -612,7 +600,6 @@ class ObstacleManager:
         Returns:
             None: Adds a new obstacle sprite to the managed group.
         """
-        # Avoid spawning in a lane that already has an obstacle near the top
         max_attempts = 10
         for _ in range(max_attempts):
             lane = self.road.get_lane(self.road.lane_count // 2)
@@ -624,13 +611,10 @@ class ObstacleManager:
                 obstacle_height = obstacle_image.get_height()
 
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            # Spawn just above the screen for smooth entry
             spawn_y = -obstacle_height - random.randint(0, 100)
 
-            # Check for overlap with existing obstacles in the same lane
             overlap = False
             for obs in self.obstacles:
-                # Check if obs is in the same lane (by x overlap)
                 if (
                     obs.rect.left < spawn_x + obstacle_width
                     and obs.rect.right > spawn_x
@@ -656,7 +640,6 @@ class ObstacleManager:
             if not overlap:
                 break
         else:
-            # If all attempts failed, just pick a random lane
             lane = self.road.get_lane(self.road.lane_count // 2)
             obstacle_image = self._get_random_obstacle_image(lane)
             obstacle_width = self.obstacle_width
@@ -665,7 +648,6 @@ class ObstacleManager:
                 obstacle_width = obstacle_image.get_width()
                 obstacle_height = obstacle_image.get_height()
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            # Spawn just above the screen for smooth entry
             spawn_y = -obstacle_height - random.randint(0, 100)
 
         traffic_speed = self._sample_traffic_speed(speed)
