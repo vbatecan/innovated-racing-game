@@ -236,7 +236,7 @@ def main():
                 collided=pygame.sprite.collide_mask,
             )
             if crack_hits:
-                out_of_control_until = now + 400
+                out_of_control_until = now + 1000
                 player_car.current_speed = max(0.0, float(player_car.current_speed) * 0.5)
                 player_car.velocity_x *= 0.6
                 if hasattr(player_car, 'velocity'):
