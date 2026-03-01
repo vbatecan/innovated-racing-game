@@ -5,6 +5,11 @@ from pathlib import Path
 import config
 import pygame
 
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover - optional dependency
+    np = None
+
 
 @dataclass(frozen=True)
 class Lane:
@@ -315,6 +320,7 @@ class Road:
                     scaled_image = pygame.transform.scale(
                         image, (self.window_width, self.height)
                     )
+                    scaled_image = self._suppress_road_markings(scaled_image)
                     if pygame.display.get_surface() is not None:
                         scaled_image = scaled_image.convert()
                     bg_images.append(scaled_image)
@@ -322,6 +328,24 @@ class Road:
                     pass
 
         return bg_images
+
+    @staticmethod
+    def _suppress_road_markings(image: pygame.Surface) -> pygame.Surface:
+        """Reduce bright painted lane markings baked into map textures."""
+        if np is None:
+            return image
+
+        rgb = pygame.surfarray.array3d(image)
+
+        white_lines = (rgb[:, :, 0] > 180) & (rgb[:, :, 1] > 180) & (rgb[:, :, 2] > 180)
+        yellow_lines = (rgb[:, :, 0] > 165) & (rgb[:, :, 1] > 145) & (rgb[:, :, 2] < 150)
+        cyan_lines = (rgb[:, :, 0] < 140) & (rgb[:, :, 1] > 155) & (rgb[:, :, 2] > 165)
+        lane_mask = white_lines | yellow_lines | cyan_lines
+
+        if lane_mask.any():
+            rgb[lane_mask] = (62, 64, 70)
+
+        return pygame.surfarray.make_surface(rgb)
 
     def update_background_scroll(self, speed: int) -> None:
         """
