@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import random
 from typing import Tuple
 
 import cv2
@@ -38,6 +39,8 @@ def main():
     prev_boosting = False  # Track previous boosting state for edge detection
     out_of_control_until = 0
     oil_swerve_until = 0
+    oil_swerve_started_at = 0
+    oil_swerve_phase = 0.0
     max_manual_gear = 5
     current_gear = 1
     gear_speed_ratio = {1: 0.45, 2: 0.62, 3: 0.78, 4: 0.9, 5: 1.0}
@@ -133,16 +136,32 @@ def main():
             elif shift_up and not shift_down:
                 current_gear = min(max_manual_gear, current_gear + 1)
 
-            target_steer = detector.steer * settings.steering_sensitivity
-            target_steer, turn = steer(
-                keys, settings.steering_sensitivity, target_steer
-            )
-            if now < out_of_control_until:
-                target_steer = max(-2.0, min(2.0, -target_steer))
             if now < oil_swerve_until:
-                swerve_wave = math.sin(now * config.OIL_SWERVE_FREQUENCY)
-                target_steer += swerve_wave * config.OIL_SWERVE_STRENGTH
-                target_steer = max(-2.0, min(2.0, target_steer))
+                swerve_duration = max(1, int(config.OIL_SWERVE_DURATION_MS))
+                elapsed = max(0, now - oil_swerve_started_at)
+                progress = min(1.0, elapsed / float(swerve_duration))
+                envelope = 0.35 + (0.65 * (1.0 - progress))
+                frequency = config.OIL_SWERVE_FREQUENCY * (1.15 - (0.25 * progress))
+                base_wave = math.sin((now * frequency) + oil_swerve_phase)
+                secondary_wave = 0.4 * math.sin(
+                    (now * frequency * 1.9) + (oil_swerve_phase * 0.6)
+                )
+                target_steer = (
+                    (base_wave + secondary_wave)
+                    * config.OIL_SWERVE_STRENGTH
+                    * envelope
+                )
+                if now < out_of_control_until:
+                    target_steer = -target_steer
+            else:
+                target_steer = detector.steer * settings.steering_sensitivity
+                target_steer, turn = steer(
+                    keys, settings.steering_sensitivity, target_steer
+                )
+                if now < out_of_control_until:
+                    target_steer = max(-2.0, min(2.0, -target_steer))
+
+            target_steer = max(-2.0, min(2.0, target_steer))
             player_car.turn(max(-2, min(target_steer, 2)), player_car.turn_smoothing)
 
             # Apply boost to acceleration and max speed if active
@@ -206,6 +225,8 @@ def main():
                     prev_boosting = False
                     out_of_control_until = 0
                     oil_swerve_until = 0
+                    oil_swerve_started_at = 0
+                    oil_swerve_phase = 0.0
                     score_timer = pygame.time.get_ticks()
 
             crack_hits = pygame.sprite.spritecollide(
@@ -241,6 +262,8 @@ def main():
                     prev_boosting = False
                     out_of_control_until = 0
                     oil_swerve_until = 0
+                    oil_swerve_started_at = 0
+                    oil_swerve_phase = 0.0
                     score_timer = pygame.time.get_ticks()
 
             br_hits = pygame.sprite.spritecollide(
@@ -257,6 +280,9 @@ def main():
                 collided=pygame.sprite.collide_mask,
             )
             if oil_hits:
+                if now >= oil_swerve_until:
+                    oil_swerve_started_at = now
+                    oil_swerve_phase = random.uniform(0.0, math.tau)
                 oil_swerve_until = max(
                     oil_swerve_until,
                     now + config.OIL_SWERVE_DURATION_MS,
@@ -286,6 +312,8 @@ def main():
                     prev_boosting = False
                     out_of_control_until = 0
                     oil_swerve_until = 0
+                    oil_swerve_started_at = 0
+                    oil_swerve_phase = 0.0
                     score_timer = pygame.time.get_ticks()
 
         # Drawing
