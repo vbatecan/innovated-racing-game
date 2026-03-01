@@ -10,7 +10,7 @@ import config
 from car import PlayerCar
 from config import SHOW_CAMERA, WINDOW_SIZE
 from controller import Controller
-from map import Map
+from environment.map import Map
 from score import Score
 from settings import Settings
 from ui.hud import PlayerHUD
