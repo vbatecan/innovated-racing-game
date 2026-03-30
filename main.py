@@ -1,26 +1,25 @@
-import logging
-import math
-import os
-from typing import Tuple
+"""Main entry point for the Hand Gesture Racing Game.
 
-import cv2
-import random
+Initializes Pygame, sets up all game components, and delegates to the
+GameLoop class for the main game execution.
+"""
+
+import logging
+import os
+
 import pygame
-from pygame.key import ScancodeWrapper
 
 import config
-from config import SHOW_CAMERA, WINDOW_SIZE, SCORING_CONFIG
+from config import WINDOW_SIZE
 from controller import Controller
+from core.game_loop import GameLoop
 from environment.map import Map
-from environment.question_manager import QuestionManager
 from models.player_car import PlayerCar
-from models.question import Question
-from models.score import Score, ScoringSystem
 from settings import Settings
-from ui.hud import PlayerHUD
-from ui.overlays import draw_game_over_overlay, draw_question_overlay
 from ui.game_ui import HUDManager, PauseMenu, SettingsMenu
+from ui.hud import PlayerHUD
 
+# Configure logging
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     filename="logs/main.log",
@@ -30,573 +29,66 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def key_to_option_index(event_key: int) -> int | None:
-    key_map = {
-        pygame.K_1: 0,
-        pygame.K_KP1: 0,
-        pygame.K_2: 1,
-        pygame.K_KP2: 1,
-        pygame.K_3: 2,
-        pygame.K_KP3: 2,
-        pygame.K_4: 3,
-        pygame.K_KP4: 3,
-        pygame.K_5: 4,
-        pygame.K_KP5: 4,
-        pygame.K_6: 5,
-        pygame.K_KP6: 5,
-        pygame.K_7: 6,
-        pygame.K_KP7: 6,
-        pygame.K_8: 7,
-        pygame.K_KP8: 7,
-        pygame.K_9: 8,
-        pygame.K_KP9: 8,
-    }
-    return key_map.get(event_key)
-
-
-def main():
-    """
-    Initialize the game and run the main loop.
+def main() -> None:
+    """Initialize the game and run the main loop.
 
     Sets up Pygame, the player car, map, controller, and settings menu, then
-    processes input, updates game state, and renders each frame until exit.
+    delegates to GameLoop for frame processing until exit.
     """
-    boost_active = False
-    boost_end_time = 0
-    boost_cooldown_end = 0  # Time when next boost is allowed
-    prev_boosting = False  # Track previous boosting state for edge detection
-    out_of_control_until = 0
-    oil_swerve_until = 0
-    oil_swerve_started_at = 0
-    oil_swerve_phase = 0.0
-    max_manual_gear = 5
-    current_gear = 1
-    gear_speed_ratio = {1: 0.45, 2: 0.62, 3: 0.78, 4: 0.9, 5: 1.0}
-    gear_accel_ratio = {1: 1.3, 2: 1.15, 3: 1.0, 4: 0.9, 5: 0.8}
+    # Initialize Pygame
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_SIZE["width"], WINDOW_SIZE["height"]))
     pygame.display.set_caption("Hand Gesture Racing Game")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, config.FONT_SIZE)
 
+    # Initialize settings and game world
     settings = Settings()
-    settings.show_camera = SHOW_CAMERA
+    settings.show_camera = config.SHOW_CAMERA
     game_map = Map(WINDOW_SIZE, lane_count=settings.lane_count)
 
+    # Initialize player car at starting position
     start_x = WINDOW_SIZE["width"] // 2
     start_y = WINDOW_SIZE["height"] - 240
     player_car = PlayerCar(start_x, start_y)
 
-    sprite_group = pygame.sprite.Group()
-    sprite_group.add(player_car)
-
+    # Initialize hand gesture controller
     detector = Controller()
     detector.start_stream()
 
-    scoring_system = ScoringSystem(SCORING_CONFIG)
-    lives = float(max(1, int(config.STARTING_LIVES)))
-    game_state = "playing"
-    pause_state = False
-    active_question: Question | None = None
-    selected_option = 0
-    max_speed = player_car.max_speed
-    target_steer = 0.0
-    question_input_unlock_at = 0
-    heart_question_active = False
-    question_manager = QuestionManager()
-
+    # Initialize UI components
     hud = PlayerHUD(player_car, detector, font)
     game_hud = HUDManager(
-        screen_width=WINDOW_SIZE["width"], screen_height=WINDOW_SIZE["height"]
+        screen_width=WINDOW_SIZE["width"],
+        screen_height=WINDOW_SIZE["height"]
     )
     pause_menu = PauseMenu()
     settings_menu = SettingsMenu()
-    overlay_title_font = pygame.font.Font(None, max(40, config.FONT_SIZE * 2))
-    overlay_body_font = pygame.font.Font(None, max(30, config.FONT_SIZE + 10))
 
-    running = True
+    # Create and initialize game loop
+    game_loop = GameLoop(
+        screen=screen,
+        clock=clock,
+        player_car=player_car,
+        game_map=game_map,
+        detector=detector,
+        settings=settings,
+        hud=hud,
+        game_hud=game_hud,
+        pause_menu=pause_menu,
+        settings_menu=settings_menu,
+        window_size=WINDOW_SIZE,
+    )
 
-    logger.info("Starting Game Loop...")
-    logger.info("Controls: Use your hands visible to the camera.")
-    logger.info("Press 'S' to open Settings.")
-    selected_setting = 0
+    # Initialize game state manager and subsystems
+    game_loop.initialize()
 
-    last_frame_time = pygame.time.get_ticks()
-
-    def reset_run_state() -> None:
-        nonlocal lives
-        nonlocal current_gear
-        nonlocal boost_active, boost_end_time, boost_cooldown_end, prev_boosting
-        nonlocal \
-            out_of_control_until, \
-            oil_swerve_until, \
-            oil_swerve_started_at, \
-            oil_swerve_phase
-        nonlocal game_state, pause_state, active_question, selected_option
-        nonlocal question_input_unlock_at
-        nonlocal last_frame_time
-
-        lives = float(max(1, int(config.STARTING_LIVES)))
-        scoring_system.reset()
-        player_car.rect.center = (
-            WINDOW_SIZE["width"] // 2,
-            WINDOW_SIZE["height"] - 240,
-        )
-        player_car.current_speed = 0
-        player_car.velocity_x = 0
-        player_car.current_angle = 0.0
-        player_car.turn(0.0, 0.0)
-        game_map.clear_hazards()
-        current_gear = 1
-        boost_active = False
-        boost_end_time = 0
-        boost_cooldown_end = 0
-        prev_boosting = False
-        out_of_control_until = 0
-        oil_swerve_until = 0
-        oil_swerve_started_at = 0
-        oil_swerve_phase = 0.0
-        last_frame_time = pygame.time.get_ticks()
-        settings.visible = False
-        game_state = "playing"
-        pause_state = False
-        pause_menu.hide()
-        active_question = None
-        selected_option = 0
-        question_input_unlock_at = 0
-        hud.reset_hearts_collected()
-
-    def trigger_last_chance_question() -> None:
-        nonlocal game_state, active_question, selected_option
-        nonlocal question_input_unlock_at, heart_question_active
-        game_state = "question"
-        heart_question_active = False
-        active_question = question_manager.get_random_question()
-        selected_option = 0
-        question_input_unlock_at = pygame.time.get_ticks() + 700
-        settings.visible = False
-
-    def trigger_heart_question() -> None:
-        nonlocal game_state, active_question, selected_option
-        nonlocal question_input_unlock_at, heart_question_active
-        game_state = "question"
-        heart_question_active = True
-        active_question = question_manager.get_random_question()
-        selected_option = 0
-        question_input_unlock_at = pygame.time.get_ticks() + 700
-        settings.visible = False
-
-    def resolve_question_answer(answer_index: int) -> None:
-        nonlocal \
-            lives, \
-            game_state, \
-            active_question, \
-            selected_option, \
-            question_input_unlock_at, \
-            heart_question_active
-        if active_question is None:
-            return
-
-        if question_manager.validate_answer(active_question, answer_index):
-            if heart_question_active:
-                lives = min(3.0, lives + 1.0)
-                hud.add_heart_collected()
-                heart_question_active = False
-            else:
-                lives = 1.0
-            game_state = "playing"
-        else:
-            if heart_question_active:
-                heart_question_active = False
-                game_state = "playing"
-            else:
-                game_state = "game_over"
-
-        active_question = None
-        selected_option = 0
-        question_input_unlock_at = 0
-
-    def apply_collision_damage(damage: float = 1.0) -> None:
-        nonlocal lives
-        if game_state != "playing":
-            return
-        scoring_system.register_collision(pygame.time.get_ticks())
-        if lives <= 1.0:
-            trigger_last_chance_question()
-            return
-        lives = max(1.0, lives - float(damage))
-
-    while running:
-        is_breaking = False
-        detector.set_require_two_hands(game_state == "playing")
-        game_map.speed = settings.car_speed
-        game_map.obstacle_frequency = int(
-            (settings.max_fps * 2) / settings.obstacle_frequency
-        )
-        game_map.set_lane_count(settings.lane_count)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                continue
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if game_state == "playing" and not settings.visible:
-                    if not pause_menu.visible:
-                        pause_menu.show()
-                    else:
-                        pause_menu.hide()
-                continue
-
-            if game_state == "question":
-                if event.type == pygame.KEYDOWN and active_question is not None:
-                    selected_answer = key_to_option_index(event.key)
-                    if (
-                        selected_answer is not None
-                        and selected_answer < active_question.answer_count
-                    ):
-                        resolve_question_answer(selected_answer)
-                continue
-
-            if game_state == "game_over":
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-                    reset_run_state()
-                continue
-
-            if settings.visible:
-                mouse_pos = pygame.mouse.get_pos()
-                result = settings_menu.handle_input(event, mouse_pos)
-                if result and result.get("action") in ("changed", "close"):
-                    settings_menu.apply_to_game(settings)
-                if result and result.get("action") == "close":
-                    settings.visible = False
-                continue
-
-            running, selected_setting, show_settings = settings.handle_event(
-                event,
-                running,
-                selected_setting,
-                config.SETTING_OPTIONS,
-                settings.visible,
-            )
-            settings.visible = show_settings
-
-        if game_state == "question" and active_question is not None:
-            now = pygame.time.get_ticks()
-            question_input_ready = now >= question_input_unlock_at
-            swipe_up, swipe_down = detector.consume_swipe_request()
-            if question_input_ready and swipe_up:
-                selected_option = max(0, selected_option - 1)
-            if question_input_ready and swipe_down:
-                selected_option = min(
-                    active_question.answer_count - 1, selected_option + 1
-                )
-
-            if question_input_ready and detector.consume_question_select_request():
-                resolve_question_answer(selected_option)
-
-        if pause_menu.visible:
-            mouse_pos = pygame.mouse.get_pos()
-            mouse_pressed = pygame.mouse.get_pressed()
-
-            for event in pygame.event.get([pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN]):
-                result = pause_menu.handle_input(event)
-                if result == "Resume":
-                    pause_menu.hide()
-                elif result == "Restart":
-                    reset_run_state()
-                    pause_menu.hide()
-                elif result == "Settings":
-                    pause_menu.hide()
-                    settings.visible = True
-                elif result == "Quit":
-                    running = False
-
-            pause_menu.update(mouse_pos, mouse_pressed)
-            result = pause_menu._clicked_option
-            pause_menu._clicked_option = None
-            if result == "Resume":
-                pause_menu.hide()
-            elif result == "Restart":
-                reset_run_state()
-                pause_menu.hide()
-            elif result == "Settings":
-                pause_menu.hide()
-                settings.visible = True
-            elif result == "Quit":
-                running = False
-
-            delta_time = 16
-            pause_menu.draw(screen, delta_time / 1000.0)
-            pygame.display.flip()
-            continue
-
-        if game_state == "playing" and not settings.visible:
-            detector.brake_threshold = settings.get_brake_threshold()
-
-            frame = detector.get_frame()
-            cv2.waitKey(1)
-            if settings.show_camera and frame is not None:
-                game_hud.set_camera_frame(frame)
-            game_hud.set_camera_visibility(settings.show_camera)
-
-            # --- BOOST FEATURE ---
-            now = pygame.time.get_ticks()
-            # Only trigger boost on new thumbs up (rising edge)
-            if (
-                detector.boosting
-                and not prev_boosting
-                and not boost_active
-                and now > boost_cooldown_end
-            ):
-                boost_active = True
-                boost_end_time = now + 1000
-                boost_cooldown_end = now + 10000
-            if boost_active and now > boost_end_time:
-                boost_active = False
-            prev_boosting = detector.boosting
-
-            # Arrow key down will break.
-            is_breaking = detector.breaking
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_DOWN]:
-                is_breaking = True
-            if now < oil_swerve_until:
-                is_breaking = False
-
-            shift_down, shift_up = detector.consume_shift_request()
-            if shift_down and not shift_up:
-                current_gear = max(1, current_gear - 1)
-            elif shift_up and not shift_down:
-                current_gear = min(max_manual_gear, current_gear + 1)
-
-            if now < oil_swerve_until:
-                swerve_duration = max(1, int(config.OIL_SWERVE_DURATION_MS))
-                elapsed = max(0, now - oil_swerve_started_at)
-                progress = min(1.0, elapsed / float(swerve_duration))
-                envelope = 0.35 + (0.65 * (1.0 - progress))
-                frequency = config.OIL_SWERVE_FREQUENCY * (1.15 - (0.25 * progress))
-                base_wave = math.sin((now * frequency) + oil_swerve_phase)
-                secondary_wave = 0.4 * math.sin(
-                    (now * frequency * 1.9) + (oil_swerve_phase * 0.6)
-                )
-                target_steer = (
-                    (base_wave + secondary_wave) * config.OIL_SWERVE_STRENGTH * envelope
-                )
-                if now < out_of_control_until:
-                    target_steer = -target_steer
-            else:
-                target_steer = detector.steer * settings.steering_sensitivity
-                target_steer, turn = steer(
-                    keys, settings.steering_sensitivity, target_steer
-                )
-                if now < out_of_control_until:
-                    target_steer = max(-2.0, min(2.0, -target_steer))
-
-            target_steer = max(-2.0, min(2.0, target_steer))
-            player_car.turn(max(-2, min(target_steer, 2)), player_car.turn_smoothing)
-
-            # Apply boost to acceleration and max speed if active
-            acceleration = settings.ACCELERATION * gear_accel_ratio[current_gear]
-            max_speed = player_car.max_speed * gear_speed_ratio[current_gear]
-            if boost_active:
-                acceleration *= 3  # 3x acceleration
-                max_speed *= 1.7  # 70% higher top speed during boost
-
-            player_car.update(
-                steering=target_steer,
-                is_braking=is_breaking,
-                max_speed=max_speed,
-                acceleration=acceleration,
-                friction=settings.FRICTION,
-                brake_strength=settings.BRAKE_STRENGTH,
-                screen_width=WINDOW_SIZE["width"],
-            )
-
-            game_map.speed = float(player_car.current_speed)
-            game_map.update_score(scoring_system.get_score())
-            game_map.update(is_braking=is_breaking)
-
-            road_min_x, road_max_x = game_map.get_road_borders()
-            if player_car.rect.left < road_min_x:
-                player_car.rect.left = road_min_x
-                player_car.x = float(player_car.rect.x)
-                if player_car.velocity_x < 0:
-                    player_car.velocity_x = 0
-            elif player_car.rect.right > road_max_x:
-                player_car.rect.right = road_max_x
-                player_car.x = float(player_car.rect.x)
-                if player_car.velocity_x > 0:
-                    player_car.velocity_x = 0
-
-            if pygame.sprite.spritecollide(
-                player_car,
-                game_map.obstacles,
-                True,
-                collided=pygame.sprite.collide_mask,
-            ):
-                player_car.current_speed = 0
-                player_car.velocity_x = 0
-                apply_collision_damage(1.0)
-
-            crack_hits = pygame.sprite.spritecollide(
-                player_car,
-                game_map.cracks,
-                True,
-                collided=pygame.sprite.collide_mask,
-            )
-            if crack_hits:
-                out_of_control_until = now + 1000
-                player_car.current_speed = max(
-                    0.0, float(player_car.current_speed) * 0.5
-                )
-                player_car.velocity_x *= 0.6
-                player_car.velocity_x = max(0.0, float(player_car.velocity_x) * 0.5)
-                # apply_collision_damage(1.0)
-
-            br_hits = pygame.sprite.spritecollide(
-                player_car,
-                game_map.brs,
-                True,
-                collided=pygame.sprite.collide_mask,
-            )
-
-            oil_hits = pygame.sprite.spritecollide(
-                player_car,
-                game_map.oil_spills,
-                True,
-                collided=pygame.sprite.collide_mask,
-            )
-            if oil_hits:
-                if now >= oil_swerve_until:
-                    oil_swerve_started_at = now
-                    oil_swerve_phase = random.uniform(0.0, math.tau)
-                oil_swerve_until = max(
-                    oil_swerve_until,
-                    now + config.OIL_SWERVE_DURATION_MS,
-                )
-
-            heart_hits = pygame.sprite.spritecollide(
-                player_car,
-                game_map.hearts,
-                True,
-                collided=pygame.sprite.collide_mask,
-            )
-            if heart_hits and lives < 3:
-                trigger_heart_question()
-            elif heart_hits and lives >= 3:
-                scoring_system.add_score(50)
-
-            if br_hits:
-                player_car.current_speed = 0
-                player_car.velocity_x = 0
-                apply_collision_damage(1.0)
-
-        # Drawing
-        game_map.draw(screen)
-        sprite_group.draw(screen)
-
-        fps = clock.get_fps()
-        hud.update_from_game(
-            player_car,
-            detector,
-            gear=str(current_gear),
-            score=scoring_system.get_score(),
-            lives=lives,
-            fps=int(fps),
-            max_fps=settings.max_fps,
-        )
-        hud.set_scoring_info(
-            combo=scoring_system.get_combo(),
-            difficulty=scoring_system.get_difficulty(),
-            distance=scoring_system.get_distance(),
-        )
-        game_hud.update(
-            speed=player_car.current_speed,
-            max_speed=max_speed,
-            score=scoring_system.get_score(),
-            lives=int(lives),
-            distance=scoring_system.get_distance(),
-            gear=current_gear,
-            is_braking=is_breaking,
-            boost_energy=100.0,
-            hearts_collected=hud._hearts_collected
-            if hasattr(hud, "_hearts_collected")
-            else 0,
-        )
-        game_hud.draw(screen)
-
-        if settings.visible:
-            settings_menu.update(pygame.mouse.get_pos())
-            settings_menu.draw(screen)
-
-        if game_state == "question" and active_question is not None:
-            draw_question_overlay(
-                screen,
-                overlay_title_font,
-                overlay_body_font,
-                active_question,
-                selected_option,
-                heart_question_active,
-            )
-        elif game_state == "game_over":
-            draw_game_over_overlay(
-                screen,
-                overlay_title_font,
-                overlay_body_font,
-                scoring_system.get_score(),
-            )
-
-        pygame.display.flip()
-
-        now = pygame.time.get_ticks()
-        delta_time = now - last_frame_time
-        last_frame_time = now
-
-        if game_state == "playing" and not is_breaking and not settings.visible:
-            scoring_status = scoring_system.update(
-                current_speed=player_car.current_speed,
-                max_speed=max_speed,
-                delta_time=delta_time,
-                steering=target_steer,
-                is_braking=is_breaking,
-                current_time=now,
-                obstacles=list(game_map.obstacles) if game_map.obstacles else None,
-            )
-
-        base_speed = 10.0
-        score = scoring_system.get_score()
-        speed_increments = score // 300
-        new_max_speed = base_speed + speed_increments
-        player_car.set_max_speed(new_max_speed)
-
-        clock.tick(settings.max_fps)
-
-    detector.stop_stream()
-    cv2.destroyAllWindows()
-    pygame.quit()
-
-
-def steer(
-    keys: ScancodeWrapper, steering_sensitivity, target_steer: float
-) -> Tuple[float, str]:
-    """Apply keyboard steering overrides and return steer value plus turn label.
-
-    Args:
-        keys (ScancodeWrapper): Current keyboard state from pygame.
-        steering_sensitivity (float): Steering multiplier used for keyboard input.
-        target_steer (float): Current steering value from hand input.
-
-    Returns:
-        Tuple[float, str]: Final steering value and one of LEFT/CENTER/RIGHT.
-    """
-    turn = "CENTER"
-    if keys[pygame.K_LEFT]:
-        target_steer = -1.0 * steering_sensitivity
-        turn = "LEFT"
-    if keys[pygame.K_RIGHT]:
-        target_steer = 1.0 * steering_sensitivity
-        turn = "RIGHT"
-    return target_steer, turn
+    # Run the game
+    try:
+        game_loop.run()
+    except Exception as e:
+        logger.exception("Game loop crashed: %s", e)
+        raise
 
 
 if __name__ == "__main__":
