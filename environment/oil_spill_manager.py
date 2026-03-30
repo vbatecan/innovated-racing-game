@@ -11,12 +11,22 @@ from models.road import Road
 
 
 class OilSpillManager:
+    """Manages spawning, movement, and rendering of oil spill hazards on the road."""
+
     def __init__(
-            self,
-            road: Road,
-            spawn_frequency: int = config.OIL_SPILL_SPAWN_FREQUENCY,
-            max_oil_spills: int = config.MAX_OIL_SPILLS,
+        self,
+        road: Road,
+        spawn_frequency: int = config.OIL_SPILL_SPAWN_FREQUENCY,
+        max_oil_spills: int = config.MAX_OIL_SPILLS,
     ):
+        """
+        Initialize the oil spill manager with spawn parameters and resource loading.
+
+        Args:
+            road: Road geometry defining lane boundaries for spill placement.
+            spawn_frequency: Frames between spawn attempts. Clamped to minimum of 1.
+            max_oil_spills: Maximum number of simultaneous active oil spills allowed.
+        """
         self.road = road
         self.spawn_frequency = max(1, int(spawn_frequency))
         self.max_oil_spills = max(1, int(max_oil_spills))
@@ -28,9 +38,24 @@ class OilSpillManager:
         self.blocking_groups: list[pygame.sprite.Group] = []
 
     def set_blocking_groups(self, groups: list[pygame.sprite.Group]) -> None:
+        """
+        Configure sprite groups that must not overlap with spawned oil spills.
+
+        Args:
+            groups: List of pygame sprite groups to check for collisions during spawn.
+        """
         self.blocking_groups = groups
 
     def _load_oil_spill_models(self) -> list[pygame.Surface]:
+        """
+        Load oil spill model images from resources/models/obstacles directory.
+
+        Only loads files matching the pattern "OilSpill*.png".
+        Images are converted to alpha format if a display surface is available.
+
+        Returns:
+            List of loaded pygame Surface objects, empty if directory missing or no valid images.
+        """
         if not self.model_dir.exists():
             return []
 
@@ -46,6 +71,18 @@ class OilSpillManager:
         return models
 
     def _get_random_oil_spill_image(self, lane: Lane) -> pygame.Surface | None:
+        """
+        Select and scale a random oil spill model to fit within lane constraints.
+
+        Applies width ratio limits and caching to avoid repeated scaling operations.
+        Target width respects lane fit and minimum size constraints.
+
+        Args:
+            lane: Target lane determining width constraints for scaling.
+
+        Returns:
+            Scaled pygame Surface ready for use, or None if no models are loaded.
+        """
         if not self.oil_spill_models:
             return None
 
@@ -68,6 +105,13 @@ class OilSpillManager:
         return scaled
 
     def _spawn_oil_spill(self) -> None:
+        """
+        Spawn a single oil spill at the top of a random valid lane.
+
+        Attempts multiple times to find a non-overlapping position considering
+        existing oil spills and blocking groups. Falls back to random lane after
+        maximum attempts exceeded.
+        """
         max_attempts = 10
         for _ in range(max_attempts):
             lane = self.road.random_lane()
@@ -88,9 +132,9 @@ class OilSpillManager:
             overlap = False
             for oil in self.oil_spills:
                 if (
-                        oil.rect.left < spawn_x + oil_width
-                        and oil.rect.right > spawn_x
-                        and abs(oil.rect.y - spawn_y) < oil_height * 3
+                    oil.rect.left < spawn_x + oil_width
+                    and oil.rect.right > spawn_x
+                    and abs(oil.rect.y - spawn_y) < oil_height * 3
                 ):
                     overlap = True
                     break
@@ -100,9 +144,9 @@ class OilSpillManager:
                 for group in self.blocking_groups:
                     for blocked_sprite in group:
                         if (
-                                spawn_rect.left < blocked_sprite.rect.right
-                                and spawn_rect.right > blocked_sprite.rect.left
-                                and abs(blocked_sprite.rect.y - spawn_y) < oil_height * 3
+                            spawn_rect.left < blocked_sprite.rect.right
+                            and spawn_rect.right > blocked_sprite.rect.left
+                            and abs(blocked_sprite.rect.y - spawn_y) < oil_height * 3
                         ):
                             overlap = True
                             break
@@ -115,6 +159,12 @@ class OilSpillManager:
         self.oil_spills.add(oil_spill)
 
     def update(self, map_speed: int) -> None:
+        """
+        Advance the spawn timer, trigger oil spill spawning, and update all spills.
+
+        Args:
+            map_speed: Current map speed applied to oil spill movement.
+        """
         self.timer += 1
         if self.timer >= self.spawn_frequency:
             self.timer = 0
@@ -124,4 +174,10 @@ class OilSpillManager:
         self.oil_spills.update(map_speed, self.road.height)
 
     def draw(self, surface: pygame.Surface) -> None:
+        """
+        Render all active oil spills to the target surface.
+
+        Args:
+            surface: pygame Surface to draw oil spills onto.
+        """
         self.oil_spills.draw(surface)

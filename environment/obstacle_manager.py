@@ -10,7 +10,7 @@ from models.road import Road
 
 
 class ObstacleManager:
-    """Spawn, update, and render road obstacles."""
+    """Manages the lifecycle of road obstacles including spawning, movement, and rendering."""
 
     def __init__(
         self,
@@ -20,13 +20,13 @@ class ObstacleManager:
         obstacle_size: tuple[int, int] = (30, 30),
     ):
         """
-        Initialize obstacle spawning limits and sprite storage.
+        Initialize the obstacle manager with spawning parameters and resource loading.
 
         Args:
-            road (Road): Road geometry used for lane-based spawns.
-            spawn_frequency (int): Frames between spawn attempts.
-            max_obstacles (int): Maximum simultaneous active obstacles.
-            obstacle_size (tuple[int, int]): Obstacle `(width, height)` in pixels.
+            road: Road geometry defining lane boundaries for obstacle placement.
+            spawn_frequency: Frames between spawn attempts. Clamped to minimum of 1.
+            max_obstacles: Maximum number of simultaneous active obstacles allowed.
+            obstacle_size: Default (width, height) in pixels when no model image is available.
         """
         self.road = road
         self.max_obstacles = max_obstacles
@@ -40,11 +40,24 @@ class ObstacleManager:
         self.blocking_groups: list[pygame.sprite.Group] = []
 
     def set_blocking_groups(self, groups: list[pygame.sprite.Group]) -> None:
-        """Set sprite groups that obstacle spawns must avoid overlapping."""
+        """
+        Configure sprite groups that must not overlap with spawned obstacles.
+
+        Args:
+            groups: List of pygame sprite groups to check for collisions during spawn.
+        """
         self.blocking_groups = groups
 
     def _load_obstacle_models(self) -> list[pygame.Surface]:
-        """Load top-level obstacle model PNGs from resources/models."""
+        """
+        Load obstacle model images from resources/models directory.
+
+        Excludes HP indicator images (full hp.png, hp minus 1.png, etc.) from loading.
+        Images are converted to alpha format if a display surface is available.
+
+        Returns:
+            List of loaded pygame Surface objects, empty if directory missing or no valid images.
+        """
         if not self.model_dir.exists():
             return []
 
@@ -64,13 +77,16 @@ class ObstacleManager:
 
     def _get_random_obstacle_image(self, lane: Lane) -> pygame.Surface | None:
         """
-        Return a random obstacle model scaled to fit the target lane.
+        Select and scale a random obstacle model to fit within lane constraints.
+
+        Applies width ratio limits and caching to avoid repeated scaling operations.
+        Target width respects lane fit, minimum size constraints, and maximum source scale limits.
 
         Args:
-            lane (Lane): Target lane where the obstacle will spawn.
+            lane: Target lane determining width constraints for scaling.
 
         Returns:
-            pygame.Surface | None: Scaled model image, or None if unavailable.
+            Scaled pygame Surface ready for use, or None if no models are loaded.
         """
         if not self.obstacle_models:
             return None
@@ -106,7 +122,20 @@ class ObstacleManager:
 
     @staticmethod
     def _lane_spawn_x(lane: Lane, obstacle_width: int, min_padding: int = 10) -> int:
-        """Return a valid spawn X for an obstacle inside the specified lane."""
+        """
+        Calculate a random valid X coordinate for obstacle spawning within a lane.
+
+        Ensures the obstacle fits within lane boundaries with minimum padding on both sides.
+        Falls back to centered position if constraints cannot be satisfied.
+
+        Args:
+            lane: Lane defining the horizontal spawn boundaries.
+            obstacle_width: Width of the obstacle being spawned.
+            min_padding: Minimum pixels to maintain from lane edges.
+
+        Returns:
+            Integer X coordinate for the left edge of the obstacle.
+        """
         lane_padding = min(min_padding, max(0, (lane.width - obstacle_width) // 2))
         max_left = lane.right - obstacle_width - lane_padding
         min_left = lane.left + lane_padding
@@ -116,38 +145,41 @@ class ObstacleManager:
 
     def set_spawn_frequency(self, frequency: int) -> None:
         """
-        Set obstacle spawn interval in frames, clamped to at least one frame.
+        Update the frame interval between obstacle spawn attempts.
 
         Args:
-            frequency (int): Frames between spawn attempts.
-
-        Returns:
-            None: Updates the internal spawn timer interval.
+            frequency: Desired frames between spawns. Values below 1 are clamped to 1.
         """
         self.spawn_frequency = max(1, int(frequency))
 
     @staticmethod
     def _sample_traffic_speed(player_speed: int) -> float:
         """
-        Generate a per-vehicle traffic speed in world units.
+        Generate a random traffic speed for approaching vehicles.
 
-        The spawned vehicle initially approaches the player by at least one
-        pixel/frame so traffic always appears active on-screen.
+        Produces a speed value ensuring vehicles appear to approach the player,
+        creating the visual effect of active on-screen traffic.
+
+        Args:
+            player_speed: Current player speed (unused in calculation but provided for API consistency).
+
+        Returns:
+            Random float between 0.5 and 2.5 representing traffic speed in world units.
         """
         _ = player_speed
         return random.uniform(0.5, 2.5)
 
     def _spawn_obstacle(self, speed: int) -> None:
         """
-        Create one obstacle at the top of a random lane.
+        Spawn a single obstacle at the top of a random valid lane.
+
+        Attempts multiple times to find a non-overlapping position considering
+        existing obstacles and blocking groups. Falls back to random lane after
+        maximum attempts exceeded.
 
         Args:
-            speed (int): Current player/map speed used to derive traffic speed.
-
-        Returns:
-            None: Adds a new obstacle sprite to the managed group.
+            speed: Current player/map speed used to calculate traffic speed.
         """
-        # Avoid spawning in a lane that already has an obstacle near the top
         max_attempts = 10
         for _ in range(max_attempts):
             lane = self.road.get_lane(self.road.lane_count // 2)
@@ -160,13 +192,10 @@ class ObstacleManager:
 
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
             spawn_x = self.road.clamp_spawn_x_to_borders(spawn_x, obstacle_width)
-            # Spawn just above the screen for smooth entry
             spawn_y = -obstacle_height - random.randint(0, 100)
 
-            # Check for overlap with existing obstacles in the same lane
             overlap = False
             for obs in self.obstacles:
-                # Check if obs is in the same lane (by x overlap)
                 if (
                     obs.rect.left < spawn_x + obstacle_width
                     and obs.rect.right > spawn_x
@@ -192,7 +221,6 @@ class ObstacleManager:
             if not overlap:
                 break
         else:
-            # If all attempts failed, just pick a random lane
             lane = self.road.get_lane(self.road.lane_count // 2)
             obstacle_image = self._get_random_obstacle_image(lane)
             obstacle_width = self.obstacle_width
@@ -202,7 +230,6 @@ class ObstacleManager:
                 obstacle_height = obstacle_image.get_height()
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
             spawn_x = self.road.clamp_spawn_x_to_borders(spawn_x, obstacle_width)
-            # Spawn just above the screen for smooth entry
             spawn_y = -obstacle_height - random.randint(0, 100)
 
         traffic_speed = self._sample_traffic_speed(speed)
@@ -219,13 +246,10 @@ class ObstacleManager:
 
     def update(self, speed: int) -> None:
         """
-        Advance timers, spawn obstacles, and update active obstacle movement.
+        Advance the spawn timer, trigger obstacle spawning, and update all obstacles.
 
         Args:
-            speed (int): Current map speed applied to all active obstacles.
-
-        Returns:
-            None: Mutates obstacle state and sprite group membership.
+            speed: Current map speed applied to obstacle movement and used for new spawns.
         """
         self.timer += 1
         if self.timer >= self.spawn_frequency:
@@ -237,12 +261,9 @@ class ObstacleManager:
 
     def draw(self, surface: pygame.Surface) -> None:
         """
-        Draw all active obstacle sprites.
+        Render all active obstacles to the target surface.
 
         Args:
-            surface (pygame.Surface): Target drawing surface.
-
-        Returns:
-            None: Draws directly to `surface`.
+            surface: pygame Surface to draw obstacles onto.
         """
         self.obstacles.draw(surface)

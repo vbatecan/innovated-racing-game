@@ -11,7 +11,11 @@ from environment.obstacle_manager import ObstacleManager
 
 
 class CrackManager:
-    """Spawn, update, and render low-volume road crack hazards."""
+    """
+    Manages the lifecycle of road crack hazards including spawning, updating
+    positions based on scroll speed, and rendering. Maintains a configurable
+    maximum number of simultaneous cracks on screen.
+    """
 
     def __init__(
             self,
@@ -19,6 +23,14 @@ class CrackManager:
             spawn_frequency: int = config.CRACK_SPAWN_FREQUENCY,
             max_cracks: int = config.MAX_CRACKS,
     ):
+        """
+        Initialize the crack hazard manager with spawn parameters.
+
+        Args:
+            road: The road model providing lane geometry and spawn constraints.
+            spawn_frequency: Frames between spawn attempts (minimum 1).
+            max_cracks: Maximum number of crack hazards allowed on screen.
+        """
         self.road = road
         self.spawn_frequency = max(1, int(spawn_frequency))
         self.max_cracks = max(1, int(max_cracks))
@@ -29,7 +41,12 @@ class CrackManager:
         self.model_scale_cache: dict[tuple[int, int], pygame.Surface] = {}
 
     def _load_crack_models(self) -> list[pygame.Surface]:
-        """Load crack sprites from the obstacle resource directory."""
+        """
+        Load crack sprite images from the obstacle resource directory.
+
+        Returns:
+            List of loaded and alpha-converted pygame surfaces.
+        """
         if not self.model_dir.exists():
             return []
 
@@ -45,6 +62,16 @@ class CrackManager:
         return models
 
     def _get_random_crack_image(self, lane: Lane) -> pygame.Surface | None:
+        """
+        Select and scale a random crack model to fit within the specified lane.
+        Uses caching to avoid redundant scaling operations.
+
+        Args:
+            lane: The target lane for determining appropriate image dimensions.
+
+        Returns:
+            A scaled pygame surface or None if no models are available.
+        """
         if not self.crack_models:
             return None
 
@@ -68,6 +95,9 @@ class CrackManager:
         return scaled
 
     def _spawn_crack(self) -> None:
+        """
+        Spawn a new crack hazard in a random lane above the visible screen area.
+        """
         lane = self.road.random_lane()
         crack_image = self._get_random_crack_image(lane)
 
@@ -86,6 +116,13 @@ class CrackManager:
         self.cracks.add(crack)
 
     def update(self, map_speed: int) -> None:
+        """
+        Advance the spawn timer and update all crack hazard positions.
+        Spawns new cracks when timer exceeds frequency and below max count.
+
+        Args:
+            map_speed: Current scroll speed affecting hazard movement.
+        """
         self.timer += 1
         if self.timer >= self.spawn_frequency:
             self.timer = 0
@@ -95,4 +132,10 @@ class CrackManager:
         self.cracks.update(map_speed, self.road.height)
 
     def draw(self, surface: pygame.Surface) -> None:
+        """
+        Render all active crack hazards to the target surface.
+
+        Args:
+            surface: The pygame surface to draw hazards onto.
+        """
         self.cracks.draw(surface)

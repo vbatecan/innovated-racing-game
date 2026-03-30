@@ -10,15 +10,33 @@ from environment.obstacle_manager import ObstacleManager
 
 
 class Map:
+    """
+    Orchestrates the game world including the scrolling road, all hazard managers,
+    and collectible items. Coordinates updates and rendering across all environmental
+    systems and provides unified access to collision-relevant sprite groups.
+
+    Attributes:
+        width (int): The width of the game window.
+        height (int): The height of the game window.
+        speed (int): The speed of the game.
+        scroll_y (int): The current scroll position of the road.
+        current_score (int): The current score of the game.
+        road (Road): The scrolling road.
+        obstacle_manager (ObstacleManager): The obstacle manager.
+        crack_manager (CrackManager): The crack manager.
+        br_manager (BRManager): The BR manager.
+        oil_spill_manager (OilSpillManager): The oil spill manager.
+        heart_bonus_manager (HeartBonusManager): The heart bonus manager.
+    """
     def __init__(
-        self, window_size: dict[str, int], lane_count: int = config.LANE_COUNT
+            self, window_size: dict[str, int], lane_count: int = config.LANE_COUNT
     ):
         """
-        Initialize the scrolling road and obstacle system.
+        Initialize the scrolling road and all hazard managers.
 
         Args:
-            window_size (dict[str, int]): Screen dimensions with `width` and `height`.
-            lane_count (int): Initial lane count used by the road.
+            window_size: Screen dimensions with 'width' and 'height' keys.
+            lane_count: Initial number of lanes for the road.
         """
         self.width = window_size["width"]
         self.height = window_size["height"]
@@ -47,10 +65,10 @@ class Map:
     @property
     def obstacles(self) -> pygame.sprite.Group:
         """
-        Expose obstacle sprites for collision checks.
+        Expose obstacle sprites for collision detection.
 
         Returns:
-            pygame.sprite.Group: Active obstacle sprites.
+            The pygame sprite group containing active obstacles.
         """
         return self.obstacle_manager.obstacles
 
@@ -60,7 +78,7 @@ class Map:
         Get the current obstacle spawn frequency in frames.
 
         Returns:
-            int: Spawn interval in frames.
+            The number of frames between obstacle spawn attempts.
         """
         return self.obstacle_manager.spawn_frequency
 
@@ -70,61 +88,75 @@ class Map:
         Set the obstacle spawn frequency in frames.
 
         Args:
-            value (int): Frames between spawn attempts.
-
-        Returns:
-            None: Updates obstacle manager frequency.
+            value: Frames between spawn attempts to set on the obstacle manager.
         """
         self.obstacle_manager.set_spawn_frequency(value)
 
     @property
     def cracks(self) -> pygame.sprite.Group:
-        """Expose crack hazard sprites for collision checks."""
+        """
+        Expose crack hazard sprites for collision detection.
+
+        Returns:
+            The pygame sprite group containing active crack hazards.
+        """
         return self.crack_manager.cracks
 
     @property
     def brs(self) -> pygame.sprite.Group:
-        """Expose BR hazard sprites for collision checks."""
+        """
+        Expose BR hazard sprites for collision detection.
+
+        Returns:
+            The pygame sprite group containing active BR hazards.
+        """
         return self.br_manager.brs
 
     @property
     def oil_spills(self) -> pygame.sprite.Group:
-        """Expose oil spill hazard sprites for collision checks."""
+        """
+        Expose oil spill hazard sprites for collision detection.
+
+        Returns:
+            The pygame sprite group containing active oil spills.
+        """
         return self.oil_spill_manager.oil_spills
 
     @property
     def hearts(self) -> pygame.sprite.Group:
-        """Expose heart bonus sprites for collision checks."""
+        """
+        Expose heart bonus sprites for collision detection.
+
+        Returns:
+            The pygame sprite group containing active heart bonuses.
+        """
         return self.heart_bonus_manager.hearts
 
     def set_lane_count(self, lane_count: int) -> None:
         """
-        Apply a new runtime lane count to the road model.
+        Apply a new lane count to the road at runtime.
 
         Args:
-            lane_count (int): Requested lane count.
-
-        Returns:
-            None: Mutates road lane configuration.
+            lane_count: The desired number of lanes.
         """
         self.road.set_lane_count(lane_count)
 
     def update_score(self, score: int) -> None:
         """
-        Update the current score and switch maps if needed.
+        Update the current score and trigger map transitions based on score thresholds.
 
         Args:
-            score (int): Current game score.
+            score: The current game score.
         """
         self.current_score = score
         self.road.set_map_by_score(score)
 
     def update(self, is_braking: bool = False) -> None:
         """
-        Advance the road scroll and update obstacles.
+        Advance the road scroll and update all hazard managers.
 
-        Returns:
-            None: Mutates map scroll and obstacle state.
+        Args:
+            is_braking: Unused parameter (reserved for future braking mechanics).
         """
         _ = is_braking
         effective_speed = max(0.0, float(self.speed))
@@ -142,13 +174,10 @@ class Map:
 
     def draw(self, surface: pygame.Surface) -> None:
         """
-        Draw the road, lane markers, and obstacles to the surface.
+        Render the road background, all hazards, and road borders to the surface.
 
         Args:
-            surface (pygame.Surface): Target drawing surface.
-
-        Returns:
-            None: Draws directly to `surface`.
+            surface: The target pygame surface for drawing.
         """
         self.road.draw_background(surface)
         self.crack_manager.draw(surface)
@@ -159,7 +188,7 @@ class Map:
         self.road.draw_borders(surface)
 
     def clear_hazards(self) -> None:
-        """Remove all active hazards from the map."""
+        """Remove all active hazards and bonuses from the map."""
         self.obstacles.empty()
         self.cracks.empty()
         self.brs.empty()
@@ -168,9 +197,9 @@ class Map:
 
     def get_road_borders(self) -> tuple[int, int]:
         """
-        Return the left and right x-coordinates of the road.
+        Retrieve the left and right x-coordinates of the road boundaries.
 
         Returns:
-            tuple[int, int]: `(left_x, right_x)` road boundaries.
+            A tuple of (left_x, right_x) defining the road edges.
         """
         return self.road.get_borders()

@@ -11,7 +11,11 @@ from environment.obstacle_manager import ObstacleManager
 
 
 class BRManager:
-    """Spawn, update, and render BR hazards with a strict on-screen cap."""
+    """
+    Manages the lifecycle of BR (Barrier/Blocker) hazards on the road including
+    spawning, updating positions, and rendering. Enforces a maximum on-screen
+    count and collision avoidance with other sprite groups.
+    """
 
     def __init__(
             self,
@@ -19,6 +23,14 @@ class BRManager:
             spawn_frequency: int = config.BR_SPAWN_FREQUENCY,
             max_brs: int = config.MAX_BRS,
     ):
+        """
+        Initialize the BR hazard manager with spawn parameters and resource loading.
+
+        Args:
+            road: The road model providing lane geometry and spawn constraints.
+            spawn_frequency: Frames between spawn attempts (minimum 1).
+            max_brs: Maximum number of BR hazards allowed on screen simultaneously.
+        """
         self.road = road
         self.spawn_frequency = max(1, int(spawn_frequency))
         self.max_brs = max(1, int(max_brs))
@@ -30,10 +42,21 @@ class BRManager:
         self.blocking_groups: list[pygame.sprite.Group] = []
 
     def set_blocking_groups(self, groups: list[pygame.sprite.Group]) -> None:
-        """Set sprite groups that BR spawns must avoid overlapping."""
+        """
+        Configure sprite groups that BR hazards must avoid overlapping during spawn.
+
+        Args:
+            groups: List of pygame sprite groups to check for collisions.
+        """
         self.blocking_groups = groups
 
     def _load_br_models(self) -> list[pygame.Surface]:
+        """
+        Load BR hazard sprite images from the obstacle resource directory.
+
+        Returns:
+            List of loaded and alpha-converted pygame surfaces.
+        """
         if not self.model_dir.exists():
             return []
 
@@ -49,6 +72,16 @@ class BRManager:
         return models
 
     def _get_random_br_image(self, lane: Lane) -> pygame.Surface | None:
+        """
+        Select and scale a random BR model to fit within the specified lane.
+        Uses caching to avoid redundant scaling operations.
+
+        Args:
+            lane: The target lane for determining appropriate image dimensions.
+
+        Returns:
+            A scaled pygame surface or None if no models are available.
+        """
         if not self.br_models:
             return None
 
@@ -71,6 +104,11 @@ class BRManager:
         return scaled
 
     def _spawn_br(self) -> None:
+        """
+        Attempt to spawn a new BR hazard in a random lane with collision checking.
+        Performs multiple attempts to find a non-overlapping position respecting
+        both existing BR hazards and configured blocking groups.
+        """
         max_attempts = 10
         for _ in range(max_attempts):
             lane = self.road.random_lane()
@@ -117,6 +155,13 @@ class BRManager:
         self.brs.add(br)
 
     def update(self, map_speed: int) -> None:
+        """
+        Advance the spawn timer and update all BR hazard positions.
+        Spawns new hazards when timer exceeds frequency and below max count.
+
+        Args:
+            map_speed: Current scroll speed affecting hazard movement.
+        """
         self.timer += 1
         if self.timer >= self.spawn_frequency:
             self.timer = 0
@@ -126,5 +171,11 @@ class BRManager:
         self.brs.update(map_speed, self.road.height)
 
     def draw(self, surface: pygame.Surface) -> None:
+        """
+        Render all active BR hazards to the target surface.
+
+        Args:
+            surface: The pygame surface to draw hazards onto.
+        """
         self.brs.draw(surface)
 
