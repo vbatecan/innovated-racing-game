@@ -53,7 +53,6 @@ class BoostSystem:
         """
         now = pygame.time.get_ticks()
 
-        # Rising edge detection: trigger only on new thumbs up
         if (
             is_boosting
             and not self._prev_boosting
@@ -64,11 +63,9 @@ class BoostSystem:
             self._end_time = now + BoostConstants.DURATION_MS
             self._cooldown_end = now + BoostConstants.COOLDOWN_MS
 
-        # Check for boost expiration
         if self._active and now > self._end_time:
             self._active = False
 
-        # Store previous state for edge detection
         self._prev_boosting = is_boosting
 
     def get_acceleration_multiplier(self) -> float:

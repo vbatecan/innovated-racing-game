@@ -11,7 +11,7 @@ class GearSystem:
     """Manages the manual gear shifting system.
 
     Provides 5 gears with distinct speed and acceleration multipliers,
-allowing players to optimize their acceleration and top speed.
+    allowing players to optimize their acceleration and top speed.
     """
 
     def __init__(self) -> None:

@@ -4,15 +4,13 @@ Handles all collision types (obstacles, cracks, oil, hearts, brake hazards)
 and applies appropriate damage, effects, and state changes.
 """
 
-from typing import TYPE_CHECKING, List
 import pygame
 from core.enums import CollisionConstants
 from core.oil_swerve_physics import OilSwervePhysics
 
-if TYPE_CHECKING:
-    from models.player_car import PlayerCar
-    from environment.map import Map
-    from core.game_state import GameStateManager
+from models.player_car import PlayerCar
+from environment.map import Map
+from core.game_state import GameStateManager
 
 
 class CollisionResult:
@@ -103,23 +101,18 @@ class CollisionHandler:
         """
         result = CollisionResult()
 
-        # Check obstacle collisions
         if self._check_obstacle_collision():
             result.obstacle_hit = True
 
-        # Check crack collisions
         if self._check_crack_collision():
             result.crack_hit = True
 
-        # Check brake hazard collisions
         if self._check_brake_collision():
             result.brake_hit = True
 
-        # Check oil spill collisions
         if self._check_oil_collision():
             result.oil_hit = True
 
-        # Check heart collisions
         if self._check_heart_collision():
             result.heart_hit = True
 
@@ -134,7 +127,7 @@ class CollisionHandler:
         hits = pygame.sprite.spritecollide(
             self._player_car,
             self._game_map.obstacles,
-            True,  # Remove on hit
+            True,
             collided=pygame.sprite.collide_mask,
         )
 
@@ -156,7 +149,7 @@ class CollisionHandler:
         hits = pygame.sprite.spritecollide(
             self._player_car,
             self._game_map.cracks,
-            True,  # Remove on hit
+            True,
             collided=pygame.sprite.collide_mask,
         )
 
@@ -164,17 +157,17 @@ class CollisionHandler:
             now = pygame.time.get_ticks()
             self._out_of_control_until = now + self._crack_duration_ms
 
-            # Speed reduction (50% of current)
             self._player_car.current_speed = max(
                 0.0,
-                float(self._player_car.current_speed) * CollisionConstants.CRACK_SPEED_REDUCTION
+                float(self._player_car.current_speed)
+                * CollisionConstants.CRACK_SPEED_REDUCTION,
             )
 
-            # Velocity reduction (60% then 50% = 30% remaining)
             self._player_car.velocity_x *= CollisionConstants.CRACK_VELOCITY_REDUCTION
             self._player_car.velocity_x = max(
                 0.0,
-                float(self._player_car.velocity_x) * CollisionConstants.CRACK_SPEED_REDUCTION
+                float(self._player_car.velocity_x)
+                * CollisionConstants.CRACK_SPEED_REDUCTION,
             )
 
             return True
@@ -189,7 +182,7 @@ class CollisionHandler:
         hits = pygame.sprite.spritecollide(
             self._player_car,
             self._game_map.brs,
-            True,  # Remove on hit
+            True,
             collided=pygame.sprite.collide_mask,
         )
 
@@ -211,7 +204,7 @@ class CollisionHandler:
         hits = pygame.sprite.spritecollide(
             self._player_car,
             self._game_map.oil_spills,
-            True,  # Remove on hit
+            True,
             collided=pygame.sprite.collide_mask,
         )
 
@@ -231,7 +224,7 @@ class CollisionHandler:
         hits = pygame.sprite.spritecollide(
             self._player_car,
             self._game_map.hearts,
-            True,  # Remove on hit
+            True,
             collided=pygame.sprite.collide_mask,
         )
 

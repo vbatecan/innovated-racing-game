@@ -104,16 +104,14 @@ class GameLoop:
 
         Must be called after all dependencies are set up but before run().
         """
-        from ui.game_ui import SettingsMenu, PauseMenu
-
         self._game_state_manager = GameStateManager(
             player_car=self._player_car,
             scoring_system=self._scoring_system,
             game_map=self._game_map,
             hud=self._hud,
             settings=self._settings,
-            settings_menu=self._settings_menu,  # type: ignore
-            pause_menu=self._pause_menu,  # type: ignore
+            settings_menu=self._settings_menu,
+            pause_menu=self._pause_menu,
             window_size=self._window_size,
             question_manager=self._question_manager,
         )
@@ -341,7 +339,6 @@ class GameLoop:
         if keys[pygame.K_DOWN]:
             self._is_braking = True
 
-        # Disable braking during oil swerve
         now = pygame.time.get_ticks()
         if self._oil_swerve.is_active:
             self._is_braking = False

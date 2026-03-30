@@ -61,7 +61,6 @@ class GameStateManager:
         self._window_size = window_size
         self._question_manager = question_manager
 
-        # Core state
         self.lives: float = float(max(1, int(config.STARTING_LIVES)))
         self.game_state: GameState = GameState.PLAYING
         self.pause_state: bool = False
@@ -70,10 +69,8 @@ class GameStateManager:
         self.heart_question_active: bool = False
         self.question_input_unlock_at: int = 0
 
-        # Timing
         self.last_frame_time: int = 0
 
-        # Reset all state to initial values
         self.reset_run_state()
 
     def reset_run_state(self) -> None:
