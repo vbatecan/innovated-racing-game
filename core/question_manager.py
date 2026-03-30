@@ -46,20 +46,12 @@ class QuestionStateManager:
 
     @property
     def is_input_locked(self) -> bool:
-        """Check if question input is currently locked.
-
-        Returns:
-            True if the input lock period has not yet expired.
-        """
+        """Check if question input is currently locked."""
         return pygame.time.get_ticks() < self._question_input_unlock_at
 
     @property
     def is_input_ready(self) -> bool:
-        """Check if question input is unlocked and ready.
-
-        Returns:
-            True if the input lock period has expired.
-        """
+        """Check if question input is unlocked and ready."""
         return not self.is_input_locked
 
     @property
@@ -92,11 +84,7 @@ class QuestionStateManager:
             )
 
     def select_current_option(self) -> Optional[int]:
-        """Get the current selection if input is ready.
-
-        Returns:
-            The selected option index, or None if input is locked.
-        """
+        """Get the current selection if input is ready."""
         if self.is_input_ready and self._active_question is not None:
             return self._selected_option
         return None
@@ -107,9 +95,6 @@ class QuestionStateManager:
         Args:
             event_key: The Pygame key constant from a KEYDOWN event.
             key_mapper: An object with get_option_index method.
-
-        Returns:
-            The selected option index if valid and input ready, else None.
         """
         if not self.is_input_ready or self._active_question is None:
             return None

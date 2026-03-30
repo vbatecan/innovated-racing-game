@@ -20,19 +20,15 @@ allowing players to optimize their acceleration and top speed.
 
     @property
     def current_gear(self) -> int:
-        """Get the current gear level (1-5).
-
-        Returns:
-            The current gear as an integer from 1 to 5.
-        """
+        """Get the current gear level (1-5)."""
         return self._current_gear
 
     def shift_down(self) -> None:
-        """Shift down by one gear (cannot go below gear 1)."""
+        """Shift down by one gear."""
         self._current_gear = max(1, self._current_gear - 1)
 
     def shift_up(self) -> None:
-        """Shift up by one gear (cannot exceed max gear)."""
+        """Shift up by one gear."""
         self._current_gear = min(
             GearConstants.MAX_MANUAL_GEAR,
             self._current_gear + 1
@@ -53,19 +49,11 @@ allowing players to optimize their acceleration and top speed.
             self.shift_up()
 
     def get_speed_ratio(self) -> float:
-        """Get the speed multiplier for the current gear.
-
-        Returns:
-            The speed ratio (0.45-1.0) for the current gear.
-        """
+        """Get the speed multiplier for the current gear."""
         return GearConstants.SPEED_RATIOS.get(self._current_gear, 1.0)
 
     def get_acceleration_ratio(self) -> float:
-        """Get the acceleration multiplier for the current gear.
-
-        Returns:
-            The acceleration ratio (0.8-1.3) for the current gear.
-        """
+        """Get the acceleration multiplier for the current gear."""
         return GearConstants.ACCEL_RATIOS.get(self._current_gear, 1.0)
 
     def get_max_speed(self, base_max_speed: float) -> float:
@@ -73,9 +61,6 @@ allowing players to optimize their acceleration and top speed.
 
         Args:
             base_max_speed: The car's base maximum speed.
-
-        Returns:
-            The gear-adjusted maximum speed.
         """
         return base_max_speed * self.get_speed_ratio()
 
@@ -84,9 +69,6 @@ allowing players to optimize their acceleration and top speed.
 
         Args:
             base_acceleration: The base acceleration value.
-
-        Returns:
-            The gear-adjusted acceleration.
         """
         return base_acceleration * self.get_acceleration_ratio()
 

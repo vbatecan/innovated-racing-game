@@ -77,16 +77,10 @@ class GameStateManager:
         self.reset_run_state()
 
     def reset_run_state(self) -> None:
-        """Reset all game state variables to their initial values.
-
-        This method preserves exact parity with the original reset_run_state()
-        inner function from main.py, resetting lives, scoring, car position,
-        boost state, and all timing variables.
-        """
+        """Reset all game state variables to their initial values."""
         self.lives = float(max(1, int(config.STARTING_LIVES)))
         self._scoring_system.reset()
 
-        # Reset car position to starting location
         start_x = self._window_size["width"] // 2
         start_y = self._window_size["height"] - 240
         self._player_car.rect.center = (start_x, start_y)
@@ -97,10 +91,8 @@ class GameStateManager:
         self._player_car.current_angle = 0.0
         self._player_car.turn(0.0, 0.0)
 
-        # Clear map hazards
         self._game_map.clear_hazards()
 
-        # Reset game state
         self.game_state = GameState.PLAYING
         self.pause_state = False
         self._pause_menu.hide()
@@ -109,21 +101,14 @@ class GameStateManager:
         self.question_input_unlock_at = 0
         self.heart_question_active = False
 
-        # Reset HUD
         self._hud.reset_hearts_collected()
 
-        # Reset settings visibility
         self._settings.visible = False
 
-        # Reset frame timing
         self.last_frame_time = pygame.time.get_ticks()
 
     def trigger_last_chance_question(self) -> None:
-        """Trigger a last-chance question when lives reach critical level.
-
-        Called when lives <= 1.0 and collision damage would end the game.
-        The player must answer correctly to continue with 1 life.
-        """
+        """Trigger a last-chance question when lives reach critical level."""
         self.game_state = GameState.QUESTION
         self.heart_question_active = False
         self.active_question = self._question_manager.get_random_question()
@@ -132,11 +117,7 @@ class GameStateManager:
         self._settings.visible = False
 
     def trigger_heart_question(self) -> None:
-        """Trigger a heart bonus question for extra life.
-
-        Called when the player collects a heart with less than max lives.
-        Answering correctly grants an additional life.
-        """
+        """Trigger a heart bonus question for extra life."""
         self.game_state = GameState.QUESTION
         self.heart_question_active = True
         self.active_question = self._question_manager.get_random_question()
@@ -146,9 +127,6 @@ class GameStateManager:
 
     def resolve_question_answer(self, answer_index: int) -> None:
         """Resolve the answer to an active question.
-
-        Updates lives and game state based on whether the answer is correct
-        and whether this is a heart bonus question or last-chance question.
 
         Args:
             answer_index: The zero-based index of the selected answer.
@@ -201,28 +179,16 @@ class GameStateManager:
         self.lives = max(1.0, self.lives - float(damage))
 
     def is_question_input_ready(self) -> bool:
-        """Check if question input is unlocked and ready.
-
-        Returns:
-            True if the input lock period has expired.
-        """
+        """Check if question input is unlocked and ready."""
         return pygame.time.get_ticks() >= self.question_input_unlock_at
 
     def update_last_frame_time(self) -> int:
-        """Update and return the delta time since last frame.
-
-        Returns:
-            The delta time in milliseconds.
-        """
+        """Update and return the delta time since last frame."""
         now = pygame.time.get_ticks()
         delta_time = now - self.last_frame_time
         self.last_frame_time = now
         return delta_time
 
     def set_last_frame_time(self, time_ms: int) -> None:
-        """Manually set the last frame time.
-
-        Args:
-            time_ms: The timestamp in milliseconds.
-        """
+        """Manually set the last frame time."""
         self.last_frame_time = time_ms

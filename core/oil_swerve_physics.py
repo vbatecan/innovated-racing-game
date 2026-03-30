@@ -27,26 +27,17 @@ class OilSwervePhysics:
 
     @property
     def is_active(self) -> bool:
-        """Check if oil swerve effect is currently active.
-
-        Returns:
-            True if the swerve period has not yet expired.
-        """
+        """Check if oil swerve effect is currently active."""
         return pygame.time.get_ticks() < self._swerve_until
 
     @property
     def swerve_until(self) -> int:
-        """Get the timestamp when swerve effect ends.
-
-        Returns:
-            Milliseconds timestamp when swerve expires.
-        """
+        """Get the timestamp when swerve effect ends."""
         return self._swerve_until
 
     def trigger(self, duration_ms: int) -> None:
         """Trigger a new oil swerve effect.
 
-        Initializes the randomized phase and timing for a new swerve.
         If already swerving, extends the swerve duration.
 
         Args:
@@ -54,12 +45,10 @@ class OilSwervePhysics:
         """
         now = pygame.time.get_ticks()
 
-        # Randomize phase on first trigger
         if now >= self._swerve_until:
             self._started_at = now
             self._phase = random.uniform(0.0, math.tau)
 
-        # Extend swerve duration
         self._swerve_until = max(self._swerve_until, now + duration_ms)
         self._duration_ms = duration_ms
 
@@ -78,40 +67,31 @@ class OilSwervePhysics:
             base_frequency: Base frequency from config.OIL_SWERVE_FREQUENCY.
             base_strength: Base strength from config.OIL_SWERVE_STRENGTH.
             is_out_of_control: If True, inverts the steering direction.
-
-        Returns:
-            The calculated steering value (-strength to +strength).
         """
         now = pygame.time.get_ticks()
         swerve_duration = max(1, self._duration_ms)
         elapsed = max(0, now - self._started_at)
         progress = min(1.0, elapsed / float(swerve_duration))
 
-        # Amplitude envelope decays over time: 0.35 + (0.65 * (1.0 - progress))
         envelope = (
             OilSwerveConstants.ENVELOPE_BASE
             + (OilSwerveConstants.ENVELOPE_PROGRESS_MULTIPLIER * (1.0 - progress))
         )
 
-        # Frequency increases slightly as effect decays
         frequency = base_frequency * (
             OilSwerveConstants.FREQUENCY_BASE_MULTIPLIER
             - (OilSwerveConstants.FREQUENCY_PROGRESS_MULTIPLIER * progress)
         )
 
-        # Primary sine wave
         base_wave = math.sin((now * frequency) + self._phase)
 
-        # Secondary sine wave (higher frequency, phase offset)
         secondary_wave = OilSwerveConstants.SECONDARY_WAVE_AMPLITUDE * math.sin(
             (now * frequency * OilSwerveConstants.SECONDARY_WAVE_FREQUENCY_MULT)
             + (self._phase * OilSwerveConstants.SECONDARY_WAVE_PHASE_MULT)
         )
 
-        # Combined wave with envelope and strength
         target_steer = (base_wave + secondary_wave) * base_strength * envelope
 
-        # Invert if out of control
         if is_out_of_control:
             target_steer = -target_steer
 
