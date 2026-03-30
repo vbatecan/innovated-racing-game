@@ -77,7 +77,7 @@ TRUE_FALSE_QUESTIONS = [
     },
     {
         "prompt": "A stack follows LIFO (Last In, First Out).",
-        "answer": False,
+        "answer": True,
     },
     {
         "prompt": "A queue follows FIFO (First In, First Out).",
@@ -93,6 +93,38 @@ TRUE_FALSE_QUESTIONS = [
     },
     {
         "prompt": "A hash table uses key-value pairs for data storage.",
+        "answer": True,
+    },
+    {
+        "prompt": "Binary search requires a sorted array to work correctly.",
+        "answer": True,
+    },
+    {
+        "prompt": "A graph can contain cycles.",
+        "answer": True,
+    },
+    {
+        "prompt": "Recursion is a function that calls itself.",
+        "answer": True,
+    },
+    {
+        "prompt": "A variable can hold multiple values at the same time.",
+        "answer": False,
+    },
+    {
+        "prompt": "The time complexity of binary search is O(log n).",
+        "answer": True,
+    },
+    {
+        "prompt": "Bubble sort is the fastest sorting algorithm.",
+        "answer": False,
+    },
+    {
+        "prompt": "A depth-first search uses a stack data structure.",
+        "answer": True,
+    },
+    {
+        "prompt": "A breadth-first search uses a queue data structure.",
         "answer": True,
     },
 ]
