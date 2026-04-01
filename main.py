@@ -35,28 +35,23 @@ def main() -> None:
     Sets up Pygame, the player car, map, controller, and settings menu, then
     delegates to GameLoop for frame processing until exit.
     """
-    # Initialize Pygame
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_SIZE["width"], WINDOW_SIZE["height"]))
     pygame.display.set_caption("Hand Gesture Racing Game")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, config.FONT_SIZE)
 
-    # Initialize settings and game world
     settings = Settings()
     settings.show_camera = config.SHOW_CAMERA
     game_map = Map(WINDOW_SIZE, lane_count=settings.lane_count)
 
-    # Initialize player car at starting position
     start_x = WINDOW_SIZE["width"] // 2
     start_y = WINDOW_SIZE["height"] - 240
     player_car = PlayerCar(start_x, start_y)
 
-    # Initialize hand gesture controller
     detector = Controller()
     detector.start_stream()
 
-    # Initialize UI components
     hud = PlayerHUD(player_car, detector, font)
     game_hud = HUDManager(
         screen_width=WINDOW_SIZE["width"],
@@ -65,7 +60,6 @@ def main() -> None:
     pause_menu = PauseMenu()
     settings_menu = SettingsMenu()
 
-    # Create and initialize game loop
     game_loop = GameLoop(
         screen=screen,
         clock=clock,
@@ -80,10 +74,8 @@ def main() -> None:
         window_size=WINDOW_SIZE,
     )
 
-    # Initialize game state manager and subsystems
     game_loop.initialize()
 
-    # Run the game
     try:
         game_loop.run()
     except Exception as e:
