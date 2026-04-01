@@ -53,6 +53,7 @@ class Road:
 
         # Load background images for map switching
         self.map_border_bounds: list[tuple[int, int]] = []
+        self.transition_map_index = -1
         self.bg_images = self._load_background_images()
         self.bg_y_offset = 0
         self.current_map_index = 0
@@ -229,26 +230,39 @@ class Road:
         self.map_border_bounds = []
         map_paths = [
             Path("resources/models/maps/city_roadfinal.png"),
-            Path("resources/models/maps/dessert upt.png"),
-            Path("resources/models/maps/highway.png")
+            Path("resources/models/maps/dessert upt3.png")
         ]
 
+        def load_map(map_path: Path) -> None:
+            if not map_path.exists():
+                return
+
+            try:
+                image = pygame.image.load(str(map_path))
+                # Scale image to fit window size
+                scaled_image = pygame.transform.scale(
+                    image, (self.window_width, self.height)
+                )
+                if pygame.display.get_surface() is not None:
+                    scaled_image = scaled_image.convert()
+                bg_images.append(scaled_image)
+                self.map_border_bounds.append(
+                    self._resolve_map_border_bounds(map_path.name)
+                )
+            except pygame.error:
+                pass
+
         for map_path in map_paths:
-            if map_path.exists():
-                try:
-                    image = pygame.image.load(str(map_path))
-                    # Scale image to fit window size
-                    scaled_image = pygame.transform.scale(
-                        image, (self.window_width, self.height)
-                    )
-                    if pygame.display.get_surface() is not None:
-                        scaled_image = scaled_image.convert()
-                    bg_images.append(scaled_image)
-                    self.map_border_bounds.append(
-                        self._resolve_map_border_bounds(map_path.name)
-                    )
-                except pygame.error:
-                    pass
+            load_map(map_path)
+
+            if map_path.name == "city_roadfinal.png" and random.choice((True, False)):
+                load_map(Path("resources/models/maps/intersect 2.png"))
+
+        # Load transition map for city to desert transitions
+        transition_path = Path("resources/models/maps/transition.png")
+        if transition_path.exists():
+            self.transition_map_index = len(bg_images)
+            load_map(transition_path)
 
         return bg_images
 
@@ -280,6 +294,7 @@ class Road:
     def set_map_by_score(self, score: int) -> None:
         """
         Switch background map based on score threshold.
+        Uses transition map when transitioning from city to desert.
 
         Args:
             score (int): Current game score.
@@ -288,17 +303,28 @@ class Road:
             return
 
         # Calculate which map to show based on the score (switch every n points)
-        map_index = (score // config.MAP_SWITCH_SCORE) % len(self.bg_images)
+        # Only count non-transition maps in the rotation
+        normal_map_count = len(self.bg_images) - (1 if self.transition_map_index >= 0 else 0)
+        map_index = (score // config.MAP_SWITCH_SCORE) % normal_map_count
+        
         if map_index == self.current_map_index and not self.is_transitioning:
             return
 
         if self.is_transitioning and map_index == self.transition_to_map_index:
             return
 
-        self.transition_from_map_index = (
-            self.transition_to_map_index if self.is_transitioning else self.current_map_index
-        )
-        self.transition_to_map_index = map_index
+        # Special handling for city (0) to desert (1) transition
+        if self.current_map_index == 0 and map_index == 1 and self.transition_map_index >= 0:
+            # Transition through the transition map
+            self.transition_from_map_index = self.current_map_index
+            self.transition_to_map_index = self.transition_map_index
+        else:
+            # Normal map transition
+            self.transition_from_map_index = (
+                self.transition_to_map_index if self.is_transitioning else self.current_map_index
+            )
+            self.transition_to_map_index = map_index
+        
         self.transition_progress_px = 0.0
         self.is_transitioning = True
         self.current_map_index = map_index
