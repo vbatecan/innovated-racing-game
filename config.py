@@ -135,7 +135,7 @@ TRUE_FALSE_QUESTIONS = [
 MULTIPLE_CHOICE_QUESTIONS = []
 
 SETTING_OPTIONS = [
-    "Car Speed",
+    "Car ",
     "Max FPS",
     "Show Camera",
     "Obstacle Freq",
@@ -172,7 +172,7 @@ HAND_CONNECTIONS = (
 
 SCORING_CONFIG = {
     "base_points_per_distance": 1.0,
-    "top_speed_bonus": 0,
+    "top__bonus": 0,
     "accel_bonus": 0,
     "clean_drive_bonus": 0,
     "clean_drive_interval": 40000,

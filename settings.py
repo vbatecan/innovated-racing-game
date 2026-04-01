@@ -27,7 +27,7 @@ class Settings:
         Returns:
             None: Initializes mutable runtime settings from configuration defaults.
         """
-        self.car_speed = CAR_SPEED
+        self.car_ = CAR_
         self.max_fps = MAX_FPS
         self.show_camera = True
         self.obstacle_frequency = OBSTACLE_FREQUENCY
@@ -45,7 +45,7 @@ class Settings:
         self.visible = False
 
         # Scoring system
-        self.speed_bonus = 50  # Every n points, increase speed by 1
+        self._bonus = 50  # Every n points, increase  by 1
         self.car_collision_deduction_pts = 100
 
     def get_brake_threshold(self):
@@ -75,23 +75,23 @@ class Settings:
         """
         self.brake_sensitivity = max(self.brake_sensitivity - 1, 1)
 
-    def increase_speed(self):
+    def increase_(self):
         """
-        Increase the car speed setting within limits.
+        Increase the car  setting within limits.
 
         Returns:
-            None: Increases `car_speed` within allowed bounds.
+            None: Increases `car_` within allowed bounds.
         """
-        self.car_speed = min(self.car_speed + 1, 50)
+        self.car_ = min(self.car_ + 1, 50)
 
-    def decrease_speed(self):
+    def decrease_(self):
         """
-        Decrease the car speed setting within limits.
+        Decrease the car  setting within limits.
 
         Returns:
-            None: Decreases `car_speed` within allowed bounds.
+            None: Decreases `car_` within allowed bounds.
         """
-        self.car_speed = max(self.car_speed - 1, 1)
+        self.car_ = max(self.car_ - 1, 1)
 
     def toggle_camera(self):
         """
@@ -185,29 +185,29 @@ class Settings:
         """
         self.steering_sensitivity = max(self.steering_sensitivity - 0.1, 0.1)
 
-    def increase_points_speed_increment(self, points):
+    def increase_points__increment(self, points):
         """
-        Increase the score interval used to grant speed bonuses.
+        Increase the score interval used to grant  bonuses.
 
         Args:
-            points (int): Amount added to `speed_bonus`.
+            points (int): Amount added to `_bonus`.
 
         Returns:
-            None: Updates score threshold for speed bonus changes.
+            None: Updates score threshold for  bonus changes.
         """
-        self.speed_bonus += points
+        self._bonus += points
 
-    def decrease_points_speed_increment(self, deduct):
+    def decrease_points__increment(self, deduct):
         """
-        Decrease the score interval used to grant speed bonuses.
+        Decrease the score interval used to grant  bonuses.
 
         Args:
-            deduct (int): Amount subtracted from `speed_bonus`.
+            deduct (int): Amount subtracted from `_bonus`.
 
         Returns:
-            None: Updates score threshold for speed bonus changes.
+            None: Updates score threshold for  bonus changes.
         """
-        self.speed_bonus -= deduct
+        self._bonus -= deduct
 
     def draw_settings_menu(self, screen, font, settings, selected_index, options):
         """
@@ -243,8 +243,8 @@ class Settings:
             color = (255, 255, 0) if i == selected_index else (255, 255, 255)
 
             value_text = ""
-            if option == "Car Speed":
-                value_text = str(settings.car_speed)
+            if option == "Car ":
+                value_text = str(settings.car_)
             elif option == "Max FPS":
                 value_text = str(settings.max_fps)
             elif option == "Show Camera":
@@ -307,7 +307,7 @@ class Settings:
                     selected_setting = (selected_setting + 1) % len(setting_options)
                 elif event.key == pygame.K_LEFT:
                     if selected_setting == 0:
-                        self.decrease_speed()
+                        self.decrease_()
                     elif selected_setting == 1:
                         self.decrease_fps()
                     elif selected_setting == 2:
@@ -322,7 +322,7 @@ class Settings:
                         self.decrease_brake_sensitivity()
                 elif event.key == pygame.K_RIGHT:
                     if selected_setting == 0:
-                        self.increase_speed()
+                        self.increase_()
                     elif selected_setting == 1:
                         self.increase_fps()
                     elif selected_setting == 2:
