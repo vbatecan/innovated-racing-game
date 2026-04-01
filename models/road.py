@@ -265,7 +265,7 @@ class Road:
 
     def update_background_scroll(self, speed: int) -> None:
         """
-        Update the background image scroll offset.
+        Update the background image scroll offset with smooth transitions.
 
         Args:
             speed (int): Current map speed.
@@ -279,9 +279,17 @@ class Road:
         if self.is_transitioning:
             self.transition_progress_px += max(0, int(speed))
             transition_distance = max(1, int(config.MAP_TRANSITION_DISTANCE))
-            progress = self.transition_progress_px / float(transition_distance)
+            raw_progress = self.transition_progress_px / float(transition_distance)
+            
+            # Apply smooth easing (ease-in-out-cubic) for smoother visual transition
+            if raw_progress < 0.5:
+                progress = 4.0 * raw_progress * raw_progress * raw_progress
+            else:
+                progress = 1.0 - pow(-2.0 * raw_progress + 2.0, 3.0) / 2.0
+            
+            progress = max(0.0, min(1.0, progress))
 
-            if progress >= 1.0:
+            if raw_progress >= 1.0:
                 self.is_transitioning = False
                 self.transition_progress_px = float(transition_distance)
                 self._apply_map_borders(self.transition_to_map_index)
@@ -363,8 +371,8 @@ class Road:
         self,
         surface: pygame.Surface,
         seam_y: int,
-        gradient_height: int = 64,
-        max_alpha: int = 70,
+        gradient_height: int = 120,
+        max_alpha: int = 120,
     ) -> None:
         half = max(1, int(gradient_height) // 2)
         center = int(seam_y)
@@ -392,7 +400,7 @@ class Road:
 
     def draw_background(self, surface: pygame.Surface) -> None:
         """
-        Render the background and asphalt road body.
+        Render the background and asphalt road body with smooth transitions.
 
         Args:
             surface (pygame.Surface): Target drawing surface.
@@ -404,7 +412,7 @@ class Road:
         if self.bg_images and 0 <= self.current_map_index < len(self.bg_images):
             if self.is_transitioning and 0 <= self.transition_from_map_index < len(
                 self.bg_images
-            ):
+            ) and 0 <= self.transition_to_map_index < len(self.bg_images):
                 transition_distance = max(1, int(config.MAP_TRANSITION_DISTANCE))
                 progress = max(
                     0.0,
@@ -414,11 +422,21 @@ class Road:
                 from_bg = self.bg_images[self.transition_from_map_index]
                 to_bg = self.bg_images[self.transition_to_map_index]
 
+                # Draw the incoming map with increasing alpha
                 self._draw_scrolling_background_range(surface, to_bg, 0, seam_y)
                 self._draw_scrolling_background_range(
                     surface, from_bg, seam_y, self.height
                 )
+                
+                # Smooth crossfade effect at seam
                 self._draw_seam_gradient(surface, seam_y)
+                
+                # Add alpha fade effect for smoother transition
+                overlay_height = int(self.height * 0.15)
+                transition_alpha = int(150 * progress)
+                overlay = pygame.Surface((self.window_width, overlay_height), pygame.SRCALPHA)
+                pygame.draw.rect(overlay, (255, 255, 255, transition_alpha), overlay.get_rect())
+                surface.blit(overlay, (0, max(0, seam_y - overlay_height // 2)))
             else:
                 current_bg = self.bg_images[self.current_map_index]
                 self._draw_scrolling_background(surface, current_bg)

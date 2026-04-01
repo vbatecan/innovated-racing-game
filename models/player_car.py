@@ -4,15 +4,22 @@ from models.vehicle import Vehicle
 
 
 class PlayerCar(Vehicle):
-    def __init__(self, start_x: int, start_y: int) -> None:
+    def __init__(self, start_x: int, start_y: int, car_manager=None) -> None:
         """
         Create a car sprite at the given position.
 
         Initializes the car's geometry, physics state, and draws its initial
         appearance onto its surface.
+        
+        Args:
+            start_x: Starting X position
+            start_y: Starting Y position
+            car_manager: Optional CarManager instance for car stats
         """
         super().__init__(start_x=start_x, start_y=start_y)
 
+        self.car_manager = car_manager
+        
         # Physics / Control
         self.current_speed = 0
         self.max_speed = 10  # This will be overridden or used as a cap
@@ -20,6 +27,31 @@ class PlayerCar(Vehicle):
         self.smoothing = 0.2  # Smooth movement
         self.turn_smoothing = 0.15  # Smooth turning
         self.x = float(start_x)  # Float position for sub-pixel accuracy
+        
+        # Apply car stats if manager available
+        self._apply_car_stats()
+
+    def _apply_car_stats(self) -> None:
+        """Apply selected car stats to this vehicle."""
+        if not self.car_manager:
+            return
+        
+        selected_car = self.car_manager.get_selected_car()
+        if not selected_car:
+            return
+        
+        stats = selected_car.stats
+        
+        # Apply stats with reasonable multipliers
+        # Speed: 0-100 -> affects max_speed (scale to 10-30 range)
+        self.max_speed = 10 + (stats.speed / 100.0) * 20
+        
+        # Handling: 0-100 -> affects turn_smoothing (higher handling = faster response)
+        max_smoothing = 0.3
+        min_smoothing = 0.08
+        self.turn_smoothing = max_smoothing - (stats.handling / 100.0) * (max_smoothing - min_smoothing)
+        
+        # Acceleration and weight will be used in physics updates
 
     def update(
             self,

@@ -15,8 +15,10 @@ from controller import Controller
 from core.game_loop import GameLoop
 from environment.map import Map
 from models.player_car import PlayerCar
+from models.car_manager import CarManager
 from settings import Settings
 from ui.game_ui import HUDManager, PauseMenu, SettingsMenu
+from ui.car_selection import CarSelectionUI
 from ui.hud import PlayerHUD
 
 # Configure logging
@@ -40,14 +42,18 @@ def main() -> None:
     pygame.display.set_caption("Hand Gesture Racing Game")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, config.FONT_SIZE)
+    font_large = pygame.font.Font(None, 48)
 
+    # Initialize car management system
+    car_manager = CarManager()
+    
     settings = Settings()
     settings.show_camera = config.SHOW_CAMERA
     game_map = Map(WINDOW_SIZE, lane_count=settings.lane_count)
 
     start_x = WINDOW_SIZE["width"] // 2
     start_y = WINDOW_SIZE["height"] - 240
-    player_car = PlayerCar(start_x, start_y)
+    player_car = PlayerCar(start_x, start_y, car_manager=car_manager)
 
     detector = Controller()
     detector.start_stream()
@@ -59,6 +65,14 @@ def main() -> None:
     )
     pause_menu = PauseMenu()
     settings_menu = SettingsMenu()
+    
+    # Initialize car selection UI
+    car_selection = CarSelectionUI(
+        window_size=WINDOW_SIZE,
+        car_manager=car_manager,
+        font_large=font_large,
+        font_small=font
+    )
 
     game_loop = GameLoop(
         screen=screen,
@@ -72,6 +86,8 @@ def main() -> None:
         pause_menu=pause_menu,
         settings_menu=settings_menu,
         window_size=WINDOW_SIZE,
+        car_manager=car_manager,
+        car_selection=car_selection,
     )
 
     game_loop.initialize()
