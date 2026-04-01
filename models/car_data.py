@@ -23,6 +23,7 @@ class Car:
     color_hex: str      # Hex color for the car
     rarity: str         # Common, Rare, Epic, Legendary
     description: str    # Short description
+    image_path: str     # Sprite shown in the shop/homepage
 
 
 # Define all available cars
@@ -34,7 +35,8 @@ CARS: List[Car] = [
         unlock_score=0,
         color_hex="#8B7BB8",
         rarity="Common",
-        description="Swift and reliable utility robot"
+        description="Swift and reliable utility robot",
+        image_path="resources/models/transparent/tricy.png"
     ),
     Car(
         id=2,
@@ -43,7 +45,8 @@ CARS: List[Car] = [
         unlock_score=5000,
         color_hex="#FF0000",
         rarity="Common",
-        description="Fast and light, high speed"
+        description="Fast and light, high speed",
+        image_path="resources/models/sports_car.png"
     ),
     Car(
         id=3,
@@ -52,7 +55,8 @@ CARS: List[Car] = [
         unlock_score=10000,
         color_hex="#0066FF",
         rarity="Rare",
-        description="Heavy and durable"
+        description="Heavy and durable",
+        image_path="resources/models/transparent/truck1.png"
     ),
     Car(
         id=4,
@@ -61,7 +65,8 @@ CARS: List[Car] = [
         unlock_score=15000,
         color_hex="#00FF00",
         rarity="Rare",
-        description="Agile and responsive"
+        description="Agile and responsive",
+        image_path="resources/models/police.png"
     ),
     Car(
         id=5,
@@ -70,7 +75,8 @@ CARS: List[Car] = [
         unlock_score=20000,
         color_hex="#FFFF00",
         rarity="Epic",
-        description="Lightning fast acceleration"
+        description="Lightning fast acceleration",
+        image_path="resources/models/car5.png"
     ),
     Car(
         id=6,
@@ -79,7 +85,8 @@ CARS: List[Car] = [
         unlock_score=25000,
         color_hex="#FF6600",
         rarity="Epic",
-        description="Power and control balanced"
+        description="Power and control balanced",
+        image_path="resources/models/van.png"
     ),
     Car(
         id=7,
@@ -88,7 +95,8 @@ CARS: List[Car] = [
         unlock_score=30000,
         color_hex="#330066",
         rarity="Legendary",
-        description="Ultimate performance machine"
+        description="Ultimate performance machine",
+        image_path="resources/models/transparent/car2.png"
     ),
     Car(
         id=8,
@@ -97,7 +105,8 @@ CARS: List[Car] = [
         unlock_score=40000,
         color_hex="#FF00FF",
         rarity="Legendary",
-        description="Mythical beast of the road"
+        description="Mythical beast of the road",
+        image_path="resources/models/ambulance.png"
     ),
 ]
 

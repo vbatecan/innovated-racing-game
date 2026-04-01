@@ -85,10 +85,13 @@ class CarManager:
         old_best = int(self.best_score)
         self.best_score = new_score
         
-        old_unlocked = set(get_unlocked_cars(old_best))
-        new_unlocked = set(get_unlocked_cars(int(self.best_score)))
-        
-        newly_unlocked = [car for car in new_unlocked if car not in old_unlocked]
+        old_unlocked = {car.id for car in get_unlocked_cars(old_best)}
+        new_unlocked = get_unlocked_cars(int(self.best_score))
+
+        newly_unlocked = [
+            car for car in new_unlocked
+            if car.id not in old_unlocked
+        ]
         
         self._update_unlocked_cars()
         

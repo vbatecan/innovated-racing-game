@@ -14,11 +14,11 @@ from config import WINDOW_SIZE
 from controller import Controller
 from core.game_loop import GameLoop
 from environment.map import Map
-from models.player_car import PlayerCar
 from models.car_manager import CarManager
+from models.player_car import PlayerCar
 from settings import Settings
 from ui.game_ui import HUDManager, PauseMenu, SettingsMenu
-from ui.car_selection import CarSelectionUI
+from ui.homepage import HomePageScreen
 from ui.hud import PlayerHUD
 
 # Configure logging
@@ -44,9 +44,30 @@ def main() -> None:
     font = pygame.font.Font(None, config.FONT_SIZE)
     font_large = pygame.font.Font(None, 48)
 
-    # Initialize car management system
     car_manager = CarManager()
-    
+
+    homepage = HomePageScreen(WINDOW_SIZE, car_manager)
+
+    home_running = True
+    while home_running:
+        delta_time = clock.tick(60) / 1000.0
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+
+            action = homepage.handle_event(event)
+            if action == "start":
+                home_running = False
+            elif action == "quit":
+                pygame.quit()
+                return
+
+        homepage.update(delta_time)
+        homepage.draw(screen)
+        pygame.display.flip()
+
     settings = Settings()
     settings.show_camera = config.SHOW_CAMERA
     game_map = Map(WINDOW_SIZE, lane_count=settings.lane_count)
@@ -65,14 +86,6 @@ def main() -> None:
     )
     pause_menu = PauseMenu()
     settings_menu = SettingsMenu()
-    
-    # Initialize car selection UI
-    car_selection = CarSelectionUI(
-        window_size=WINDOW_SIZE,
-        car_manager=car_manager,
-        font_large=font_large,
-        font_small=font
-    )
 
     game_loop = GameLoop(
         screen=screen,
@@ -86,8 +99,6 @@ def main() -> None:
         pause_menu=pause_menu,
         settings_menu=settings_menu,
         window_size=WINDOW_SIZE,
-        car_manager=car_manager,
-        car_selection=car_selection,
     )
 
     game_loop.initialize()

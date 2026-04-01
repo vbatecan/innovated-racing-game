@@ -1,9 +1,12 @@
 import pygame
 
 from models.vehicle import Vehicle
+from models.car_data import get_car_by_id
 
 
 class PlayerCar(Vehicle):
+    SPRITE_CANVAS_SIZE = (96, 96)
+
     def __init__(self, start_x: int, start_y: int, car_manager=None) -> None:
         """
         Create a car sprite at the given position.
@@ -19,6 +22,9 @@ class PlayerCar(Vehicle):
         super().__init__(start_x=start_x, start_y=start_y)
 
         self.car_manager = car_manager
+
+        if self.car_manager:
+            self._apply_selected_car_sprite()
         
         # Physics / Control
         self.current_speed = 0
@@ -31,6 +37,56 @@ class PlayerCar(Vehicle):
         # Apply car stats if manager available
         self._apply_car_stats()
 
+    def _apply_selected_car_sprite(self) -> None:
+        """Load the selected car image for the driving sprite."""
+        if not self.car_manager:
+            return
+
+        selected_car = self.car_manager.get_selected_car()
+        if selected_car is None:
+            return
+
+        car_data = get_car_by_id(selected_car.id)
+        if car_data is None:
+            return
+
+        try:
+            image = pygame.image.load(car_data.image_path).convert_alpha()
+            self.image = self._fit_image_to_canvas(image, self.SPRITE_CANVAS_SIZE)
+            self.original_image = self.image.copy()
+            self.rect = self.image.get_rect(center=(self.rect.centerx, self.rect.centery))
+            self.mask = pygame.mask.from_surface(self.image)
+        except (pygame.error, FileNotFoundError):
+            # Keep the default sprite if the selected car image cannot be loaded.
+            pass
+
+    def _fit_image_to_canvas(
+        self,
+        image: pygame.Surface,
+        canvas_size: tuple[int, int],
+    ) -> pygame.Surface:
+        """Scale an image to fit inside a fixed canvas while keeping its aspect ratio."""
+        canvas_width, canvas_height = canvas_size
+        source_width, source_height = image.get_size()
+
+        if source_width == 0 or source_height == 0:
+            return pygame.Surface(canvas_size, pygame.SRCALPHA)
+
+        scale = min(
+            canvas_width / float(source_width),
+            canvas_height / float(source_height),
+        )
+        scaled_width = max(1, int(source_width * scale))
+        scaled_height = max(1, int(source_height * scale))
+        scaled_image = pygame.transform.smoothscale(image, (scaled_width, scaled_height))
+
+        canvas = pygame.Surface(canvas_size, pygame.SRCALPHA)
+        canvas.blit(
+            scaled_image,
+            scaled_image.get_rect(center=canvas.get_rect().center),
+        )
+        return canvas
+
     def _apply_car_stats(self) -> None:
         """Apply selected car stats to this vehicle."""
         if not self.car_manager:
@@ -39,6 +95,8 @@ class PlayerCar(Vehicle):
         selected_car = self.car_manager.get_selected_car()
         if not selected_car:
             return
+
+        self._apply_selected_car_sprite()
         
         stats = selected_car.stats
         
