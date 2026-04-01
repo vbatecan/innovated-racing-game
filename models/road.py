@@ -230,7 +230,7 @@ class Road:
         self.map_border_bounds = []
         map_paths = [
             Path("resources/models/maps/city_roadfinal.png"),
-            Path("resources/models/maps/dessert upt3.png")
+            Path("resources/models/maps/dessert upt2.png")
         ]
 
         def load_map(map_path: Path) -> None:
@@ -254,9 +254,6 @@ class Road:
 
         for map_path in map_paths:
             load_map(map_path)
-
-            if map_path.name == "city_roadfinal.png" and random.choice((True, False)):
-                load_map(Path("resources/models/maps/intersect 2.png"))
 
         # Load transition map for city to desert transitions
         transition_path = Path("resources/models/maps/transition.png")

@@ -27,7 +27,7 @@ class Settings:
         Returns:
             None: Initializes mutable runtime settings from configuration defaults.
         """
-        self.car_ = CAR_
+        self.car_speed = CAR_SPEED
         self.max_fps = MAX_FPS
         self.show_camera = True
         self.obstacle_frequency = OBSTACLE_FREQUENCY
@@ -75,23 +75,23 @@ class Settings:
         """
         self.brake_sensitivity = max(self.brake_sensitivity - 1, 1)
 
-    def increase_(self):
+    def increase_car_speed(self):
         """
-        Increase the car  setting within limits.
+        Increase the car speed setting within limits.
 
         Returns:
-            None: Increases `car_` within allowed bounds.
+            None: Increases `car_speed` within allowed bounds.
         """
-        self.car_ = min(self.car_ + 1, 50)
+        self.car_speed = min(self.car_speed + 1, 50)
 
-    def decrease_(self):
+    def decrease_car_speed(self):
         """
-        Decrease the car  setting within limits.
+        Decrease the car speed setting within limits.
 
         Returns:
-            None: Decreases `car_` within allowed bounds.
+            None: Decreases `car_speed` within allowed bounds.
         """
-        self.car_ = max(self.car_ - 1, 1)
+        self.car_speed = max(self.car_speed - 1, 1)
 
     def toggle_camera(self):
         """
