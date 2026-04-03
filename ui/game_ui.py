@@ -521,7 +521,7 @@ class SettingsMenu:
                 ("Show FPS", True),
             ],
             "Graphics": [
-                ("Fullscreen", False),
+                ("Fullscreen", True),
                 ("Show Camera", True),
                 ("VSync", True),
             ],

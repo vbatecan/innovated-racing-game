@@ -38,7 +38,9 @@ def main() -> None:
     delegates to GameLoop for frame processing until exit.
     """
     pygame.init()
-    screen = pygame.display.set_mode((WINDOW_SIZE["width"], WINDOW_SIZE["height"]))
+    screen = pygame.display.set_mode(
+        (WINDOW_SIZE["width"], WINDOW_SIZE["height"]), pygame.FULLSCREEN
+    )
     pygame.display.set_caption("Hand Gesture Racing Game")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, config.FONT_SIZE)
@@ -69,6 +71,7 @@ def main() -> None:
         pygame.display.flip()
 
     settings = Settings()
+    settings.fullscreen = True
     settings.show_camera = config.SHOW_CAMERA
     game_map = Map(WINDOW_SIZE, lane_count=settings.lane_count)
 
