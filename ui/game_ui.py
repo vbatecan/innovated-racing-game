@@ -38,8 +38,8 @@ class Button:
         width: int,
         height: int,
         text: str,
-        callback: Callable = None,
-        font: pygame.font.Font = None,
+        callback: Callable | None = None,
+        font: pygame.font.Font | None = None,
     ):
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
@@ -80,7 +80,7 @@ class Slider:
         max_val: float,
         value: float,
         label: str = "",
-        font: pygame.font.Font = None,
+        font: pygame.font.Font | None = None,
     ):
         self.x = x
         self.y = y
@@ -703,7 +703,7 @@ class SettingsMenu:
         opts = self.settings[cat]
         for opt in opts:
             if opt[0] == "Fullscreen":
-                game_settings.fullscreen = self.get_value(cat, "Fullscreen")
+                game_settings.set_fullscreen(self.get_value(cat, "Fullscreen"))
             elif opt[0] == "Show Camera":
                 game_settings.show_camera = self.get_value(cat, "Show Camera")
             elif opt[0] == "VSync":

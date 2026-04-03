@@ -1,7 +1,7 @@
-from pygame.event import Event
 from typing import Any
-import cv2
+
 import pygame
+from pygame.event import Event
 
 from config import (
     ACCELERATION,
@@ -11,8 +11,8 @@ from config import (
     CAR_SPEED,
     FRICTION,
     LANE_COUNT,
-    MAX_LANE_COUNT,
     MAX_FPS,
+    MAX_LANE_COUNT,
     MIN_LANE_COUNT,
     OBSTACLE_FREQUENCY,
     STEERING_SENSITIVITY,
@@ -43,10 +43,30 @@ class Settings:
 
         # This
         self.visible = False
+        self.fullscreen = False
 
         # Scoring system
         self._bonus = 50  # Every n points, increase  by 1
         self.car_collision_deduction_pts = 100
+
+    def set_fullscreen(self, fullscreen: bool):
+        """Toggle fullscreen mode and immediately update the pygame display surface.
+
+        Args:
+            fullscreen (bool): Whether fullscreen mode should be enabled.
+
+        Returns:
+            None: Recreates the active display surface with the requested flags.
+        """
+        self.fullscreen = fullscreen
+
+        surface = pygame.display.get_surface()
+        if surface is None:
+            return
+
+        width, height = surface.get_size()
+        flags = pygame.FULLSCREEN if fullscreen else 0
+        pygame.display.set_mode((width, height), flags)
 
     def get_brake_threshold(self):
         """
@@ -307,7 +327,7 @@ class Settings:
                     selected_setting = (selected_setting + 1) % len(setting_options)
                 elif event.key == pygame.K_LEFT:
                     if selected_setting == 0:
-                        self.decrease_()
+                        self.decrease_car_speed()
                     elif selected_setting == 1:
                         self.decrease_fps()
                     elif selected_setting == 2:
@@ -322,7 +342,7 @@ class Settings:
                         self.decrease_brake_sensitivity()
                 elif event.key == pygame.K_RIGHT:
                     if selected_setting == 0:
-                        self.increase_()
+                        self.increase_car_speed()
                     elif selected_setting == 1:
                         self.increase_fps()
                     elif selected_setting == 2:

@@ -34,17 +34,17 @@ class GameLoop:
         self,
         screen: pygame.Surface,
         clock: pygame.time.Clock,
-        player_car: object,
-        game_map: object,
-        detector: object,
-        settings: object,
-        hud: object,
-        game_hud: object,
-        pause_menu: object,
-        settings_menu: object,
+        player_car,
+        game_map,
+        detector,
+        settings,
+        hud,
+        game_hud,
+        pause_menu,
+        settings_menu,
         window_size: dict,
-        car_manager: object = None,
-        car_selection: object = None,
+        car_manager = None,
+        car_selection = None,
     ) -> None:
         """Initialize the game loop with all required components.
 
@@ -136,7 +136,7 @@ class GameLoop:
 
         logger.info("Starting Game Loop...")
         logger.info("Controls: Use your hands visible to the camera.")
-        logger.info("Press 'S' to open Settings.")
+        logger.info("Press 'Esc' to open Settings.")
 
     def run(self) -> None:
         """Execute the main game loop until exit."""
@@ -198,7 +198,7 @@ class GameLoop:
             )
 
         self._update_speed_from_score()
-        
+
         # Check for newly unlocked cars
         self._check_and_handle_car_unlocks()
 
@@ -215,7 +215,7 @@ class GameLoop:
             if self._car_selection and self._car_selection.visible:
                 if self._car_selection.handle_event(event):
                     continue
-            
+
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 # Open car selection if in game over state
                 if self._game_state_manager.game_state == GameState.GAME_OVER and self._car_selection:
@@ -277,7 +277,7 @@ class GameLoop:
             if self._car_selection and not self._car_selection.visible:
                 self._car_selection.open()
                 return
-        
+
         running, selected_setting, show_settings = self._settings.handle_event(
             event,
             self._running,
@@ -422,8 +422,20 @@ class GameLoop:
 
         self._collision_handler.check_and_resolve_all()
 
+    def _refresh_display_surface(self) -> None:
+        """Synchronize cached screen reference with the active display surface.
+
+        Fullscreen toggles recreate the SDL display surface. Continuing to draw
+        to the old cached surface can trigger blit errors because the stale
+        surface may be locked or otherwise invalid for rendering.
+        """
+        current_surface = pygame.display.get_surface()
+        if current_surface is not None and current_surface is not self._screen:
+            self._screen = current_surface
+
     def _render(self) -> None:
         """Render the game frame."""
+        self._refresh_display_surface()
         self._game_map.draw(self._screen)
         self._render_sprite()
 
@@ -483,7 +495,7 @@ class GameLoop:
                 self._overlay_body_font,
                 self._scoring_system.get_score(),
             )
-        
+
         # Draw car selection UI if visible
         if self._car_selection:
             self._car_selection.update(16.0 / 1000.0)  # Assume 60 FPS
@@ -522,29 +534,31 @@ class GameLoop:
         """Initialize car selection UI callbacks."""
         if not self._car_selection or not self._car_manager:
             return
-        
+
         def on_car_selected(car):
             """Callback when car is selected."""
             # Reapply car stats
-            if hasattr(self._player_car, '_apply_car_stats'):
-                self._player_car._apply_car_stats()
+            # Currently walang function na _apply_car_stats.
+            # TODO: Need revision here.
+            # if hasattr(self._player_car, '_apply_car_stats'):
+            #     self._player_car._apply_car_stats()
             logger.info(f"Car selected: {car.name}")
-        
+
         def on_car_selection_closed():
             """Callback when car selection is closed."""
             pass
-        
+
         self._car_selection.selected_callback = on_car_selected
         self._car_selection.close_callback = on_car_selection_closed
-    
+
     def _check_and_handle_car_unlocks(self) -> None:
         """Check for newly unlocked cars based on current score."""
         if not self._car_manager or not self._car_selection:
             return
-        
+
         current_score = self._scoring_system.get_score()
         newly_unlocked = self._car_manager.update_best_score(current_score)
-        
+
         if newly_unlocked:
             logger.info(f"New cars unlocked: {[car.name for car in newly_unlocked]}")
             self._car_selection.show_new_unlocks(newly_unlocked)

@@ -50,7 +50,7 @@ def main() -> None:
 
     home_running = True
     while home_running:
-        delta_time = clock.tick(60) / 1000.0
+        delta_time = clock.tick(120) / 1000.0
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -80,10 +80,12 @@ def main() -> None:
     detector.start_stream()
 
     hud = PlayerHUD(player_car, detector, font)
+    
     game_hud = HUDManager(
-        screen_width=WINDOW_SIZE["width"],
-        screen_height=WINDOW_SIZE["height"]
+        WINDOW_SIZE["width"],
+        WINDOW_SIZE["height"]
     )
+    
     pause_menu = PauseMenu()
     settings_menu = SettingsMenu()
 

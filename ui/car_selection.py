@@ -1,16 +1,18 @@
 """Car selection UI system."""
 
-import pygame
 import math
-from typing import Optional, Callable
-from models.car_manager import CarManager
+from typing import Callable, Optional
+
+import pygame
+
 from models.car_data import Car, get_car_by_id
+from models.car_manager import CarManager
 
 
 class CarSelectionUI:
     """Interactive car selection menu interface."""
     
-    def __init__(self, window_size: dict, car_manager: CarManager, font_large: pygame.font.Font = None, font_small: pygame.font.Font = None):
+    def __init__(self, window_size: dict, car_manager: CarManager, font_large: pygame.font.Font | None = None, font_small: pygame.font.Font | None = None):
         """
         Initialize car selection UI.
         

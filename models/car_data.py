@@ -31,7 +31,7 @@ CARS: List[Car] = [
     Car(
         id=1,
         name="Triky",
-        stats=CarStats(speed=65, handling=75, acceleration=70, weight=48),
+        stats=CarStats(speed=100, handling=75, acceleration=70, weight=48),
         unlock_score=0,
         color_hex="#8B7BB8",
         rarity="Common",
