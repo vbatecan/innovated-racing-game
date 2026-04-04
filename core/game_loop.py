@@ -139,7 +139,14 @@ class GameLoop:
         logger.info("Press 'Esc' to open Settings.")
 
     def run(self) -> None:
-        """Execute the main game loop until exit."""
+        """Execute the main game loop until exit.
+
+        Continuously processes frames until the running flag is cleared.
+        Performs cleanup after the loop terminates.
+
+        Raises:
+            RuntimeError: If initialize() was not called before run().
+        """
         if self._game_state_manager is None:
             raise RuntimeError("GameLoop.initialize() must be called before run()")
 
@@ -149,7 +156,12 @@ class GameLoop:
         self._cleanup()
 
     def _process_frame(self) -> None:
-        """Process a single game frame."""
+        """Process a single complete game frame.
+
+        Orchestrates the frame lifecycle: event handling, state updates,
+        gameplay logic, rendering, and scoring. Applies frame rate limiting
+        at the end of each frame.
+        """
         self._is_braking = False
 
         self._detector.set_require_two_hands(
@@ -198,26 +210,26 @@ class GameLoop:
             )
 
         self._update_speed_from_score()
-
-        # Check for newly unlocked cars
         self._check_and_handle_car_unlocks()
-
         self._clock.tick(self._settings.max_fps)
 
     def _handle_events(self) -> None:
-        """Process all Pygame events for the current frame."""
+        """Process all Pygame events for the current frame.
+
+        Dispatches events to appropriate handlers based on current game state
+        and UI visibility. Handles quit events, car selection input, pause menu,
+        question answering, game over restart, settings menu, and gameplay input.
+        """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self._running = False
                 continue
 
-            # Handle car selection UI first
             if self._car_selection and self._car_selection.visible:
                 if self._car_selection.handle_event(event):
                     continue
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                # Open car selection if in game over state
                 if self._game_state_manager.game_state == GameState.GAME_OVER and self._car_selection:
                     self._car_selection.open()
                     continue
@@ -252,7 +264,13 @@ class GameLoop:
                 self._pause_menu.hide()
 
     def _handle_question_key(self, event: pygame.event.Event) -> None:
-        """Handle keyboard input during question state."""
+        """Handle keyboard input during question state.
+
+        Maps numeric key presses to answer option selection.
+
+        Args:
+            event: Pygame event to process.
+        """
         if event.type == pygame.KEYDOWN:
             selected = self._key_mapper.get_option_index(event.key)
             if selected is not None and self._game_state_manager.active_question is not None:
@@ -262,7 +280,13 @@ class GameLoop:
                     )
 
     def _handle_settings_event(self, event: pygame.event.Event) -> None:
-        """Handle input when settings menu is visible."""
+        """Handle input when settings menu is visible.
+
+        Processes settings menu interactions and applies changes to game settings.
+
+        Args:
+            event: Pygame event to process.
+        """
         mouse_pos = pygame.mouse.get_pos()
         result = self._settings_menu.handle_input(event, mouse_pos)
         if result and result.get("action") in ("changed", "close"):
@@ -271,8 +295,13 @@ class GameLoop:
             self._settings.visible = False
 
     def _handle_gameplay_event(self, event: pygame.event.Event) -> None:
-        """Handle normal gameplay input events."""
-        # Handle car selection menu toggle
+        """Handle normal gameplay input events.
+
+        Processes car selection toggle and settings menu events during active gameplay.
+
+        Args:
+            event: Pygame event to process.
+        """
         if event.type == pygame.KEYDOWN and event.key == pygame.K_c:
             if self._car_selection and not self._car_selection.visible:
                 self._car_selection.open()
@@ -290,7 +319,11 @@ class GameLoop:
         self._settings.visible = show_settings
 
     def _process_pause_menu(self) -> None:
-        """Process pause menu updates and rendering."""
+        """Process pause menu updates and rendering.
+
+        Handles pause menu input, updates button states, processes selection results,
+        and renders the paused game scene with the pause menu overlay.
+        """
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
 
@@ -312,7 +345,14 @@ class GameLoop:
         pygame.display.flip()
 
     def _process_pause_result(self, result: Optional[str]) -> None:
-        """Process pause menu selection result."""
+        """Process pause menu selection result.
+
+        Executes actions based on pause menu selection: resume game, restart run,
+        open settings, or quit the application.
+
+        Args:
+            result: Selected menu option string, or None if no selection.
+        """
         if result == "Resume":
             self._pause_menu.hide()
         elif result == "Restart":
@@ -326,7 +366,11 @@ class GameLoop:
             self._running = False
 
     def _process_question_input(self) -> None:
-        """Process hand gesture input during question state."""
+        """Process hand gesture input during question state.
+
+        Handles swipe gestures for option navigation and selection gesture
+        for confirming answers when input cooldown has elapsed.
+        """
         if self._game_state_manager.active_question is None:
             return
 
@@ -349,7 +393,12 @@ class GameLoop:
                 )
 
     def _update_gameplay(self) -> None:
-        """Update gameplay state for the current frame."""
+        """Update gameplay state for the current frame.
+
+        Processes detector input, applies boost effects, handles braking and steering,
+        manages gear shifting, applies oil swerve physics, updates player car physics,
+        and updates the game map state.
+        """
         self._detector.brake_threshold = self._settings.get_brake_threshold()
 
         frame = self._detector.get_frame()
@@ -434,7 +483,12 @@ class GameLoop:
             self._screen = current_surface
 
     def _render(self) -> None:
-        """Render the game frame."""
+        """Render the complete game frame.
+
+        Synchronizes display surface, draws game world, updates HUD with current
+        metrics, renders overlays for question/game over states, and draws car
+        selection UI if visible.
+        """
         self._refresh_display_surface()
         self._game_map.draw(self._screen)
         self._render_sprite()
@@ -504,13 +558,16 @@ class GameLoop:
         pygame.display.flip()
 
     def _render_sprite(self) -> None:
-        """Render the player sprite group."""
+        """Render the player car sprite to the screen."""
         sprite_group = pygame.sprite.Group()
         sprite_group.add(self._player_car)
         sprite_group.draw(self._screen)
 
     def _update_speed_from_score(self) -> None:
-        """Update max speed based on current score."""
+        """Adjust maximum speed based on current score milestones.
+
+        Increases max speed incrementally as the player reaches score thresholds.
+        """
         score = self._scoring_system.get_score()
         speed_increments = score // ScoringConstants.SPEED_INCREMENT_THRESHOLD
         new_max_speed = (
@@ -520,7 +577,11 @@ class GameLoop:
         self._player_car.set_max_speed(new_max_speed)
 
     def _reset_subsystems(self) -> None:
-        """Reset all subsystems after a game restart."""
+        """Reset all gameplay subsystems after a game restart.
+
+        Clears boost state, gear state, oil swerve effects, collision handler,
+        and steering targets to prepare for a fresh run.
+        """
         self._boost_system.reset()
         self._gear_system.reset()
         self._oil_swerve.reset()
@@ -531,28 +592,32 @@ class GameLoop:
         self._max_speed = self._player_car.max_speed
 
     def _initialize_car_selection(self) -> None:
-        """Initialize car selection UI callbacks."""
+        """Configure car selection UI callbacks.
+
+        Sets up handlers for car selection and menu closure events.
+        Skips initialization if car selection UI or manager is not available.
+        """
         if not self._car_selection or not self._car_manager:
             return
 
         def on_car_selected(car):
-            """Callback when car is selected."""
-            # Reapply car stats
-            # Currently walang function na _apply_car_stats.
-            # TODO: Need revision here.
-            # if hasattr(self._player_car, '_apply_car_stats'):
-            #     self._player_car._apply_car_stats()
+            """Handle car selection event."""
+            # TODO: Apply car stats to player car
             logger.info(f"Car selected: {car.name}")
 
         def on_car_selection_closed():
-            """Callback when car selection is closed."""
+            """Handle car selection menu closure."""
             pass
 
         self._car_selection.selected_callback = on_car_selected
         self._car_selection.close_callback = on_car_selection_closed
 
     def _check_and_handle_car_unlocks(self) -> None:
-        """Check for newly unlocked cars based on current score."""
+        """Evaluate and notify newly unlocked cars based on current score.
+
+        Updates the best score in the car manager and triggers unlock notifications
+        in the car selection UI when new vehicles become available.
+        """
         if not self._car_manager or not self._car_selection:
             return
 
@@ -564,7 +629,10 @@ class GameLoop:
             self._car_selection.show_new_unlocks(newly_unlocked)
 
     def _cleanup(self) -> None:
-        """Clean up resources on exit."""
+        """Release all resources on game exit.
+
+        Stops the detector stream, destroys OpenCV windows, and quits Pygame.
+        """
         self._detector.stop_stream()
         cv2.destroyAllWindows()
         pygame.quit()
