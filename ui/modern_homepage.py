@@ -53,14 +53,14 @@ class ModernHomePage:
         self.small_font: pygame.font.Font | None = None
         self._fonts_initialized: bool = False
 
-        # Colors
-        self.bg_top: tuple = (10, 12, 24)
-        self.bg_bottom: tuple = (28, 34, 58)
-        self.accent_cyan: tuple = (92, 220, 255)
+        # Colors with improved contrast
+        self.bg_top: tuple = (6, 10, 20)
+        self.bg_bottom: tuple = (25, 35, 65)
+        self.accent_cyan: tuple = (0, 220, 255)
         self.accent_purple: tuple = (160, 100, 255)
-        self.accent_green: tuple = (80, 220, 160)
-        self.text_color: tuple = (246, 248, 255)
-        self.muted_color: tuple = (163, 176, 204)
+        self.accent_green: tuple = (100, 240, 150)
+        self.text_color: tuple = (245, 250, 255)
+        self.muted_color: tuple = (140, 160, 190)
 
         # Animation state
         self.elapsed_time: float = 0.0
@@ -71,11 +71,11 @@ class ModernHomePage:
         self.background_effect: BackgroundEffect = BackgroundEffect(self.width, self.height)
 
         # Create buttons with improved spacing
-        button_width: int = 300
-        button_height: int = 70
-        button_spacing: int = 100  # Vertical spacing between buttons
+        button_width: int = 340
+        button_height: int = 80
+        button_spacing: int = 120  # Vertical spacing between buttons
         button_x: int = (self.width - button_width) // 2
-        buttons_start_y: int = self.height // 2 - 50
+        buttons_start_y: int = self.height // 2 + 40
 
         self.start_button: ModernButton = ModernButton(
             button_x,
@@ -128,11 +128,11 @@ class ModernHomePage:
         if self._fonts_initialized:
             return
         try:
-            self.title_font = pygame.font.Font(None, 120)
-            self.subtitle_font = pygame.font.Font(None, 48)
-            self.button_font = pygame.font.Font(None, 40)
-            self.info_font = pygame.font.Font(None, 28)
-            self.small_font = pygame.font.Font(None, 22)
+            self.title_font = pygame.font.Font(None, 140)
+            self.subtitle_font = pygame.font.Font(None, 54)
+            self.button_font = pygame.font.Font(None, 44)
+            self.info_font = pygame.font.Font(None, 32)
+            self.small_font = pygame.font.Font(None, 26)
             self._fonts_initialized = True
             
             # Update button fonts
@@ -144,12 +144,11 @@ class ModernHomePage:
             import logging
             logging.getLogger(__name__).error(f"Failed to initialize fonts: {e}")
             # Create fallback fonts to prevent crashes
-            self.title_font = pygame.font.SysFont("arial", 120)
-            self.subtitle_font = pygame.font.SysFont("arial", 48)
-            self.button_font = pygame.font.SysFont("arial", 40)
-            self.info_font = pygame.font.SysFont("arial", 28)
-            self.small_font = pygame.font.SysFont("arial", 22)
-            self._fonts_initialized = True
+            self.title_font = pygame.font.SysFont("arial", 140)
+            self.subtitle_font = pygame.font.SysFont("arial", 54)
+            self.button_font = pygame.font.SysFont("arial", 44)
+            self.info_font = pygame.font.SysFont("arial", 32)
+            self.small_font = pygame.font.SysFont("arial", 26)
 
     def _update_focus(self) -> None:
         """Update button focus state based on current focus index."""

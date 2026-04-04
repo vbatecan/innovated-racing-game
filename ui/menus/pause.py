@@ -102,10 +102,10 @@ class PauseMenu:
         self.buttons = []
         for i, option in enumerate(self.options):
             btn: Button = Button(
-                menu_x + 40,
-                menu_y + 120 + i * ANIMATION.menu_button_spacing,
-                menu_w - 80,
-                48,
+                menu_x + 50,
+                menu_y + 140 + i * ANIMATION.menu_button_spacing,
+                menu_w - 100,
+                54,
                 option,
             )
             self.buttons.append(btn)
@@ -205,8 +205,9 @@ class PauseMenu:
         sw: int = screen.get_width()
         sh: int = screen.get_height()
 
+        # Draw darker overlay
         overlay: Surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, int(180 * self.anim_progress)))
+        overlay.fill((0, 0, 0, int(200 * self.anim_progress)))
         screen.blit(overlay, (0, 0))
 
         menu_w: int = LAYOUT.pause_menu_width
@@ -214,21 +215,28 @@ class PauseMenu:
         menu_x: int = sw // 2 - menu_w // 2
         menu_y: int = sh // 2 - menu_h // 2
 
-        draw_rounded_rect(screen, (20, 30, 50, 240), (menu_x, menu_y, menu_w, menu_h))
-        draw_rounded_rect(screen, self.accent_color, (menu_x, menu_y, menu_w, 4))
-        draw_rounded_rect(
-            screen, self.accent_color, (menu_x, menu_y, menu_w, menu_h), 1
-        )
+        # Draw menu background with gradient effect
+        draw_rounded_rect(screen, (10, 15, 35, 245), (menu_x, menu_y, menu_w, menu_h))
+        
+        # Draw accent top border
+        draw_rounded_rect(screen, self.accent_color, (menu_x, menu_y, menu_w, 6))
+        
+        # Draw menu border with accent
+        draw_rounded_rect(screen, self.accent_color, (menu_x, menu_y, menu_w, menu_h), 2)
 
+        # Draw title with glow effect
         title: Surface = self.font_title.render("PAUSED", True, self.accent_color)
-        screen.blit(title, (sw // 2 - title.get_width() // 2, menu_y + 25))
+        title_x = sw // 2 - title.get_width() // 2
+        title_y = menu_y + 35
+        screen.blit(title, (title_x, title_y))
 
         self.update_layout(sw, sh)
 
         for btn in self.buttons:
             btn.draw(screen)
 
+        # Draw footer hint
         hint: Surface = self.font_hint.render(
             "↑↓ Navigate  |  ENTER Select  |  ESC Resume", True, self.muted_color
         )
-        screen.blit(hint, (sw // 2 - hint.get_width() // 2, menu_y + menu_h - 30))
+        screen.blit(hint, (sw // 2 - hint.get_width() // 2, menu_y + menu_h - 35))
