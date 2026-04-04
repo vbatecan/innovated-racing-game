@@ -5,7 +5,7 @@ while loop, delegating to specialized systems for state management,
 input handling, physics, and rendering.
 """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import logging
 import pygame
 import cv2
@@ -18,6 +18,10 @@ from core.oil_swerve_physics import OilSwervePhysics
 from core.collision_handler import CollisionHandler
 from input.key_mapper import KeyMapper
 from input.steering_handler import SteeringHandler
+
+if TYPE_CHECKING:
+    from ui.homepage import HomePageScreen
+    from ui.modern_homepage import ModernHomePage
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +47,8 @@ class GameLoop:
         pause_menu,
         settings_menu,
         window_size: dict,
+        homepage: "ModernHomePage",
+        shop_screen: "HomePageScreen",
         car_manager = None,
         car_selection = None,
     ) -> None:
@@ -76,6 +82,12 @@ class GameLoop:
         self._car_selection = car_selection
         self._settings_menu = settings_menu
         self._window_size = window_size
+        self._homepage = homepage
+        self._shop_screen = shop_screen
+
+        # Menu navigation state
+        self._current_screen = "home"  # 'home', 'shop', 'settings', 'game'
+        self._menu_running = True
 
         self._font = pygame.font.Font(None, config.FONT_SIZE)
         self._overlay_title_font = pygame.font.Font(
@@ -133,15 +145,170 @@ class GameLoop:
         )
 
         self._initialize_car_selection()
+        self._setup_menu_callbacks()
 
         logger.info("Starting Game Loop...")
         logger.info("Controls: Use your hands visible to the camera.")
         logger.info("Press 'Esc' to open Settings.")
 
+    def _setup_menu_callbacks(self) -> None:
+        """Configure menu navigation callbacks for homepage buttons."""
+        logger.info("Setting up menu callbacks...")
+        def start_game() -> None:
+            """Callback for start game button."""
+            logger.info("Start game callback triggered")
+            self._current_screen = "game"
+
+        def go_to_shop() -> None:
+            """Callback for shop button - show car shop."""
+            logger.info("Go to shop callback triggered")
+            self._current_screen = "shop"
+
+        def go_to_settings() -> None:
+            """Callback for settings button - show settings menu."""
+            logger.info("Go to settings callback triggered")
+            self._current_screen = "settings"
+
+        logger.info("Calling set_callbacks on homepage...")
+        self._homepage.set_callbacks({
+            "start": start_game,
+            "shop": go_to_shop,
+            "settings": go_to_settings,
+        })
+        logger.info("Menu callbacks setup complete")
+
+    def _run_menu_loop(self) -> bool:
+        """Run the pre-game menu loop until game starts or user quits.
+
+        Handles navigation between home, shop, and settings screens.
+
+        Returns:
+            True if game should start, False if user quit.
+        """
+        self._menu_running = True
+        self._current_screen = "home"
+        logger.info("Starting menu loop...")
+
+        frame_count = 0
+        while self._menu_running:
+            delta_time = self._clock.tick(120) / 1000.0
+            frame_count += 1
+            if frame_count % 60 == 0:
+                logger.info(f"Menu loop frame {frame_count}, current_screen={self._current_screen}")
+
+            if self._current_screen == "home":
+                logger.debug("Processing home screen...")
+                if not self._process_home_screen(delta_time):
+                    logger.info("Home screen returned False, exiting menu loop")
+                    return False
+
+            elif self._current_screen == "shop":
+                logger.debug("Processing shop screen...")
+                if not self._process_shop_screen(delta_time):
+                    logger.info("Shop screen returned False, exiting menu loop")
+                    return False
+
+            elif self._current_screen == "settings":
+                logger.debug("Processing settings screen...")
+                if not self._process_settings_screen(delta_time):
+                    logger.info("Settings screen returned False, exiting menu loop")
+                    return False
+
+            elif self._current_screen == "game":
+                logger.info("Switching to game mode, exiting menu loop")
+                self._menu_running = False
+
+        logger.info("Menu loop complete, returning True")
+        return True
+
+    def _process_home_screen(self, delta_time: float) -> bool:
+        """Process a frame of the home screen.
+
+        Args:
+            delta_time: Time elapsed since last frame in seconds.
+
+        Returns:
+            True to continue running, False to quit.
+        """
+        self._refresh_display_surface()
+        
+        logger.debug("_process_home_screen: getting events...")
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                logger.info("Quit event received")
+                return False
+
+            logger.debug(f"Handling event: {event}")
+            action = self._homepage.handle_event(event)
+            if action == "quit":
+                logger.info("Homepage returned quit action")
+                return False
+
+        logger.debug("Updating homepage...")
+        self._homepage.update(delta_time)
+        logger.debug("Drawing homepage...")
+        self._homepage.draw(self._screen)
+        logger.debug("Flipping display...")
+        pygame.display.flip()
+        logger.debug("Home screen frame complete")
+        return True
+
+    def _process_shop_screen(self, delta_time: float) -> bool:
+        """Process a frame of the shop (car selection) screen.
+
+        Args:
+            delta_time: Time elapsed since last frame in seconds.
+
+        Returns:
+            True to continue running, False to quit.
+        """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+
+            action = self._shop_screen.handle_event(event)
+            if action == "quit":  # ESC key in shop returns to menu
+                self._current_screen = "home"
+            elif action == "start":  # Car selected, proceed to game
+                self._current_screen = "game"
+                self._menu_running = False
+
+        self._shop_screen.update(delta_time)
+        self._shop_screen.draw(self._screen)
+        pygame.display.flip()
+        return True
+
+    def _process_settings_screen(self, delta_time: float) -> bool:
+        """Process a frame of the settings menu screen.
+
+        Args:
+            delta_time: Time elapsed since last frame in seconds.
+
+        Returns:
+            True to continue running, False to quit.
+        """
+        mouse_pos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+
+            result = self._settings_menu.handle_input(event, mouse_pos)
+            if result and result.get("action") == "close":
+                self._current_screen = "home"
+
+        # Draw background
+        self._screen.fill((10, 12, 24))
+
+        # Update and draw settings menu
+        self._settings_menu.update(mouse_pos)
+        self._settings_menu.draw(self._screen)
+        pygame.display.flip()
+        return True
+
     def run(self) -> None:
         """Execute the main game loop until exit.
 
-        Continuously processes frames until the running flag is cleared.
+        First runs the pre-game menu loop, then proceeds to the actual gameplay loop.
         Performs cleanup after the loop terminates.
 
         Raises:
@@ -150,6 +317,25 @@ class GameLoop:
         if self._game_state_manager is None:
             raise RuntimeError("GameLoop.initialize() must be called before run()")
 
+        logger.info("GameLoop.run() started")
+
+        # Run pre-game menu loop first
+        logger.info("Starting menu loop...")
+        if not self._run_menu_loop():
+            # User quit during menu
+            logger.info("User quit during menu, cleaning up...")
+            self._cleanup()
+            return
+
+        logger.info("Menu loop complete, starting gameplay...")
+
+        # Start the detector stream for gameplay
+        logger.info("Starting detector stream...")
+        self._detector.start_stream()
+        logger.info("Detector stream started")
+
+        # Main gameplay loop
+        logger.info("Entering main gameplay loop...")
         while self._running:
             self._process_frame()
 

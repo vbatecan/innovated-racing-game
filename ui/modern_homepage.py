@@ -139,9 +139,17 @@ class ModernHomePage:
             self.start_button.font = self.button_font
             self.shop_button.font = self.button_font
             self.settings_button.font = self.button_font
-        except Exception:
-            # Fallback if fonts fail to initialize
-            pass
+        except Exception as e:
+            # Log the error instead of silently passing
+            import logging
+            logging.getLogger(__name__).error(f"Failed to initialize fonts: {e}")
+            # Create fallback fonts to prevent crashes
+            self.title_font = pygame.font.SysFont("arial", 120)
+            self.subtitle_font = pygame.font.SysFont("arial", 48)
+            self.button_font = pygame.font.SysFont("arial", 40)
+            self.info_font = pygame.font.SysFont("arial", 28)
+            self.small_font = pygame.font.SysFont("arial", 22)
+            self._fonts_initialized = True
 
     def _update_focus(self) -> None:
         """Update button focus state based on current focus index."""
