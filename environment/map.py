@@ -54,6 +54,12 @@ class Map:
         )
         self.obstacle_manager.set_blocking_groups([self.br_manager.brs])
         self.br_manager.set_blocking_groups([self.obstacle_manager.obstacles])
+        self.crack_manager.set_blocking_groups(
+            [
+                self.obstacle_manager.obstacles,
+                self.br_manager.brs,
+            ]
+        )
         self.oil_spill_manager.set_blocking_groups(
             [
                 self.obstacle_manager.obstacles,

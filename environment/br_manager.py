@@ -143,6 +143,7 @@ class BRManager:
                         if (
                                 spawn_rect.left < blocked_sprite.rect.right
                                 and spawn_rect.right > blocked_sprite.rect.left
+                                and abs(blocked_sprite.rect.y - spawn_y) < br_height * 4
                         ):
                             overlap = True
                             break

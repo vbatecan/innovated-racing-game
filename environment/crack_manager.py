@@ -39,6 +39,7 @@ class CrackManager:
         self.model_dir = Path("resources/models/obstacles")
         self.crack_models = self._load_crack_models()
         self.model_scale_cache: dict[tuple[int, int], pygame.Surface] = {}
+        self.blocking_groups: list[pygame.sprite.Group] = []
 
     def _load_crack_models(self) -> list[pygame.Surface]:
         """
@@ -94,24 +95,67 @@ class CrackManager:
         self.model_scale_cache[cache_key] = scaled
         return scaled
 
+    def set_blocking_groups(self, groups: list[pygame.sprite.Group]) -> None:
+        """
+        Configure sprite groups that crack hazards must avoid overlapping during spawn.
+
+        Args:
+            groups: List of pygame sprite groups to check for collisions.
+        """
+        self.blocking_groups = groups
+
     def _spawn_crack(self) -> None:
         """
         Spawn a new crack hazard in a random lane above the visible screen area.
+        Attempts multiple times to find a non-overlapping position considering
+        existing cracks and blocking groups.
         """
-        lane = self.road.random_lane()
-        crack_image = self._get_random_crack_image(lane)
+        max_attempts = 10
+        for _ in range(max_attempts):
+            lane = self.road.random_lane()
+            crack_image = self._get_random_crack_image(lane)
 
-        crack_width = max(20, int(lane.width * config.CRACK_LANE_WIDTH_RATIO))
-        crack_height = max(12, crack_width // 2)
-        if crack_image is not None:
-            crack_width = crack_image.get_width()
-            crack_height = crack_image.get_height()
+            crack_width = max(20, int(lane.width * config.CRACK_LANE_WIDTH_RATIO))
+            crack_height = max(12, crack_width // 2)
+            if crack_image is not None:
+                crack_width = crack_image.get_width()
+                crack_height = crack_image.get_height()
 
-        spawn_x = ObstacleManager._lane_spawn_x(lane, crack_width, min_padding=14)
-        spawn_x = self.road.clamp_spawn_x_to_borders(
-            spawn_x, crack_width, min_padding=14
-        )
-        spawn_y = -crack_height - random.randint(40, 260)
+            spawn_x = ObstacleManager._lane_spawn_x(lane, crack_width, min_padding=14)
+            spawn_x = self.road.clamp_spawn_x_to_borders(
+                spawn_x, crack_width, min_padding=14
+            )
+            spawn_y = -crack_height - random.randint(40, 260)
+
+            # Check for overlap with existing cracks
+            overlap = False
+            for crack in self.cracks:
+                if (
+                    crack.rect.left < spawn_x + crack_width
+                    and crack.rect.right > spawn_x
+                    and abs(crack.rect.y - spawn_y) < crack_height * 3
+                ):
+                    overlap = True
+                    break
+
+            # Check for overlap with blocking groups
+            if not overlap:
+                spawn_rect = pygame.Rect(spawn_x, spawn_y, crack_width, crack_height)
+                for group in self.blocking_groups:
+                    for blocked_sprite in group:
+                        if (
+                            spawn_rect.left < blocked_sprite.rect.right
+                            and spawn_rect.right > blocked_sprite.rect.left
+                            and abs(blocked_sprite.rect.y - spawn_y) < crack_height * 4
+                        ):
+                            overlap = True
+                            break
+                    if overlap:
+                        break
+            
+            if not overlap:
+                break
+
         crack = Crack(spawn_x, spawn_y, crack_width, crack_height, image=crack_image)
         self.cracks.add(crack)
 

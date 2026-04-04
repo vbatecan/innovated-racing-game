@@ -233,6 +233,10 @@ class GameLoop:
         """
         self._refresh_display_surface()
         
+        # Get current mouse state
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+        
         logger.debug("_process_home_screen: getting events...")
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -245,6 +249,10 @@ class GameLoop:
                 logger.info("Homepage returned quit action")
                 return False
 
+        # Update homepage with current mouse state
+        self._homepage._mouse_pos = mouse_pos
+        self._homepage._mouse_pressed = mouse_pressed
+        
         logger.debug("Updating homepage...")
         self._homepage.update(delta_time)
         logger.debug("Drawing homepage...")
@@ -263,6 +271,10 @@ class GameLoop:
         Returns:
             True to continue running, False to quit.
         """
+        # Get current mouse state
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
@@ -274,6 +286,12 @@ class GameLoop:
                 self._current_screen = "game"
                 self._menu_running = False
 
+        # Update shop with current mouse state
+        if hasattr(self._shop_screen, '_mouse_pos'):
+            self._shop_screen._mouse_pos = mouse_pos
+        if hasattr(self._shop_screen, '_mouse_pressed'):
+            self._shop_screen._mouse_pressed = mouse_pressed
+        
         self._shop_screen.update(delta_time)
         self._shop_screen.draw(self._screen)
         pygame.display.flip()
