@@ -499,16 +499,30 @@ class HomePageScreen:
             pygame.draw.polygon(surface, self.text_color, points)
 
     def _draw_footer(self, surface: pygame.Surface) -> None:
-        """Render the footer with keyboard control instructions.
+        """Render the footer with keyboard control instructions and improved spacing.
 
         Args:
             surface: Pygame surface to draw on.
         """
-        help_text = self.tiny_font.render("Arrow keys or A/D browse cars • Enter or click START GAME • ESC quits", True, self.muted_color)
-        surface.blit(help_text, help_text.get_rect(center=(self.width // 2, self.height - 24)))
+        footer_height = 50
+        footer_y = self.height - footer_height
+        
+        # Draw footer background
+        footer_bg = pygame.Surface((self.width, footer_height), pygame.SRCALPHA)
+        footer_bg.fill((10, 12, 24, 200))
+        pygame.draw.line(footer_bg, self.accent_color, (0, 0), (self.width, 0), 1)
+        surface.blit(footer_bg, (0, footer_y))
+        
+        # Left: Controls help
+        help_text = self.tiny_font.render("◀ A or ◀ Left  •  D or ▶ Right  •  ENTER to Start  •  ESC to go back", True, self.muted_color)
+        surface.blit(help_text, (40, footer_y + 15))
+        
+        # Right: Quick hint
+        hint_text = self.tiny_font.render("Select a car to begin", True, self.accent_color)
+        surface.blit(hint_text, (self.width - 300, footer_y + 15))
 
     def draw(self, surface: pygame.Surface) -> None:
-        """Render the complete homepage interface.
+        """Render the complete homepage interface with improved spacing.
 
         Draws all components: background, header, hero section, car grid,
         navigation buttons, action buttons, and footer.
@@ -518,11 +532,17 @@ class HomePageScreen:
         """
         self._draw_background(surface)
 
+        # Main header with better spacing
         header = self.title_font.render("RACING GAME HOME", True, self.text_color)
-        surface.blit(header, (70, 30))
+        header_y = 40
+        surface.blit(header, (70, header_y))
+        
+        # Separator line below header
+        pygame.draw.line(surface, self.accent_color, (70, header_y + 65), (self.width - 70, header_y + 65), 2)
 
+        # Best score panel with better positioning
         best_score = self.car_manager.best_score
-        best_rect = pygame.Rect(self.width - 320, 24, 240, 88)
+        best_rect = pygame.Rect(self.width - 320, header_y + 15, 240, 88)
         self._draw_panel(surface, best_rect, self.panel_color, self.accent_color)
         best_title = self.small_font.render("BEST SCORE", True, self.muted_color)
         best_value = self.section_font.render(f"{int(best_score)}", True, self.highlight_color)

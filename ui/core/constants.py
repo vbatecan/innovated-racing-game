@@ -115,9 +115,9 @@ class Layout:
     boost_bar_height: int = 14
     pause_menu_width: int = 340
     pause_menu_height: int = 380
-    settings_panel_width: int = 720
-    settings_panel_height: int = 520
-    sidebar_width: int = 160
+    settings_panel_width: int = 800
+    settings_panel_height: int = 580
+    sidebar_width: int = 180
     button_height: int = 48
     slider_thumb_radius: int = 10
     camera_width: int = 180

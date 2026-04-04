@@ -345,7 +345,7 @@ class SettingsMenu:
                 game_settings.brake_threshold = self.get_value(cat, "Brake Sens")
 
     def draw(self, screen: Surface) -> None:
-        """Render the settings menu to the given screen.
+        """Render the settings menu with improved spacing and layout.
         
         Draws the dark overlay, settings panel with title and close button,
         category sidebar with selection highlighting, and the content area
@@ -360,8 +360,9 @@ class SettingsMenu:
         sw: int = screen.get_width()
         sh: int = screen.get_height()
 
+        # Dark overlay with cleaner fade
         overlay: Surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))
+        overlay.fill((0, 0, 0, 180))
         screen.blit(overlay, (0, 0))
 
         panel_w: int = LAYOUT.settings_panel_width
@@ -369,68 +370,85 @@ class SettingsMenu:
         panel_x: int = sw // 2 - panel_w // 2
         panel_y: int = sh // 2 - panel_h // 2
 
+        # Panel background with improved styling
         draw_rounded_rect(
             screen, (20, 30, 50, 245), (panel_x, panel_y, panel_w, panel_h)
         )
-        draw_rounded_rect(screen, self.accent_color, (panel_x, panel_y, panel_w, 4))
+        # Top accent line
+        draw_rounded_rect(screen, self.accent_color, (panel_x, panel_y, panel_w, 5))
+        # Border
         draw_rounded_rect(
             screen, self.accent_color, (panel_x, panel_y, panel_w, panel_h), 1
         )
 
+        # Title with better spacing
         title: Surface = self.font_title.render("SETTINGS", True, self.accent_color)
-        screen.blit(title, (panel_x + 30, panel_y + 20))
+        screen.blit(title, (panel_x + 40, panel_y + 25))
 
+        # Close button
         close_btn: pygame.Rect = pygame.Rect(
-            panel_x + panel_w - 50, panel_y + 15, 35, 35
+            panel_x + panel_w - 55, panel_y + 20, 40, 40
         )
         draw_rounded_rect(screen, COLORS.close_btn, close_btn)
         close_x: Surface = self.font_title.render("X", True, (255, 255, 255))
-        screen.blit(close_x, (close_btn.x + 10, close_btn.y + 2))
+        screen.blit(close_x, (close_btn.x + 12, close_btn.y + 2))
         self._close_button = close_btn
 
-        sidebar_w: int = LAYOUT.sidebar_width
-        sidebar_x: int = panel_x + 20
-        sidebar_y: int = panel_y + 80
-        sidebar_h: int = panel_h - 110
+        # Separator line below title
+        pygame.draw.line(screen, self.accent_color, (panel_x + 40, panel_y + 65), (panel_x + panel_w - 40, panel_y + 65), 1)
 
+        sidebar_w: int = LAYOUT.sidebar_width
+        sidebar_x: int = panel_x + 25
+        sidebar_y: int = panel_y + 85
+        sidebar_h: int = panel_h - 140
+
+        # Sidebar background with subtle styling
         sb: Surface = pygame.Surface((sidebar_w, sidebar_h), pygame.SRCALPHA)
         sb.fill((25, 35, 55, 120))
         screen.blit(sb, (sidebar_x, sidebar_y))
 
+        # Category tabs with improved spacing
         for i, cat in enumerate(self.categories):
-            cat_y: int = sidebar_y + 25 + i * 60
+            cat_y: int = sidebar_y + 20 + i * 70
             is_sel: bool = i == self.selected_category
             is_hover: bool = i == self._hovered_category
 
             bg_col: Tuple[int, int, int, int] = (
-                (0, 180, 255, 60)
+                (0, 180, 255, 80)
                 if is_sel
-                else ((0, 180, 255, 30) if is_hover else (0, 0, 0, 0))
+                else ((0, 180, 255, 40) if is_hover else (0, 0, 0, 0))
             )
-            sb2: Surface = pygame.Surface((sidebar_w - 10, 45), pygame.SRCALPHA)
+            sb2: Surface = pygame.Surface((sidebar_w - 15, 50), pygame.SRCALPHA)
             sb2.fill(bg_col)
-            screen.blit(sb2, (sidebar_x + 5, cat_y))
+            screen.blit(sb2, (sidebar_x + 7, cat_y))
 
             color: pygame.Color = self.accent_color if is_sel else self.text_color
             cat_text: Surface = self.font_option.render(cat, True, color)
-            screen.blit(cat_text, (sidebar_x + 25, cat_y + 10))
+            screen.blit(cat_text, (sidebar_x + 22, cat_y + 12))
 
-        content_x: int = panel_x + sidebar_w + 35
-        content_w: int = panel_w - sidebar_w - 55
-        content_y: int = panel_y + 80
+        # Content area with better spacing
+        content_x: int = panel_x + sidebar_w + 50
+        content_w: int = panel_w - sidebar_w - 75
+        content_y: int = panel_y + 90
 
         cat = self.categories[self.selected_category]
         opts: List[Tuple[Any, ...]] = self.settings[cat]
 
+        # Category title in content area
+        cat_title: Surface = self.font_option.render(cat, True, self.accent_color)
+        screen.blit(cat_title, (content_x, content_y - 30))
+        pygame.draw.line(screen, self.accent_color, (content_x, content_y - 8), (content_x + 200, content_y - 8), 1)
+
+        # Options with improved spacing
         for i, opt in enumerate(opts):
             opt_y: int = content_y + 25 + i * ANIMATION.settings_option_spacing
             is_sel: bool = i == self.selected_option
             is_hover: bool = i == self._hovered_option
 
             if is_hover or is_sel:
-                hover_bg: Surface = pygame.Surface((content_w - 20, 60), pygame.SRCALPHA)
-                hover_bg.fill((0, 180, 255, 20))
-                screen.blit(hover_bg, (content_x - 5, opt_y - 5))
+                hover_bg: Surface = pygame.Surface((content_w + 10, 65), pygame.SRCALPHA)
+                hover_bg.fill((0, 180, 255, 25))
+                screen.blit(hover_bg, (content_x - 5, opt_y - 10))
 
             color = self.accent_color if is_sel else self.text_color
             label: Surface = self.font_label.render(opt[0], True, color)
@@ -451,13 +469,13 @@ class SettingsMenu:
             val_text: Surface = self.font_option.render(val_str, True, val_color)
             screen.blit(val_text, (content_x + content_w - 100, opt_y))
 
-            bar_y: int = opt_y + 30
-            bar_h: int = 10
+            bar_y: int = opt_y + 32
+            bar_h: int = 12
             pygame.draw.rect(
                 screen,
                 (40, 50, 70),
                 (content_x, bar_y, content_w - 20, bar_h),
-                border_radius=5,
+                border_radius=6,
             )
 
             if isinstance(opt[1], int) and len(opt) == 4:
@@ -468,15 +486,16 @@ class SettingsMenu:
                         screen,
                         self.accent_color,
                         (content_x, bar_y, fill_w, bar_h),
-                        border_radius=5,
+                        border_radius=6,
                     )
 
+        # Footer hint with better formatting
         hint: Surface = self.font_hint.render(
-            "← → Adjust  |  ↑ ↓ Navigate  |  TAB Category  |  ESC Close",
+            "← → to adjust  •  ↑ ↓ to navigate  •  TAB for category  •  ESC to close",
             True,
             self.muted_color,
         )
         screen.blit(
             hint,
-            (panel_x + panel_w // 2 - hint.get_width() // 2, panel_y + panel_h - 30),
+            (panel_x + panel_w // 2 - hint.get_width() // 2, panel_y + panel_h - 35),
         )

@@ -19,6 +19,7 @@ from models.player_car import PlayerCar
 from settings import Settings
 from ui.game_ui import HUDManager, PauseMenu, SettingsMenu
 from ui.homepage import HomePageScreen
+from ui.modern_homepage import ModernHomePage
 from ui.hud import PlayerHUD
 
 # Configure logging
@@ -43,32 +44,108 @@ def main() -> None:
     )
     pygame.display.set_caption("Hand Gesture Racing Game")
     clock = pygame.time.Clock()
-    font = pygame.font.Font(None, config.FONT_SIZE)
-    font_large = pygame.font.Font(None, 48)
 
     car_manager = CarManager()
 
-    homepage = HomePageScreen(WINDOW_SIZE, car_manager)
+    # Create shop screen (car selection interface)
+    shop_screen = HomePageScreen(WINDOW_SIZE, car_manager)
 
-    home_running = True
-    while home_running:
+    # Use modern homepage for main menu
+    homepage = ModernHomePage(WINDOW_SIZE, player_name="Player", coins=1000)
+    
+    # Create settings menu
+    settings_menu = SettingsMenu()
+
+    # State tracking for menu navigation
+    current_screen = "home"  # Can be 'home', 'shop', 'settings', or 'game'
+
+    def start_game() -> None:
+        """Callback for start game button."""
+        nonlocal current_screen
+        current_screen = "game"
+
+    def go_to_shop() -> None:
+        """Callback for shop button - show car shop."""
+        nonlocal current_screen
+        current_screen = "shop"
+
+    def go_to_settings() -> None:
+        """Callback for settings button - show settings menu."""
+        nonlocal current_screen
+        current_screen = "settings"
+
+    def return_to_menu() -> None:
+        """Callback for returning from shop to menu."""
+        nonlocal current_screen
+        current_screen = "home"
+
+    homepage.set_callbacks({
+        "start": start_game,
+        "shop": go_to_shop,
+        "settings": go_to_settings,
+    })
+
+    # Main menu/shop navigation loop
+    menu_running = True
+    while menu_running:
         delta_time = clock.tick(120) / 1000.0
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return
+        if current_screen == "home":
+            # Main menu screen
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
 
-            action = homepage.handle_event(event)
-            if action == "start":
-                home_running = False
-            elif action == "quit":
-                pygame.quit()
-                return
+                action = homepage.handle_event(event)
+                if action == "quit":
+                    pygame.quit()
+                    return
 
-        homepage.update(delta_time)
-        homepage.draw(screen)
-        pygame.display.flip()
+            homepage.update(delta_time)
+            homepage.draw(screen)
+            pygame.display.flip()
+
+            if current_screen == "game":
+                menu_running = False
+
+        elif current_screen == "shop":
+            # Shop (car selection) screen
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+
+                action = shop_screen.handle_event(event)
+                if action == "quit":  # ESC key in shop returns to menu
+                    current_screen = "home"
+                elif action == "start":  # Car selected, proceed to game
+                    current_screen = "game"
+                    menu_running = False
+
+            shop_screen.update(delta_time)
+            shop_screen.draw(screen)
+            pygame.display.flip()
+
+        elif current_screen == "settings":
+            # Settings menu screen
+            mouse_pos = pygame.mouse.get_pos()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+
+                result = settings_menu.handle_input(event, mouse_pos)
+                if result and result.get("action") == "close":
+                    current_screen = "home"
+
+            # Draw background
+            screen.fill((10, 12, 24))
+            
+            # Update and draw settings menu
+            settings_menu.update(mouse_pos)
+            settings_menu.draw(screen)
+            pygame.display.flip()
 
     settings = Settings()
     settings.fullscreen = True
@@ -82,7 +159,9 @@ def main() -> None:
     detector = Controller()
     detector.start_stream()
 
-    hud = PlayerHUD(player_car, detector, font)
+    # Create font for HUD
+    hud_font = pygame.font.Font(None, 32)
+    hud = PlayerHUD(player_car, detector, hud_font)
     
     game_hud = HUDManager(
         WINDOW_SIZE["width"],
@@ -90,7 +169,6 @@ def main() -> None:
     )
     
     pause_menu = PauseMenu()
-    settings_menu = SettingsMenu()
 
     game_loop = GameLoop(
         screen=screen,
