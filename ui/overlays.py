@@ -1,3 +1,9 @@
+"""Game overlay rendering for quiz questions, life bonuses, and game over screens.
+
+Provides visual overlays for educational question prompts during gameplay,
+including "last chance" survival questions and heart bonus life-ups.
+"""
+
 from __future__ import annotations
 
 import pygame
@@ -14,6 +20,20 @@ def draw_question_overlay(
     selected_option: int = 0,
     is_heart_question: bool = False,
 ) -> None:
+    """Render a question overlay for educational prompts during gameplay.
+
+    Displays a centered panel with question text, multiple choice options,
+    and input instructions. Different styling is applied for heart bonus
+    questions versus survival/last chance questions.
+
+    Args:
+        screen: Pygame surface to render on.
+        title_font: Font for the overlay title ("LIFE UP!" or "LAST CHANCE!").
+        body_font: Font for question text and options.
+        question: Question object containing prompt and answer options.
+        selected_option: Currently selected option index (0-based).
+        is_heart_question: True for life bonus question, False for survival question.
+    """
     overlay = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 180))
     screen.blit(overlay, (0, 0))
@@ -73,6 +93,18 @@ def draw_last_chance_overlay(
     question: Question,
     selected_option: int = 0,
 ) -> None:
+    """Render a survival question overlay when player would otherwise lose.
+
+    Convenience wrapper around draw_question_overlay for "last chance" scenarios
+    where answering correctly allows the player to continue after taking damage.
+
+    Args:
+        screen: Pygame surface to render on.
+        title_font: Font for the overlay title.
+        body_font: Font for question text and options.
+        question: Question object containing prompt and answer options.
+        selected_option: Currently selected option index (0-based).
+    """
     draw_question_overlay(
         screen, title_font, body_font, question, selected_option, False
     )
@@ -84,6 +116,14 @@ def draw_game_over_overlay(
     body_font: pygame.font.Font,
     final_score: int,
 ) -> None:
+    """Render the game over screen with final score display.
+
+    Args:
+        screen: Pygame surface to render on.
+        title_font: Font for the "GAME OVER" title.
+        body_font: Font for the score and retry instructions.
+        final_score: Player's final score to display.
+    """
     overlay = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 200))
     screen.blit(overlay, (0, 0))

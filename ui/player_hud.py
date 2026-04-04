@@ -1,3 +1,10 @@
+"""Player Heads-Up Display (HUD) for real-time game status visualization.
+
+Renders speedometer, score panel, stat readouts, gesture indicators, lives display,
+and camera preview during active gameplay. Supports combo multipliers and animated
+visual feedback.
+"""
+
 from __future__ import annotations
 
 import math
@@ -12,6 +19,16 @@ from ui.utils.drawing import draw_rounded_rect
 
 
 class PlayerHUD:
+    """Real-time HUD displaying speed, score, lives, gear, and gesture feedback.
+
+    Manages multiple UI panels positioned around the screen edges:
+    - Top-right: Score with combo/difficulty multipliers
+    - Top-center: Circular speedometer with gear indicator
+    - Bottom-left: Stats panel (speed, gear, distance)
+    - Bottom-right: Gesture input indicators and camera preview
+    - Top-left: Lives display with heart collection counter
+    """
+
     def __init__(
         self,
         player_car: PlayerCar,
@@ -22,6 +39,17 @@ class PlayerHUD:
         camera_preview_size: tuple[int, int] = (180, 135),
         show_camera_preview: bool = True,
     ) -> None:
+        """Initialize the HUD with game state references and rendering configuration.
+
+        Args:
+            player_car: Player vehicle instance providing speed and state data.
+            controller: Input controller providing steering and brake status.
+            font: Base font for text rendering.
+            position: Top-left position of the main HUD panel.
+            size: Dimensions of the main HUD panel.
+            camera_preview_size: Dimensions of the camera preview thumbnail.
+            show_camera_preview: Whether to display the camera feed preview.
+        """
         self.speed = player_car.current_speed
         self.max_speed = player_car.max_speed
         self.is_braking = controller.breaking
@@ -76,6 +104,11 @@ class PlayerHUD:
         self._load_lives_images()
 
     def _load_lives_images(self) -> None:
+        """Pre-load life indicator images from the resources directory.
+
+        Loads PNG images representing different life states (3, 2, 1, 0 lives)
+        for visual feedback in the HUD.
+        """
         self._lives_images = {}
         base_path = os.path.join("resources", "models")
         image_files = {
@@ -105,6 +138,20 @@ class PlayerHUD:
         fps: Optional[int] = None,
         max_fps: Optional[int] = None,
     ) -> None:
+        """Synchronize HUD state with current game values.
+
+        Updates all tracked metrics from the game state. Calculates acceleration
+        based on speed delta and frame rate. Captures camera frame if preview is enabled.
+
+        Args:
+            player_car: Current player vehicle state.
+            controller: Current input controller state.
+            gear: Optional gear override. Auto-computed from speed if not provided.
+            score: Current game score.
+            lives: Current player lives (0.0-3.0).
+            fps: Current frames per second.
+            max_fps: Maximum observed FPS for performance monitoring.
+        """
         self.speed = player_car.current_speed
         delta_speed = float(self.speed) - self._last_speed
         self.max_speed = player_car.max_speed
@@ -130,25 +177,45 @@ class PlayerHUD:
         )
 
     def set_speed(self, current_speed: float, max_speed: float) -> None:
+        """Update speed values directly.
+
+        Args:
+            current_speed: Current vehicle speed.
+            max_speed: Maximum achievable speed.
+        """
         self.speed = current_speed
         self.max_speed = max_speed
 
     def set_scoring_info(
         self, combo: float, difficulty: float, distance: float
     ) -> None:
+        """Update scoring multipliers and progress metrics.
+
+        Args:
+            combo: Current score multiplier (1.0+).
+            difficulty: Current difficulty scaling factor.
+            distance: Distance traveled in meters.
+        """
         self.combo = combo
         self.difficulty = difficulty
         self.distance = distance
 
     def add_heart_collected(self) -> None:
+        """Increment the hearts collected counter and invalidate cached icon."""
         self._hearts_collected += 1
         self._heart_icon_surf = None
 
     def reset_hearts_collected(self) -> None:
+        """Reset the hearts collected counter and invalidate cached icon."""
         self._hearts_collected = 0
         self._heart_icon_surf = None
 
     def _update_pulse(self, dt: float) -> None:
+        """Update the bonus pulse animation for combo indicators.
+
+        Args:
+            dt: Time delta in seconds for animation progression.
+        """
         self._bonus_pulse += dt * 3.0 * self._pulse_direction
         if self._bonus_pulse >= 1.0:
             self._bonus_pulse = 1.0
@@ -158,6 +225,14 @@ class PlayerHUD:
             self._pulse_direction = 1
 
     def draw(self, screen: pygame.Surface) -> None:
+        """Render all HUD components to the screen.
+
+        Updates pulse animation and draws: score panel, speedometer,
+        stats panel, gesture indicators, camera preview, and lives display.
+
+        Args:
+            screen: Pygame surface to render the HUD onto.
+        """
         self._update_pulse(0.016)
         screen_w, screen_h = screen.get_size()
         self._draw_score_panel_top_right(screen)
@@ -177,6 +252,16 @@ class PlayerHUD:
         h: int,
         bg_alpha: int = 180,
     ) -> None:
+        """Draw a simple rounded panel with transparency.
+
+        Args:
+            surface: Pygame surface to draw on.
+            x: Horizontal position.
+            y: Vertical position.
+            w: Panel width.
+            h: Panel height.
+            bg_alpha: Background opacity (0-255).
+        """
         panel = pygame.Surface((w, h), pygame.SRCALPHA)
         bg = (15, 15, 30, bg_alpha)
         panel.fill(bg)
@@ -184,6 +269,14 @@ class PlayerHUD:
         surface.blit(panel, (x, y))
 
     def _draw_score_panel_top_right(self, screen: pygame.Surface) -> None:
+        """Render the score panel in the top-right corner.
+
+        Displays current score, combo multiplier with color-coded tiers,
+        and difficulty multiplier when applicable.
+
+        Args:
+            screen: Pygame surface to draw on.
+        """
         panel_w, panel_h = self._score_panel_size
         margin = 20
         x = screen.get_width() - panel_w - margin
@@ -238,6 +331,14 @@ class PlayerHUD:
         screen.blit(self._score_panel_surf, (x, y))
 
     def _draw_speedometer_center_top(self, screen: pygame.Surface) -> None:
+        """Render the circular speedometer at the top-center of the screen.
+
+        Draws an analog gauge with tick marks, animated needle based on current
+        speed, and digital readout with gear indicator.
+
+        Args:
+            screen: Pygame surface to draw on.
+        """
         screen_w = screen.get_width()
         radius = 65
         center_x = screen_w // 2
@@ -300,6 +401,13 @@ class PlayerHUD:
         )
 
     def _draw_stats_panel_bottom_left(self, screen: pygame.Surface) -> None:
+        """Render the stats panel in the bottom-left corner.
+
+        Displays speed, current gear, and distance traveled in a compact layout.
+
+        Args:
+            screen: Pygame surface to draw on.
+        """
         panel_w, panel_h = self._stats_panel_size
         margin = 20
         x = margin
@@ -339,6 +447,13 @@ class PlayerHUD:
         screen.blit(self._stats_panel_surf, (x, y))
 
     def _draw_gesture_indicator_bottom_right(self, screen: pygame.Surface) -> None:
+        """Render gesture input indicators in the bottom-right corner.
+
+        Shows brake/throttle state and steering direction using icon indicators.
+
+        Args:
+            screen: Pygame surface to draw on.
+        """
         margin = 20
         icon_size = 42
         spacing = 8
@@ -374,6 +489,15 @@ class PlayerHUD:
     def _draw_gesture_icon_simple(
         self, screen: pygame.Surface, pos: tuple, size: int, icon_type: str, state
     ) -> None:
+        """Render a single gesture indicator icon.
+
+        Args:
+            screen: Pygame surface to draw on.
+            pos: (x, y) position tuple.
+            size: Icon dimension in pixels.
+            icon_type: Type of icon ("brake", "throttle", "steer").
+            state: Icon state - color tuple for brake/throttle, or direction string for steer.
+        """
         x, y = pos
         rect = pygame.Rect(x, y, size, size)
 
@@ -407,6 +531,14 @@ class PlayerHUD:
             pygame.draw.polygon(screen, border_color, pts)
 
     def _draw_lives_top_left(self, screen: pygame.Surface) -> None:
+        """Render the lives display in the top-left corner.
+
+        Shows current life count using pre-loaded images, plus collected heart
+        counter if hearts have been gathered during the run.
+
+        Args:
+            screen: Pygame surface to draw on.
+        """
         if self.lives is None:
             return
 
@@ -458,6 +590,15 @@ class PlayerHUD:
                 )
 
     def _compute_gear(self, speed: float, max_speed: float) -> str:
+        """Calculate the appropriate gear based on speed ratio.
+
+        Args:
+            speed: Current vehicle speed.
+            max_speed: Maximum achievable speed.
+
+        Returns:
+            Gear string ("N" for neutral, "1"-"5" for drive gears).
+        """
         if speed <= 0.1:
             return "N"
         if max_speed <= 0:
@@ -472,6 +613,16 @@ class PlayerHUD:
         top_left: tuple[int, int],
         size: tuple[int, int],
     ) -> None:
+        """Render the camera preview frame at the specified position.
+
+        Converts OpenCV BGR frame to RGB and displays it as a scaled surface.
+        Shows "Camera" label if no frame is available.
+
+        Args:
+            screen: Pygame surface to draw on.
+            top_left: (x, y) position for the preview top-left corner.
+            size: (width, height) dimensions for the preview.
+        """
         x, y = top_left
         w, h = size
         border = pygame.Rect(x - 2, y - 2, w + 4, h + 4)
@@ -502,6 +653,12 @@ class PlayerHUD:
         screen: pygame.Surface,
         size: tuple[int, int],
     ) -> None:
+        """Render the camera preview in the bottom-right corner.
+
+        Args:
+            screen: Pygame surface to draw on.
+            size: (width, height) dimensions for the preview.
+        """
         margin = 16
         w, h = size
         top_left = (screen.get_width() - w - margin, screen.get_height() - h - margin)

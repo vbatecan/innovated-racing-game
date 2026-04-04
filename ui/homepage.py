@@ -1,4 +1,9 @@
-"""Homepage and car shop screen for the racing game."""
+"""Homepage and car shop screen for the racing game.
+
+Provides the main menu interface with a browsable car grid, hero display for
+selected vehicles, and game launch controls. Handles car selection, unlock
+notifications, and visual feedback for locked/unlocked vehicles.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +18,12 @@ from models.car_manager import CarManager
 
 
 class HomePageScreen:
-    """A polished homepage with a browsable car shop."""
+    """Polished homepage interface featuring a browsable car selection grid.
+
+    Displays available cars in a card grid layout with a hero section showing
+    detailed stats for the selected car. Supports keyboard and mouse navigation,
+    handles car unlock states, and provides visual feedback for locked vehicles.
+    """
 
     def __init__(self, window_size: dict[str, int], car_manager: CarManager) -> None:
         self.width = window_size["width"]
@@ -52,6 +62,15 @@ class HomePageScreen:
             self._car_images[car.id] = self._load_scaled_image(car.image_path, (210, 130))
 
     def _load_scaled_image(self, image_path: str, size: tuple[int, int]) -> Optional[pygame.Surface]:
+        """Load and scale an image to the specified dimensions.
+
+        Args:
+            image_path: Path to the image file.
+            size: Target dimensions as (width, height).
+
+        Returns:
+            Scaled pygame Surface if successful, None if the file doesn't exist or fails to load.
+        """
         path = Path(image_path)
         if not path.exists():
             return None
@@ -66,6 +85,7 @@ class HomePageScreen:
             return None
 
     def _sync_selected_to_manager(self) -> None:
+        """Synchronize the selected index with the car manager's current selection."""
         selected = self.car_manager.get_selected_car()
         if selected is None:
             return
@@ -77,9 +97,19 @@ class HomePageScreen:
 
     @property
     def selected_car(self) -> Car:
+        """Get the currently selected car from the CARS list.
+
+        Returns:
+            The Car object at the current selection index.
+        """
         return CARS[self._selected_index]
 
     def update(self, delta_time: float) -> None:
+        """Update animation timers and unlock notice countdown.
+
+        Args:
+            delta_time: Time elapsed since last frame in seconds.
+        """
         self._elapsed += delta_time
         if self._unlock_notice_timer > 0.0:
             self._unlock_notice_timer = max(0.0, self._unlock_notice_timer - delta_time)
@@ -87,6 +117,18 @@ class HomePageScreen:
                 self._unlock_notice_text = None
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
+        """Process input events for navigation, selection, and game control.
+
+        Supports keyboard (arrows/WASD, Enter, Space, Escape) and mouse clicks
+        for interacting with the car grid and action buttons.
+
+        Args:
+            event: Pygame event to process.
+
+        Returns:
+            Action string ("start", "quit", "locked") if a game action was triggered,
+            None for navigation events that don't trigger game actions.
+        """
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_LEFT, pygame.K_a):
                 self.previous_car()
@@ -120,12 +162,22 @@ class HomePageScreen:
         return None
 
     def previous_car(self) -> None:
+        """Navigate to the previous car in the carousel. Wraps around to the end if at the start."""
         self._selected_index = (self._selected_index - 1) % len(CARS)
 
     def next_car(self) -> None:
+        """Navigate to the next car in the carousel. Wraps around to the start if at the end."""
         self._selected_index = (self._selected_index + 1) % len(CARS)
 
     def start_game(self) -> str:
+        """Attempt to start the game with the currently selected car.
+
+        Validates that the selected car is unlocked before allowing the game to start.
+        If locked, displays a notice with the unlock requirement.
+
+        Returns:
+            "start" if the game can begin, "locked" if the car is not yet unlocked.
+        """
         car = self.selected_car
         if not self.car_manager.is_car_unlocked(car.id):
             self._unlock_notice_text = f"Reach {car.unlock_score} points to unlock {car.name}."
@@ -136,14 +188,37 @@ class HomePageScreen:
         return "start"
 
     def _hex_to_rgb(self, hex_color: str) -> tuple[int, int, int]:
+        """Convert a hexadecimal color string to RGB values.
+
+        Args:
+            hex_color: Hex color string (e.g., "#FF5733").
+
+        Returns:
+            Tuple of three integers (R, G, B) with values 0-255.
+        """
         hex_color = hex_color.lstrip("#")
         return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
 
     def _blend(self, a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+        """Linearly interpolate between two colors.
+
+        Args:
+            a: Starting RGB color tuple.
+            b: Ending RGB color tuple.
+            t: Interpolation factor between 0.0 and 1.0.
+
+        Returns:
+            Blended RGB color tuple.
+        """
         t = max(0.0, min(1.0, t))
         return tuple(int(x + (y - x) * t) for x, y in zip(a, b))
 
     def _draw_background(self, surface: pygame.Surface) -> None:
+        """Render the animated background with gradient and decorative elements.
+
+        Args:
+            surface: Pygame surface to draw on.
+        """
         for y in range(self.height):
             t = y / max(1, self.height - 1)
             color = self._blend(self.background_top, self.background_bottom, t)
@@ -161,26 +236,70 @@ class HomePageScreen:
         surface.blit(overlay, (0, 0))
 
     def _draw_panel(self, surface: pygame.Surface, rect: pygame.Rect, fill: tuple[int, int, int], border: tuple[int, int, int]) -> None:
+        """Draw a rounded rectangle panel with border.
+
+        Args:
+            surface: Pygame surface to draw on.
+            rect: Panel rectangle dimensions.
+            fill: RGB fill color tuple.
+            border: RGB border color tuple.
+        """
         pygame.draw.rect(surface, fill, rect, border_radius=18)
         pygame.draw.rect(surface, border, rect, width=2, border_radius=18)
 
     def _draw_soft_shadow(self, surface: pygame.Surface, rect: pygame.Rect, alpha: int = 70) -> None:
+        """Draw a soft drop shadow beneath a rectangle for depth effect.
+
+        Args:
+            surface: Pygame surface to draw on.
+            rect: Source rectangle to cast shadow from.
+            alpha: Shadow opacity (0-255).
+        """
         shadow = pygame.Surface((rect.width + 26, rect.height + 26), pygame.SRCALPHA)
         pygame.draw.rect(shadow, (0, 0, 0, alpha), shadow.get_rect(), border_radius=24)
         surface.blit(shadow, shadow.get_rect(center=(rect.centerx + 6, rect.centery + 8)))
 
     def _button_rect(self, name: str) -> pygame.Rect:
+        """Calculate the rectangle for a named action button.
+
+        Args:
+            name: Button identifier ("start" or "quit").
+
+        Returns:
+            Rectangle defining the button's position and size.
+        """
         if name == "start":
             return pygame.Rect(self.width // 2 - 190, self.height - 92, 170, 52)
         return pygame.Rect(self.width // 2 + 18, self.height - 92, 130, 52)
 
     def _left_arrow_rect(self) -> pygame.Rect:
+        """Calculate the rectangle for the left navigation arrow button.
+
+        Returns:
+            Rectangle defining the left arrow's position and size.
+        """
         return pygame.Rect(24, self.height // 2 - 32, 54, 64)
 
     def _right_arrow_rect(self) -> pygame.Rect:
+        """Calculate the rectangle for the right navigation arrow button.
+
+        Returns:
+            Rectangle defining the right arrow's position and size.
+        """
         return pygame.Rect(self.width - 78, self.height // 2 - 32, 54, 64)
 
     def _draw_car_card(self, surface: pygame.Surface, car: Car, rect: pygame.Rect, selected: bool) -> None:
+        """Render a single car card in the grid display.
+
+        Displays car image, rarity badge, name, and lock status. Applies visual
+        effects for selection state and locked status.
+
+        Args:
+            surface: Pygame surface to draw on.
+            car: Car data object to display.
+            rect: Card rectangle position and dimensions.
+            selected: Whether this card is currently selected.
+        """
         unlocked = self.car_manager.is_car_unlocked(car.id)
         border_color = self.highlight_color if selected else (58, 68, 104)
         fill = self.card_color if unlocked else (24, 28, 36)
@@ -233,6 +352,14 @@ class HomePageScreen:
             surface.blit(outline, outline.get_rect(center=rect.center))
 
     def _draw_selected_hero(self, surface: pygame.Surface) -> None:
+        """Render the hero section displaying detailed info for the selected car.
+
+        Shows large car image with floating animation, stat bars, description,
+        unlock status, and unlock notification if applicable.
+
+        Args:
+            surface: Pygame surface to draw on.
+        """
         car = self.selected_car
         unlocked = self.car_manager.is_car_unlocked(car.id)
 
@@ -303,6 +430,14 @@ class HomePageScreen:
             surface.blit(notice_surface, notice_rect)
 
     def _draw_car_grid(self, surface: pygame.Surface) -> None:
+        """Render the grid of all available car cards.
+
+        Calculates positions and renders each car card, storing click rectangles
+        for hit detection.
+
+        Args:
+            surface: Pygame surface to draw on.
+        """
         self.card_rects.clear()
 
         grid_top = 440
@@ -322,6 +457,13 @@ class HomePageScreen:
             self._draw_car_card(surface, car, rect, index == self._selected_index)
 
     def _draw_buttons(self, surface: pygame.Surface) -> None:
+        """Render the START GAME and QUIT action buttons.
+
+        Start button appearance changes based on whether the selected car is unlocked.
+
+        Args:
+            surface: Pygame surface to draw on.
+        """
         start_rect = self._button_rect("start")
         quit_rect = self._button_rect("quit")
 
@@ -341,6 +483,11 @@ class HomePageScreen:
             surface.blit(hint, hint.get_rect(midtop=(start_rect.centerx, start_rect.bottom + 10)))
 
     def _draw_navigation(self, surface: pygame.Surface) -> None:
+        """Render the left and right navigation arrow buttons.
+
+        Args:
+            surface: Pygame surface to draw on.
+        """
         left = self._left_arrow_rect()
         right = self._right_arrow_rect()
         for rect, direction in ((left, -1), (right, 1)):
@@ -352,10 +499,23 @@ class HomePageScreen:
             pygame.draw.polygon(surface, self.text_color, points)
 
     def _draw_footer(self, surface: pygame.Surface) -> None:
+        """Render the footer with keyboard control instructions.
+
+        Args:
+            surface: Pygame surface to draw on.
+        """
         help_text = self.tiny_font.render("Arrow keys or A/D browse cars • Enter or click START GAME • ESC quits", True, self.muted_color)
         surface.blit(help_text, help_text.get_rect(center=(self.width // 2, self.height - 24)))
 
     def draw(self, surface: pygame.Surface) -> None:
+        """Render the complete homepage interface.
+
+        Draws all components: background, header, hero section, car grid,
+        navigation buttons, action buttons, and footer.
+
+        Args:
+            surface: Pygame surface to draw the homepage onto.
+        """
         self._draw_background(surface)
 
         header = self.title_font.render("RACING GAME HOME", True, self.text_color)
