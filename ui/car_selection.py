@@ -35,10 +35,10 @@ class CarSelectionUI:
         self.height = window_size["height"]
         self.car_manager = car_manager
         
-        self.font_large = font_large or pygame.font.Font(None, 48)
-        self.font_medium = pygame.font.Font(None, 36)
-        self.font_small = font_small or pygame.font.Font(None, 24)
-        self.font_tiny = pygame.font.Font(None, 18)
+        self.font_large = font_large or pygame.font.Font(None, 64)
+        self.font_medium = pygame.font.Font(None, 44)
+        self.font_small = font_small or pygame.font.Font(None, 28)
+        self.font_tiny = pygame.font.Font(None, 20)
 
         self.visible = False
         self.current_index = 0
@@ -141,8 +141,10 @@ class CarSelectionUI:
                     self.select_current_car()
                     return True
 
-                left_arrow_rect = pygame.Rect(100, self.height // 2 - 30, 60, 60)
-                right_arrow_rect = pygame.Rect(self.width - 160, self.height // 2 - 30, 60, 60)
+                preview_rect = self._get_car_preview_rect()
+                arrow_y = preview_rect.centery
+                left_arrow_rect = pygame.Rect(20, arrow_y - 50, 80, 100)
+                right_arrow_rect = pygame.Rect(self.width - 100, arrow_y - 50, 80, 100)
 
                 if left_arrow_rect.collidepoint(event.pos):
                     self.previous_car()
@@ -188,10 +190,10 @@ class CarSelectionUI:
         Returns:
             Rectangle centered horizontally, positioned above the stats area.
         """
-        preview_width = 200
-        preview_height = 300
+        preview_width = 280
+        preview_height = 280
         x = self.width // 2 - preview_width // 2
-        y = self.height // 2 - preview_height // 2 - 50
+        y = 100
         return pygame.Rect(x, y, preview_width, preview_height)
 
     def _draw_car_preview(self, surface: pygame.Surface, car: Car) -> None:
@@ -232,23 +234,23 @@ class CarSelectionUI:
             ("Weight", car.stats.weight),
         ]
 
-        bar_width = 250
-        bar_height = 20
-        stat_spacing = 35
+        bar_width = 320
+        bar_height = 26
+        stat_spacing = 60
 
         for i, (label, value) in enumerate(stats):
             label_text = self.font_small.render(label, True, self.COLOR_TEXT)
             surface.blit(label_text, (x, y + i * stat_spacing))
 
-            bar_rect = pygame.Rect(x + 100, y + i * stat_spacing, bar_width, bar_height)
-            pygame.draw.rect(surface, (50, 50, 50), bar_rect)
+            bar_rect = pygame.Rect(x + 140, y + i * stat_spacing, bar_width, bar_height)
+            pygame.draw.rect(surface, (50, 50, 50), bar_rect, border_radius=5)
 
             fill_width = int(bar_width * (value / 100.0))
-            fill_rect = pygame.Rect(x + 100, y + i * stat_spacing, fill_width, bar_height)
-            pygame.draw.rect(surface, self.COLOR_ACCENT, fill_rect)
+            fill_rect = pygame.Rect(x + 140, y + i * stat_spacing, fill_width, bar_height)
+            pygame.draw.rect(surface, self.COLOR_ACCENT, fill_rect, border_radius=5)
 
             value_text = self.font_tiny.render(f"{int(value)}", True, self.COLOR_TEXT)
-            surface.blit(value_text, (x + 100 + bar_width + 10, y + i * stat_spacing + 2))
+            surface.blit(value_text, (x + 140 + bar_width + 20, y + i * stat_spacing + 4))
     
     def _hex_to_rgb(self, hex_color: str) -> tuple:
         """Convert a hexadecimal color string to an RGB tuple.
@@ -279,27 +281,38 @@ class CarSelectionUI:
 
         current_car = CARS[self.current_index]
 
+        # Title at top with more breathing room
         title_text = self.font_large.render("SELECT YOUR CAR", True, self.COLOR_ACCENT)
         title_rect = title_text.get_rect(center=(self.width // 2, 50))
         surface.blit(title_text, title_rect)
 
+        # Car preview with improved spacing
         self._draw_car_preview(surface, current_car)
 
+        # Car info section with generous spacing
+        preview_rect = self._get_car_preview_rect()
+        info_y_start = preview_rect.bottom + 75  # Increased spacing
+
+        # Car name
         car_name_text = self.font_medium.render(current_car.name, True, self.COLOR_TEXT)
-        car_name_rect = car_name_text.get_rect(center=(self.width // 2, self.height // 2 + 180))
+        car_name_rect = car_name_text.get_rect(center=(self.width // 2, info_y_start))
         surface.blit(car_name_text, car_name_rect)
 
+        # Rarity with more spacing
         rarity_color = self.COLOR_RARITY.get(current_car.rarity, self.COLOR_TEXT)
         rarity_text = self.font_small.render(current_car.rarity, True, rarity_color)
-        rarity_rect = rarity_text.get_rect(center=(self.width // 2, self.height // 2 + 215))
+        rarity_rect = rarity_text.get_rect(center=(self.width // 2, info_y_start + 55))
         surface.blit(rarity_text, rarity_rect)
 
+        # Description with more spacing
         desc_text = self.font_tiny.render(current_car.description, True, (200, 200, 200))
-        desc_rect = desc_text.get_rect(center=(self.width // 2, self.height // 2 + 245))
+        desc_rect = desc_text.get_rect(center=(self.width // 2, info_y_start + 95))
         surface.blit(desc_text, desc_rect)
 
-        self._draw_car_stats(surface, current_car, 100, self.height - 280)
+        # Stats panel with improved spacing from description
+        self._draw_car_stats(surface, current_car, 60, info_y_start + 145)
 
+        # Unlock/Selected status at bottom with better spacing
         if not self.car_manager.is_car_unlocked(current_car.id):
             progress = self.car_manager.get_unlock_progress(current_car.id)
             unlock_score = progress.get("unlock_score", 0)
@@ -308,18 +321,19 @@ class CarSelectionUI:
             unlock_text = self.font_small.render(
                 f"REACH {unlock_score} POINTS TO UNLOCK", True, self.COLOR_LOCKED
             )
-            unlock_rect = unlock_text.get_rect(center=(self.width // 2, self.height - 100))
+            unlock_rect = unlock_text.get_rect(center=(self.width // 2, self.height - 130))
             surface.blit(unlock_text, unlock_rect)
 
-            progress_bar_width = 300
-            progress_bar_height = 20
+            progress_bar_width = 350
+            progress_bar_height = 28
             progress_bar_x = self.width // 2 - progress_bar_width // 2
-            progress_bar_y = self.height - 70
+            progress_bar_y = self.height - 80
 
             pygame.draw.rect(
                 surface,
                 (50, 50, 50),
                 (progress_bar_x, progress_bar_y, progress_bar_width, progress_bar_height),
+                border_radius=5
             )
 
             progress_percent = min(100, (current_score / unlock_score * 100)) if unlock_score > 0 else 0
@@ -328,13 +342,14 @@ class CarSelectionUI:
                 surface,
                 (255, 100, 100),
                 (progress_bar_x, progress_bar_y, fill_width, progress_bar_height),
+                border_radius=5
             )
 
             progress_text = self.font_tiny.render(f"{int(progress_percent)}%", True, self.COLOR_TEXT)
-            surface.blit(progress_text, (progress_bar_x + 10, progress_bar_y + 2))
+            surface.blit(progress_text, (progress_bar_x + 15, progress_bar_y + 6))
         else:
             selected_text = self.font_small.render("✓ UNLOCKED", True, self.COLOR_UNLOCKED)
-            selected_rect = selected_text.get_rect(center=(self.width // 2, self.height - 100))
+            selected_rect = selected_text.get_rect(center=(self.width // 2, self.height - 130))
             surface.blit(selected_text, selected_rect)
 
         self._draw_navigation_arrows(surface)
@@ -342,7 +357,7 @@ class CarSelectionUI:
         is_selected = self.car_manager.selected_car_id == current_car.id
         if is_selected:
             indicator = self.font_small.render("★ SELECTED ★", True, self.COLOR_ACCENT)
-            indicator_rect = indicator.get_rect(center=(self.width // 2, self.height - 130))
+            indicator_rect = indicator.get_rect(center=(self.width // 2, self.height - 75))
             surface.blit(indicator, indicator_rect)
 
         if self.show_unlock_animation:
@@ -355,29 +370,33 @@ class CarSelectionUI:
             surface: Pygame surface to draw on.
         """
         arrow_color = self.COLOR_ACCENT
-        arrow_size = 30
+        arrow_size = 45
 
-        left_x = 100
-        left_y = self.height // 2
+        # Position arrows vertically centered with the car preview
+        preview_rect = self._get_car_preview_rect()
+        arrow_y = preview_rect.centery
+
+        # Left arrow with better spacing
+        left_x = 50
         pygame.draw.polygon(
             surface,
             arrow_color,
             [
-                (left_x, left_y),
-                (left_x + arrow_size, left_y - arrow_size),
-                (left_x + arrow_size, left_y + arrow_size),
+                (left_x, arrow_y),
+                (left_x + arrow_size, arrow_y - arrow_size),
+                (left_x + arrow_size, arrow_y + arrow_size),
             ],
         )
 
-        right_x = self.width - 100
-        right_y = self.height // 2
+        # Right arrow with better spacing
+        right_x = self.width - 50
         pygame.draw.polygon(
             surface,
             arrow_color,
             [
-                (right_x, right_y),
-                (right_x - arrow_size, right_y - arrow_size),
-                (right_x - arrow_size, right_y + arrow_size),
+                (right_x, arrow_y),
+                (right_x - arrow_size, arrow_y - arrow_size),
+                (right_x - arrow_size, arrow_y + arrow_size),
             ],
         )
     
