@@ -499,7 +499,7 @@ class HomePageScreen:
             pygame.draw.polygon(surface, self.text_color, points)
 
     def _draw_footer(self, surface: pygame.Surface) -> None:
-        """Render the footer with keyboard control instructions and improved spacing.
+        """Render the footer with improved spacing.
 
         Args:
             surface: Pygame surface to draw on.
@@ -512,14 +512,6 @@ class HomePageScreen:
         footer_bg.fill((10, 12, 24, 200))
         pygame.draw.line(footer_bg, self.accent_color, (0, 0), (self.width, 0), 1)
         surface.blit(footer_bg, (0, footer_y))
-        
-        # Left: Controls help
-        help_text = self.tiny_font.render("◀ A or ◀ Left  •  D or ▶ Right  •  ENTER to Start  •  ESC to go back", True, self.muted_color)
-        surface.blit(help_text, (40, footer_y + 15))
-        
-        # Right: Quick hint
-        hint_text = self.tiny_font.render("Select a car to begin", True, self.accent_color)
-        surface.blit(hint_text, (self.width - 300, footer_y + 15))
 
     def draw(self, surface: pygame.Surface) -> None:
         """Render the complete homepage interface with improved spacing.

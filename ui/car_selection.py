@@ -345,14 +345,6 @@ class CarSelectionUI:
             indicator_rect = indicator.get_rect(center=(self.width // 2, self.height - 130))
             surface.blit(indicator, indicator_rect)
 
-        controls_text = self.font_tiny.render(
-            "← → or A/D: Navigate | ENTER/SPACE: Select | ESC: Cancel",
-            True,
-            (150, 150, 150),
-        )
-        controls_rect = controls_text.get_rect(center=(self.width // 2, self.height - 30))
-        surface.blit(controls_text, controls_rect)
-
         if self.show_unlock_animation:
             self._draw_unlock_animation(surface)
     

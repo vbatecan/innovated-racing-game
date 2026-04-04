@@ -289,7 +289,7 @@ class ModernHomePage:
         Args:
             surface: The pygame surface to draw on.
         """
-        title_text = "RACING GAME"
+        title_text = "8-BIT ENDLESS HIGHWAY"
         title_y = 100
 
         # Create title surface for scaling
@@ -387,11 +387,6 @@ class ModernHomePage:
         # Left-aligned footer text with better spacing
         footer_text = self.small_font.render("🔊 Sound: ON  |  ❓ Help  |  © 2026 Racing Game", True, self.muted_color)
         surface.blit(footer_text, (margin, footer_y))
-
-        # Right-aligned exit hint
-        exit_text = self.small_font.render("Press ESC to exit", True, self.accent_cyan)
-        exit_rect = exit_text.get_rect()
-        surface.blit(exit_text, (self.width - exit_rect.width - margin, footer_y))
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """Handle input events.

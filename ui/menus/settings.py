@@ -488,14 +488,3 @@ class SettingsMenu:
                         (content_x, bar_y, fill_w, bar_h),
                         border_radius=6,
                     )
-
-        # Footer hint with better formatting
-        hint: Surface = self.font_hint.render(
-            "← → to adjust  •  ↑ ↓ to navigate  •  TAB for category  •  ESC to close",
-            True,
-            self.muted_color,
-        )
-        screen.blit(
-            hint,
-            (panel_x + panel_w // 2 - hint.get_width() // 2, panel_y + panel_h - 35),
-        )

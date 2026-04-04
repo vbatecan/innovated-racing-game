@@ -234,9 +234,3 @@ class PauseMenu:
 
         for btn in self.buttons:
             btn.draw(screen)
-
-        # Draw footer hint
-        hint: Surface = self.font_hint.render(
-            "↑↓ Navigate  |  ENTER Select  |  ESC Resume", True, self.muted_color
-        )
-        screen.blit(hint, (sw // 2 - hint.get_width() // 2, menu_y + menu_h - 35))
