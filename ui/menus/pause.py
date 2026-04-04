@@ -51,7 +51,7 @@ class PauseMenu:
         self.text_color: pygame.Color = pygame.Color(COLORS.text)
         self.muted_color: pygame.Color = pygame.Color(COLORS.muted)
 
-        self.options: List[str] = ["Resume", "Restart", "Settings", "Quit"]
+        self.options: List[str] = ["Resume", "Restart", "Settings", "Back to Homepage", "Quit"]
         self.buttons: List[Button] = []
         self._clicked_option: Optional[str] = None
 

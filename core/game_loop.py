@@ -112,6 +112,7 @@ class GameLoop:
         self._steering_handler = SteeringHandler()
 
         self._running = True
+        self._return_to_menu = False
         self._selected_setting = 0
         self._is_braking = False
         self._target_steer = 0.0
@@ -319,25 +320,44 @@ class GameLoop:
 
         logger.info("GameLoop.run() started")
 
-        # Run pre-game menu loop first
-        logger.info("Starting menu loop...")
-        if not self._run_menu_loop():
-            # User quit during menu
-            logger.info("User quit during menu, cleaning up...")
-            self._cleanup()
-            return
+        should_quit = False
+        while not should_quit:
+            # Run pre-game menu loop
+            logger.info("Starting menu loop...")
+            if not self._run_menu_loop():
+                # User quit during menu
+                logger.info("User quit during menu, cleaning up...")
+                should_quit = True
+                break
 
-        logger.info("Menu loop complete, starting gameplay...")
+            logger.info("Menu loop complete, starting gameplay...")
 
-        # Start the detector stream for gameplay
-        logger.info("Starting detector stream...")
-        self._detector.start_stream()
-        logger.info("Detector stream started")
+            # Start the detector stream for gameplay
+            logger.info("Starting detector stream...")
+            self._detector.start_stream()
+            logger.info("Detector stream started")
 
-        # Main gameplay loop
-        logger.info("Entering main gameplay loop...")
-        while self._running:
-            self._process_frame()
+            # Reset flags for new gameplay session
+            self._running = True
+            self._return_to_menu = False
+
+            # Main gameplay loop
+            logger.info("Entering main gameplay loop...")
+            while self._running:
+                self._process_frame()
+
+            # Check if user wants to return to menu instead of quitting
+            if self._return_to_menu:
+                logger.info("Returning to menu...")
+                self._detector.stop_stream()
+                self._reset_subsystems()
+                self._game_state_manager.reset_run_state()
+                self._pause_menu.hide()
+                self._return_to_menu = False
+            else:
+                # User quit from pause menu
+                logger.info("User quit game, exiting...")
+                should_quit = True
 
         self._cleanup()
 
@@ -534,7 +554,7 @@ class GameLoop:
         """Process pause menu selection result.
 
         Executes actions based on pause menu selection: resume game, restart run,
-        open settings, or quit the application.
+        open settings, back to homepage, or quit the application.
 
         Args:
             result: Selected menu option string, or None if no selection.
@@ -548,6 +568,9 @@ class GameLoop:
         elif result == "Settings":
             self._pause_menu.hide()
             self._settings.visible = True
+        elif result == "Back to Homepage":
+            self._return_to_menu = True
+            self._running = False
         elif result == "Quit":
             self._running = False
 
