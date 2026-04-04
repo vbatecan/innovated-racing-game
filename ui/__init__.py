@@ -1,21 +1,13 @@
-"""Modern UI/HUD system for the racing game.
+"""UI package for the racing game.
 
-This is the main entry point for the UI package. It re-exports all
-public classes and functions for easy importing while maintaining
-backward compatibility with the original monolithic structure.
-
-Includes:
-- HUD display with speed, score, lives, distance, gear, boost energy
-- Pause menu with resume, restart, settings, and quit options
-- Settings menu with gameplay, graphics, and controls categories
-- Interactive Button and Slider components
-- Drawing utilities for rounded rectangles
+This package provides modern UI components, HUD elements, and menus
+for the racing game. All public classes and functions are exported
+through this top-level module for convenient importing.
 
 Example:
-    >>> from ui.game_ui import HUDManager, PauseMenu, SettingsMenu
+    >>> from ui import HUDManager, PauseMenu, SettingsMenu, Button
     >>> hud = HUDManager(1920, 1080)
     >>> pause = PauseMenu()
-    >>> settings = SettingsMenu()
 """
 
 from __future__ import annotations
@@ -29,12 +21,12 @@ from ui.core.constants import (
     FONTS,
     LAYOUT,
     PATHS,
-    Colors,
-    FontSizes,
-    Layout,
     Animation,
-    GameDefaults,
+    Colors,
     FilePaths,
+    FontSizes,
+    GameDefaults,
+    Layout,
 )
 from ui.core.types import (
     Callback,

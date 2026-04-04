@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+import math
 import os
 from typing import Optional
-import math
 
 import pygame
 
-import config
-from models.player_car import PlayerCar
 from controller import Controller
-from ui.game_ui import draw_rounded_rect
+from models.player_car import PlayerCar
+from ui.utils.drawing import draw_rounded_rect
 
 
 class PlayerHUD:
@@ -224,9 +223,7 @@ class PlayerHUD:
                 combo_color = (
                     self._accent_color
                     if self.combo < 3.0
-                    else self._gold_color
-                    if self.combo < 4.0
-                    else self._warn_color
+                    else self._gold_color if self.combo < 4.0 else self._warn_color
                 )
                 combo_text = f"x{self.combo:.1f}"
                 combo_surf = self.font_medium.render(combo_text, True, combo_color)
