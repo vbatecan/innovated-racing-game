@@ -1,9 +1,3 @@
-"""Main entry point for the Hand Gesture Racing Game.
-
-Initializes Pygame, sets up all game components, and delegates to the
-GameLoop class for the main game execution.
-"""
-
 import logging
 import os
 
