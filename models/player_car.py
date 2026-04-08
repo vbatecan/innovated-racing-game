@@ -54,7 +54,9 @@ class PlayerCar(Vehicle):
             image = pygame.image.load(car_data.image_path).convert_alpha()
             self.image = self._fit_image_to_canvas(image, self.SPRITE_CANVAS_SIZE)
             self.original_image = self.image.copy()
+            # FIX: Preserve position when updating rect after sprite change
             self.rect = self.image.get_rect(center=(self.rect.centerx, self.rect.centery))
+            # FIX: Update mask after image change
             self.mask = pygame.mask.from_surface(self.image)
         except (pygame.error, FileNotFoundError):
             # Keep the default sprite if the selected car image cannot be loaded.
@@ -152,16 +154,22 @@ class PlayerCar(Vehicle):
         # Apply movement with float precision
         self.x += self.velocity_x
         self.rect.x = int(self.x)
+        # CRITICAL FIX: Update mask when rect position changes
+        self.mask = pygame.mask.from_surface(self.image)
 
         # Boundaries
         if self.rect.left < 0:
             self.rect.left = 0
             self.x = float(self.rect.x)
             self.velocity_x = 0
+            # CRITICAL FIX: Update mask when rect position is adjusted
+            self.mask = pygame.mask.from_surface(self.image)
         if self.rect.right > screen_width:
             self.rect.right = screen_width
             self.x = float(self.rect.x)
             self.velocity_x = 0
+            # CRITICAL FIX: Update mask when rect position is adjusted
+            self.mask = pygame.mask.from_surface(self.image)
 
     def set_max_speed(self, max_speed):
         self.max_speed = max_speed

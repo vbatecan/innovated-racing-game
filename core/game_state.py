@@ -83,6 +83,8 @@ class GameStateManager:
         self._player_car.rect.center = (start_x, start_y)
         self._player_car.x = float(start_x)
         self._player_car.y = float(start_y)
+        # CRITICAL FIX: Update mask after position reset
+        self._player_car.mask = pygame.mask.from_surface(self._player_car.image)
         self._player_car.current_speed = 0
         self._player_car.velocity_x = 0
         self._player_car.current_angle = 0.0

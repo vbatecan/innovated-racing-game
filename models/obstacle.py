@@ -72,6 +72,8 @@ class Obstacle(pygame.sprite.Sprite):
         self.direction_factor += (target_direction - self.direction_factor) * 0.18
         self._y_pos += self.speed * self.direction_factor
         self.rect.y = int(self._y_pos)
+        # CRITICAL FIX: Update mask when rect position changes
+        self.mask = pygame.mask.from_surface(self.image)
 
         if self.rect.top > screen_height + self.rect.height or self.rect.bottom < -self.rect.height:
             self.kill()

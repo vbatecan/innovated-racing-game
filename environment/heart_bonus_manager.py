@@ -40,6 +40,8 @@ class HeartBonus(pygame.sprite.Sprite):
             self.rect = pygame.Rect(x, y, width, height)
         self.rect.x = x
         self.rect.y = y
+        # CRITICAL FIX: Initialize the collision mask (was missing entirely)
+        self.mask = pygame.mask.from_surface(self.image)
 
     def update(self, speed: int, road_height: int) -> None:
         """
