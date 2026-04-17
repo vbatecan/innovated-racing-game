@@ -513,7 +513,7 @@ class GameLoop:
         """
         mouse_pos = pygame.mouse.get_pos()
         result = self._settings_menu.handle_input(event, mouse_pos)
-        if result and result.get("action") in ("changed", "close"):
+        if result and result.get("action") == "changed":
             self._settings_menu.apply_to_game(self._settings)
         if result and result.get("action") == "close":
             self._settings.visible = False

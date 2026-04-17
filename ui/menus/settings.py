@@ -92,8 +92,12 @@ class SettingsMenu:
             mouse_pos: Optional mouse position for click detection.
             
         Returns:
-            A dictionary with {"action": "changed"} or {"action": "close"}
-            if an action occurred, or None if no action was triggered.
+            A dictionary with an action key when input should trigger a side
+            effect:
+            - {"action": "changed"} when a setting value was modified.
+            - {"action": "navigate"} for UI selection/category navigation.
+            - {"action": "close"} when the menu should close.
+            Returns None when no action was triggered.
         """
         if event.type == pygame.KEYDOWN:
             cat: str = self.categories[self.selected_category]
@@ -140,9 +144,11 @@ class SettingsMenu:
                     sidebar_x + 5, sidebar_y + 25 + i * 60, sidebar_w - 10, 45
                 )
                 if cat_rect.collidepoint(mouse_pos):
-                    self.selected_category = i
-                    self.selected_option = 0
-                    return {"action": "changed"}
+                    if self.selected_category != i:
+                        self.selected_category = i
+                        self.selected_option = 0
+                        return {"action": "navigate"}
+                    return None
 
             cat = self.categories[self.selected_category]
             opts: List[Tuple[Any, ...]] = self.settings[cat]
@@ -153,8 +159,10 @@ class SettingsMenu:
                 opt_y: int = content_y + 25 + i * ANIMATION.settings_option_spacing
                 bar_rect: pygame.Rect = pygame.Rect(content_x, opt_y + 28, 350, 20)
                 if bar_rect.collidepoint(mouse_pos):
-                    self.selected_option = i
-                    return {"action": "changed"}
+                    if self.selected_option != i:
+                        self.selected_option = i
+                        return {"action": "navigate"}
+                    return None
 
                 if i == self.selected_option:
                     val: Any = self.get_value(cat, opts[i][0])
