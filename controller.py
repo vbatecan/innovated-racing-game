@@ -110,7 +110,11 @@ class Controller:
         Reads frames from the camera, flips them for a mirror view, and submits
         them to MediaPipe. The latest annotated frame is stored for rendering.
         """
-        start_time = time.time()
+        # Use a monotonic clock for timestamps to avoid system clock adjustments causing
+        # MediaPipe to receive non-monotonic timestamps (which raises ValueError).
+        # Also ensure the timestamp we pass to detect_async is strictly increasing.
+        start_time = time.monotonic()
+        self._last_timestamp_ms = -1
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
@@ -119,10 +123,20 @@ class Controller:
 
             frame = cv2.flip(frame, 1)
 
-            timestamp_ms = int((time.time() - start_time) * 1000)
+            # Compute monotonic timestamp in milliseconds
+            timestamp_ms = int((time.monotonic() - start_time) * 1000)
+            # Ensure strictly increasing timestamps for MediaPipe
+            if timestamp_ms <= self._last_timestamp_ms:
+                timestamp_ms = self._last_timestamp_ms + 1
+            self._last_timestamp_ms = timestamp_ms
+
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-            self.lm.detect_async(mp_image, timestamp_ms)
+            try:
+                self.lm.detect_async(mp_image, timestamp_ms)
+            except ValueError as e:
+                # Defensive: if MediaPipe still complains, log and skip this frame rather than crash.
+                logger.warning(f"MediaPipe detect_async error with timestamp {timestamp_ms}: {e}")
 
             annotated = self._draw_annotations_internal(frame)
 
