@@ -6,6 +6,9 @@ input handling, physics, and rendering.
 """
 
 from typing import Optional, TYPE_CHECKING
+from collections import deque
+import time
+import tracemalloc
 import logging
 import pygame
 import cv2
@@ -123,6 +126,21 @@ class GameLoop:
         self._radio_player = RadioPlayer(self._settings)
         self._radio_overlay = RadioOverlay(self._settings, self._radio_player, self._window_size)
 
+        # Performance: reuse a persistent sprite group instead of allocating each frame.
+        self._player_sprite_group = pygame.sprite.GroupSingle(self._player_car)
+
+        # Runtime setting cache to avoid repeated per-frame recomputation.
+        self._cached_lane_count: Optional[int] = None
+        self._cached_obstacle_frequency: Optional[int] = None
+
+        # Debug performance instrumentation (toggle with F3).
+        self._debug_perf_enabled = bool(getattr(config, 'DEBUG_PERF', False))
+        self._frame_times_ms = deque(maxlen=180)
+        self._perf_log_interval_ms = 1000
+        self._next_perf_log_ms = 0
+        if self._debug_perf_enabled and not tracemalloc.is_tracing():
+            tracemalloc.start()
+
     def initialize(self) -> None:
         """Initialize game state manager and collision handler.
 
@@ -195,27 +213,20 @@ class GameLoop:
         self._current_screen = "home"
         logger.info("Starting menu loop...")
 
-        frame_count = 0
         while self._menu_running:
             delta_time = self._clock.tick(120) / 1000.0
-            frame_count += 1
-            if frame_count % 60 == 0:
-                logger.info(f"Menu loop frame {frame_count}, current_screen={self._current_screen}")
 
             if self._current_screen == "home":
-                logger.debug("Processing home screen...")
                 if not self._process_home_screen(delta_time):
                     logger.info("Home screen returned False, exiting menu loop")
                     return False
 
             elif self._current_screen == "shop":
-                logger.debug("Processing shop screen...")
                 if not self._process_shop_screen(delta_time):
                     logger.info("Shop screen returned False, exiting menu loop")
                     return False
 
             elif self._current_screen == "settings":
-                logger.debug("Processing settings screen...")
                 if not self._process_settings_screen(delta_time):
                     logger.info("Settings screen returned False, exiting menu loop")
                     return False
@@ -242,13 +253,11 @@ class GameLoop:
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
         
-        logger.debug("_process_home_screen: getting events...")
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 logger.info("Quit event received")
                 return False
 
-            logger.debug(f"Handling event: {event}")
             action = self._homepage.handle_event(event)
             if action == "quit":
                 logger.info("Homepage returned quit action")
@@ -258,13 +267,10 @@ class GameLoop:
         self._homepage._mouse_pos = mouse_pos
         self._homepage._mouse_pressed = mouse_pressed
         
-        logger.debug("Updating homepage...")
         self._homepage.update(delta_time)
-        logger.debug("Drawing homepage...")
         self._homepage.draw(self._screen)
-        logger.debug("Flipping display...")
+        self._draw_perf_overlay()
         pygame.display.flip()
-        logger.debug("Home screen frame complete")
         return True
 
     def _process_shop_screen(self, delta_time: float) -> bool:
@@ -299,6 +305,7 @@ class GameLoop:
         
         self._shop_screen.update(delta_time)
         self._shop_screen.draw(self._screen)
+        self._draw_perf_overlay()
         pygame.display.flip()
         return True
 
@@ -330,6 +337,7 @@ class GameLoop:
         # Update and draw settings menu
         self._settings_menu.update(mouse_pos)
         self._settings_menu.draw(self._screen)
+        self._draw_perf_overlay()
         pygame.display.flip()
         return True
 
@@ -400,16 +408,12 @@ class GameLoop:
         at the end of each frame.
         """
         self._is_braking = False
+        frame_start = time.perf_counter()
 
         self._detector.set_require_two_hands(
             self._game_state_manager.game_state == GameState.PLAYING
         )
-        self._game_map.speed = self._settings.car_speed
-        difficulty_spawn_multiplier = self._settings.get_difficulty_obstacle_multiplier()
-        obstacle_setting = max(0.25, float(self._settings.obstacle_frequency) * difficulty_spawn_multiplier)
-        self._game_map.obstacle_frequency = int((self._settings.max_fps * 2) / obstacle_setting)
-        self._game_map.set_lane_count(self._settings.lane_count)
-
+        self._sync_runtime_settings()
         self._handle_events()
 
         if self._pause_menu.visible:
@@ -448,6 +452,7 @@ class GameLoop:
 
         self._update_speed_from_score()
         self._check_and_handle_car_unlocks()
+        self._record_perf_sample(frame_start)
         self._clock.tick(self._settings.max_fps)
 
     def _handle_events(self) -> None:
@@ -465,6 +470,10 @@ class GameLoop:
             if self._car_selection and self._car_selection.visible:
                 if self._car_selection.handle_event(event):
                     continue
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F3:
+                self._toggle_debug_perf()
+                continue
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if self._game_state_manager.game_state == GameState.GAME_OVER and self._car_selection:
@@ -586,6 +595,7 @@ class GameLoop:
         self._radio_overlay.update(1.0 / max(1, int(self._settings.max_fps)))
         self._radio_overlay.draw(self._screen)
         self._pause_menu.draw(self._screen, delta_time / 1000.0)
+        self._draw_perf_overlay()
         pygame.display.flip()
 
     def _process_pause_result(self, result: Optional[str]) -> None:
@@ -816,16 +826,16 @@ class GameLoop:
 
         # Draw car selection UI if visible
         if self._car_selection:
-            self._car_selection.update(16.0 / 1000.0)  # Assume 60 FPS
+            car_selection_dt = 1.0 / max(1, int(self._settings.max_fps))
+            self._car_selection.update(car_selection_dt)
             self._car_selection.draw(self._screen)
 
+        self._draw_perf_overlay()
         pygame.display.flip()
 
     def _render_sprite(self) -> None:
         """Render the player car sprite to the screen."""
-        sprite_group = pygame.sprite.Group()
-        sprite_group.add(self._player_car)
-        sprite_group.draw(self._screen)
+        self._player_sprite_group.draw(self._screen)
 
     def _update_speed_from_score(self) -> None:
         """Adjust maximum speed based on current score milestones.
@@ -892,6 +902,77 @@ class GameLoop:
             logger.info(f"New cars unlocked: {[car.name for car in newly_unlocked]}")
             self._car_selection.show_new_unlocks(newly_unlocked)
 
+    def _sync_runtime_settings(self) -> None:
+        """Apply runtime settings only when values change to reduce per-frame work."""
+        self._game_map.speed = self._settings.car_speed
+
+        lane_count = int(self._settings.lane_count)
+        if lane_count != self._cached_lane_count:
+            self._game_map.set_lane_count(lane_count)
+            self._cached_lane_count = lane_count
+
+        difficulty_spawn_multiplier = self._settings.get_difficulty_obstacle_multiplier()
+        obstacle_setting = max(0.25, float(self._settings.obstacle_frequency) * difficulty_spawn_multiplier)
+        obstacle_frequency = int((self._settings.max_fps * 2) / obstacle_setting)
+        if obstacle_frequency != self._cached_obstacle_frequency:
+            self._game_map.obstacle_frequency = obstacle_frequency
+            self._cached_obstacle_frequency = obstacle_frequency
+
+    def _toggle_debug_perf(self) -> None:
+        self._debug_perf_enabled = not self._debug_perf_enabled
+        if self._debug_perf_enabled and not tracemalloc.is_tracing():
+            tracemalloc.start()
+        state = "enabled" if self._debug_perf_enabled else "disabled"
+        logger.info(f"Performance debug {state}")
+
+    def _record_perf_sample(self, frame_start: float) -> None:
+        if not self._debug_perf_enabled:
+            return
+
+        frame_ms = (time.perf_counter() - frame_start) * 1000.0
+        self._frame_times_ms.append(frame_ms)
+
+        now_ms = pygame.time.get_ticks()
+        if now_ms < self._next_perf_log_ms:
+            return
+        self._next_perf_log_ms = now_ms + self._perf_log_interval_ms
+
+        avg_ms = sum(self._frame_times_ms) / max(1, len(self._frame_times_ms))
+        peak_ms = max(self._frame_times_ms) if self._frame_times_ms else frame_ms
+        mem_current_mb = 0.0
+        mem_peak_mb = 0.0
+        if tracemalloc.is_tracing():
+            mem_current, mem_peak = tracemalloc.get_traced_memory()
+            mem_current_mb = mem_current / (1024 * 1024)
+            mem_peak_mb = mem_peak / (1024 * 1024)
+
+        logger.info(
+            "PERF | fps=%.1f frame_avg=%.2fms frame_peak=%.2fms mem=%.1fMB peak=%.1fMB",
+            self._clock.get_fps(),
+            avg_ms,
+            peak_ms,
+            mem_current_mb,
+            mem_peak_mb,
+        )
+
+    def _draw_perf_overlay(self) -> None:
+        if not self._debug_perf_enabled:
+            return
+
+        avg_ms = sum(self._frame_times_ms) / max(1, len(self._frame_times_ms)) if self._frame_times_ms else 0.0
+        mem_text = "mem n/a"
+        if tracemalloc.is_tracing():
+            mem_current, mem_peak = tracemalloc.get_traced_memory()
+            mem_text = f"mem {mem_current / (1024 * 1024):.1f}/{mem_peak / (1024 * 1024):.1f}MB"
+
+        text = f"DBG fps {self._clock.get_fps():.1f} | frame {avg_ms:.2f}ms | {mem_text}"
+        surf = self._font.render(text, True, (255, 230, 150))
+        pad = 10
+        bg = pygame.Rect(pad - 6, pad - 4, surf.get_width() + 12, surf.get_height() + 8)
+        pygame.draw.rect(self._screen, (0, 0, 0), bg, border_radius=6)
+        pygame.draw.rect(self._screen, (255, 230, 150), bg, 1, border_radius=6)
+        self._screen.blit(surf, (pad, pad))
+
     def _cleanup(self) -> None:
         """Release all resources on game exit.
 
@@ -901,6 +982,20 @@ class GameLoop:
         self._detector.stop_stream()
         cv2.destroyAllWindows()
         pygame.quit()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

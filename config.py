@@ -8,6 +8,7 @@ MIN_LANE_COUNT = 1
 MAX_LANE_COUNT = 6
 
 SHOW_CAMERA = True
+DEBUG_PERF = False
 
 FONT_SIZE = 24
 CAR_SPEED = 25
@@ -180,3 +181,5 @@ SCORING_CONFIG = {
     "near_miss_bonus": 0,
     "sharp_turn_bonus": 0,
 }
+
+
