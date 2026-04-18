@@ -18,6 +18,8 @@ from core.oil_swerve_physics import OilSwervePhysics
 from core.collision_handler import CollisionHandler
 from input.key_mapper import KeyMapper
 from input.steering_handler import SteeringHandler
+from core.radio_player import RadioPlayer
+from ui.radio_overlay import RadioOverlay
 
 if TYPE_CHECKING:
     from ui.homepage import HomePageScreen
@@ -117,6 +119,9 @@ class GameLoop:
         self._is_braking = False
         self._target_steer = 0.0
         self._max_speed = player_car.max_speed
+
+        self._radio_player = RadioPlayer(self._settings)
+        self._radio_overlay = RadioOverlay(self._settings, self._radio_player, self._window_size)
 
     def initialize(self) -> None:
         """Initialize game state manager and collision handler.
@@ -374,6 +379,7 @@ class GameLoop:
             # Check if user wants to return to menu instead of quitting
             if self._return_to_menu:
                 logger.info("Returning to menu...")
+                self._radio_player.shutdown()
                 self._detector.stop_stream()
                 self._reset_subsystems()
                 self._game_state_manager.reset_run_state()
@@ -535,6 +541,9 @@ class GameLoop:
         Args:
             event: Pygame event to process.
         """
+        if self._radio_overlay.handle_event(event):
+            return
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_c:
             if self._car_selection and not self._car_selection.visible:
                 self._car_selection.open()
@@ -574,6 +583,8 @@ class GameLoop:
         self._game_map.draw(self._screen)
         self._render_sprite()
         self._game_hud.draw(self._screen)
+        self._radio_overlay.update(1.0 / max(1, int(self._settings.max_fps)))
+        self._radio_overlay.draw(self._screen)
         self._pause_menu.draw(self._screen, delta_time / 1000.0)
         pygame.display.flip()
 
@@ -720,6 +731,8 @@ class GameLoop:
 
         self._collision_handler.check_and_resolve_all()
 
+        self._radio_player.update()
+
     def _refresh_display_surface(self) -> None:
         """Synchronize cached screen reference with the active display surface.
 
@@ -775,6 +788,8 @@ class GameLoop:
             hearts_collected=hearts_collected,
         )
         self._game_hud.draw(self._screen)
+        self._radio_overlay.update(1.0 / max(1, int(self._settings.max_fps)))
+        self._radio_overlay.draw(self._screen)
 
         if self._settings.visible:
             self._settings_menu.update(pygame.mouse.get_pos())
@@ -882,8 +897,14 @@ class GameLoop:
 
         Stops the detector stream, destroys OpenCV windows, and quits Pygame.
         """
+        self._radio_player.shutdown()
         self._detector.stop_stream()
         cv2.destroyAllWindows()
         pygame.quit()
+
+
+
+
+
 
 
