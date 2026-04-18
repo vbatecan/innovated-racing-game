@@ -350,6 +350,9 @@ class GameLoop:
 
             logger.info("Menu loop complete, starting gameplay...")
 
+            if hasattr(self._player_car, "refresh_configuration"):
+                self._player_car.refresh_configuration()
+
             # Start the detector stream for gameplay
             logger.info("Starting detector stream...")
             self._detector.start_stream()
@@ -680,6 +683,9 @@ class GameLoop:
             acceleration *= self._boost_system.get_acceleration_multiplier()
             self._max_speed *= self._boost_system.get_speed_multiplier()
 
+        if hasattr(self._player_car, "set_visual_cues"):
+            self._player_car.set_visual_cues(self._boost_system.is_active, self._is_braking)
+
         self._player_car.update(
             steering=self._target_steer,
             is_braking=self._is_braking,
@@ -863,3 +869,4 @@ class GameLoop:
         self._detector.stop_stream()
         cv2.destroyAllWindows()
         pygame.quit()
+
