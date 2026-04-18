@@ -58,10 +58,17 @@ class Settings:
         Returns:
             None: Recreates the active display surface with the requested flags.
         """
-        self.fullscreen = fullscreen
-
         surface = pygame.display.get_surface()
         if surface is None:
+            self.fullscreen = fullscreen
+            return
+
+        is_current_fullscreen = bool(surface.get_flags() & pygame.FULLSCREEN)
+        if self.fullscreen == fullscreen and is_current_fullscreen == fullscreen:
+            return
+
+        self.fullscreen = fullscreen
+        if is_current_fullscreen == fullscreen:
             return
 
         width, height = surface.get_size()
