@@ -3,8 +3,6 @@ import os
 
 import pygame
 
-import config
-from config import WINDOW_SIZE
 from controller import Controller
 from core.game_loop import GameLoop
 from environment.map import Map
@@ -27,50 +25,53 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    """Initialize the game and run the main loop.
-
-    Sets up Pygame, the player car, map, controller, and settings menu, then
-    delegates to GameLoop for frame processing until exit.
-    """
+    """Initialize the game and run the main loop."""
     pygame.init()
-    screen = pygame.display.set_mode(
-        (WINDOW_SIZE["width"], WINDOW_SIZE["height"]), pygame.FULLSCREEN
-    )
+
+    settings = Settings()
+
+    flags = pygame.FULLSCREEN if settings.fullscreen else pygame.RESIZABLE
+    resolution = (int(settings.resolution[0]), int(settings.resolution[1]))
+    try:
+        screen = pygame.display.set_mode(resolution, flags, vsync=1 if settings.vsync else 0)
+    except TypeError:
+        screen = pygame.display.set_mode(resolution, flags)
+
     pygame.display.set_caption("Hand Gesture Racing Game")
     clock = pygame.time.Clock()
+
+    runtime_window_size = {
+        "width": screen.get_width(),
+        "height": screen.get_height(),
+    }
 
     car_manager = CarManager()
 
     # Create shop screen (car selection interface)
-    shop_screen = HomePageScreen(WINDOW_SIZE, car_manager)
+    shop_screen = HomePageScreen(runtime_window_size, car_manager)
 
     # Use modern homepage for main menu
-    homepage = ModernHomePage(WINDOW_SIZE, player_name="Player", coins=1000)
+    homepage = ModernHomePage(runtime_window_size, player_name="Player", coins=car_manager.credits)
 
     # Create settings menu
     settings_menu = SettingsMenu()
 
-    settings = Settings()
-    settings.fullscreen = True
-    settings.show_camera = config.SHOW_CAMERA
-    game_map = Map(WINDOW_SIZE, lane_count=settings.lane_count)
+    game_map = Map(runtime_window_size, lane_count=settings.lane_count)
 
-    start_x = WINDOW_SIZE["width"] // 2
-    start_y = WINDOW_SIZE["height"] - 240
+    start_x = runtime_window_size["width"] // 2
+    start_y = runtime_window_size["height"] - 240
     player_car = PlayerCar(start_x, start_y, car_manager=car_manager)
 
     detector = Controller()
-    # Note: detector.start_stream() is now called in GameLoop.run() after menu
 
-    # Create font for HUD
     hud_font = pygame.font.Font(None, 32)
     hud = PlayerHUD(player_car, detector, hud_font)
-    
+
     game_hud = HUDManager(
-        WINDOW_SIZE["width"],
-        WINDOW_SIZE["height"]
+        runtime_window_size["width"],
+        runtime_window_size["height"],
     )
-    
+
     pause_menu = PauseMenu()
 
     game_loop = GameLoop(
@@ -84,7 +85,7 @@ def main() -> None:
         game_hud=game_hud,
         pause_menu=pause_menu,
         settings_menu=settings_menu,
-        window_size=WINDOW_SIZE,
+        window_size=runtime_window_size,
         homepage=homepage,
         shop_screen=shop_screen,
     )
@@ -93,8 +94,8 @@ def main() -> None:
 
     try:
         game_loop.run()
-    except Exception as e:
-        logger.exception("Game loop crashed: %s", e)
+    except Exception as exc:
+        logger.exception("Game loop crashed: %s", exc)
         raise
 
 

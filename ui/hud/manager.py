@@ -206,7 +206,6 @@ class HUDManager:
         self._draw_score_top_right(screen, sw)
         self._draw_lives_top_left(screen)
         self._draw_stats_bottom_left(screen, sh)
-        self._draw_boost_bar_bottom_center(screen, sw, sh)
         if self.show_camera and self.camera_frame is not None:
             self._draw_camera_preview(screen, sw, sh)
 
@@ -441,3 +440,4 @@ class HUDManager:
             screen.blit(frame_surface, (x, y))
         except Exception as e:
             print(f"Camera draw error: {e}")
+

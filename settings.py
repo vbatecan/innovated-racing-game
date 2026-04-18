@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import json
+import os
 from typing import Any
 
 import pygame
@@ -16,126 +20,218 @@ from config import (
     MIN_LANE_COUNT,
     OBSTACLE_FREQUENCY,
     STEERING_SENSITIVITY,
+    WINDOW_SIZE,
 )
 
 
 class Settings:
-    def __init__(self):
-        """
-        Initialize runtime-tunable game settings.
+    """Runtime settings with persistence and instant-apply helpers."""
 
-        Returns:
-            None: Initializes mutable runtime settings from configuration defaults.
-        """
-        self.car_speed = CAR_SPEED
-        self.max_fps = MAX_FPS
-        self.show_camera = True
-        self.obstacle_frequency = OBSTACLE_FREQUENCY
-        self.lane_count = LANE_COUNT
-        self.steering_sensitivity = STEERING_SENSITIVITY
+    SAVE_FILE = "logs/user_settings.json"
+
+    def __init__(self):
         self._vals = AVAILABLE_FPS
 
-        # Physics
-        self.ACCELERATION = ACCELERATION
-        self.FRICTION = FRICTION
-        self.BRAKE_STRENGTH = BRAKE_STRENGTH
-        self.brake_sensitivity = BRAKE_SENSITIVITY  # 1 (Hard) to 10 (Easy)
+        defaults = self._defaults()
+        for key, value in defaults.items():
+            setattr(self, key, value)
 
-        # This
-        self.visible = False
-        self.fullscreen = False
+        self.load()
+        self.apply_audio_settings()
 
-        # Scoring system
-        self._bonus = 50  # Every n points, increase  by 1
-        self.car_collision_deduction_pts = 100
+    @staticmethod
+    def _defaults() -> dict[str, Any]:
+        return {
+            "car_speed": CAR_SPEED,
+            "max_fps": MAX_FPS,
+            "show_camera": True,
+            "obstacle_frequency": OBSTACLE_FREQUENCY,
+            "lane_count": LANE_COUNT,
+            "steering_sensitivity": STEERING_SENSITIVITY,
+            "ACCELERATION": ACCELERATION,
+            "FRICTION": FRICTION,
+            "BRAKE_STRENGTH": BRAKE_STRENGTH,
+            "brake_sensitivity": BRAKE_SENSITIVITY,
+            "visible": False,
+            "fullscreen": False,
+            "vsync": False,
+            "resolution": [WINDOW_SIZE["width"], WINDOW_SIZE["height"]],
+            "master_volume": 0.80,
+            "music_volume": 0.70,
+            "sfx_volume": 0.85,
+            "difficulty": "Normal",
+            "auto_brake_assist": False,
+            "steering_assist": True,
+            "camera_mode": "Chase",
+            "graphics_preset": "High",
+            "show_fps": False,
+            "_bonus": 50,
+            "car_collision_deduction_pts": 100,
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "car_speed": self.car_speed,
+            "max_fps": self.max_fps,
+            "show_camera": self.show_camera,
+            "obstacle_frequency": self.obstacle_frequency,
+            "lane_count": self.lane_count,
+            "steering_sensitivity": self.steering_sensitivity,
+            "ACCELERATION": self.ACCELERATION,
+            "FRICTION": self.FRICTION,
+            "BRAKE_STRENGTH": self.BRAKE_STRENGTH,
+            "brake_sensitivity": self.brake_sensitivity,
+            "fullscreen": self.fullscreen,
+            "vsync": self.vsync,
+            "resolution": list(self.resolution),
+            "master_volume": self.master_volume,
+            "music_volume": self.music_volume,
+            "sfx_volume": self.sfx_volume,
+            "difficulty": self.difficulty,
+            "auto_brake_assist": self.auto_brake_assist,
+            "steering_assist": self.steering_assist,
+            "camera_mode": self.camera_mode,
+            "graphics_preset": self.graphics_preset,
+            "show_fps": self.show_fps,
+        }
+
+    def load(self) -> None:
+        defaults = self._defaults()
+        if not os.path.exists(self.SAVE_FILE):
+            return
+
+        try:
+            with open(self.SAVE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return
+
+        for key, default_value in defaults.items():
+            if key not in data:
+                continue
+            setattr(self, key, data[key])
+
+        self.resolution = [int(self.resolution[0]), int(self.resolution[1])]
+        self.max_fps = int(self.max_fps)
+        self.car_speed = float(self.car_speed)
+        self.obstacle_frequency = max(1, int(self.obstacle_frequency))
+        self.lane_count = max(MIN_LANE_COUNT, min(MAX_LANE_COUNT, int(self.lane_count)))
+
+    def save(self) -> None:
+        os.makedirs("logs", exist_ok=True)
+        try:
+            with open(self.SAVE_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.to_dict(), f, indent=2)
+        except OSError:
+            pass
+
+    def reset_section(self, section: str) -> None:
+        defaults = self._defaults()
+        section_map = {
+            "Audio": ["master_volume", "music_volume", "sfx_volume"],
+            "Graphics": ["fullscreen", "vsync", "resolution", "graphics_preset", "max_fps", "show_camera"],
+            "Gameplay": [
+                "difficulty",
+                "auto_brake_assist",
+                "steering_assist",
+                "camera_mode",
+                "obstacle_frequency",
+                "brake_sensitivity",
+                "steering_sensitivity",
+            ],
+        }
+        for key in section_map.get(section, []):
+            setattr(self, key, defaults[key])
+
+    def apply_audio_settings(self) -> None:
+        if not pygame.mixer.get_init():
+            return
+
+        master = max(0.0, min(1.0, float(self.master_volume)))
+        music = max(0.0, min(1.0, float(self.music_volume)))
+        sfx = max(0.0, min(1.0, float(self.sfx_volume)))
+
+        pygame.mixer.music.set_volume(master * music)
+        channel_count = pygame.mixer.get_num_channels()
+        for idx in range(channel_count):
+            pygame.mixer.Channel(idx).set_volume(master * sfx)
+
+    def apply_display_settings(
+        self,
+        resolution: tuple[int, int] | None = None,
+        fullscreen: bool | None = None,
+        vsync: bool | None = None,
+    ) -> None:
+        surface = pygame.display.get_surface()
+
+        if resolution is not None:
+            self.resolution = [int(resolution[0]), int(resolution[1])]
+        if fullscreen is not None:
+            self.fullscreen = bool(fullscreen)
+        if vsync is not None:
+            self.vsync = bool(vsync)
+
+        if surface is None:
+            return
+
+        flags = pygame.FULLSCREEN if self.fullscreen else pygame.RESIZABLE
+        size = (int(self.resolution[0]), int(self.resolution[1]))
+
+        current_size = surface.get_size()
+        current_fullscreen = bool(surface.get_flags() & pygame.FULLSCREEN)
+        if current_size == size and current_fullscreen == self.fullscreen:
+            return
+
+        try:
+            pygame.display.set_mode(size, flags, vsync=1 if self.vsync else 0)
+        except TypeError:
+            pygame.display.set_mode(size, flags)
 
     def set_fullscreen(self, fullscreen: bool):
-        """Toggle fullscreen mode and immediately update the pygame display surface.
+        self.apply_display_settings(fullscreen=fullscreen)
 
-        Args:
-            fullscreen (bool): Whether fullscreen mode should be enabled.
+    def get_difficulty_obstacle_multiplier(self) -> float:
+        return {
+            "Easy": 1.25,
+            "Normal": 1.0,
+            "Hard": 0.8,
+        }.get(self.difficulty, 1.0)
 
-        Returns:
-            None: Recreates the active display surface with the requested flags.
-        """
-        surface = pygame.display.get_surface()
-        if surface is None:
-            self.fullscreen = fullscreen
-            return
+    def get_difficulty_acceleration_multiplier(self) -> float:
+        return {
+            "Easy": 1.06,
+            "Normal": 1.0,
+            "Hard": 0.94,
+        }.get(self.difficulty, 1.0)
 
-        is_current_fullscreen = bool(surface.get_flags() & pygame.FULLSCREEN)
-        if self.fullscreen == fullscreen and is_current_fullscreen == fullscreen:
-            return
-
-        self.fullscreen = fullscreen
-        if is_current_fullscreen == fullscreen:
-            return
-
-        width, height = surface.get_size()
-        flags = pygame.FULLSCREEN if fullscreen else 0
-        pygame.display.set_mode((width, height), flags)
+    def get_camera_preview_size(self) -> tuple[int, int]:
+        return {
+            "Close": (220, 165),
+            "Chase": (180, 135),
+            "Far": (145, 100),
+            "Off": (0, 0),
+        }.get(self.camera_mode, (180, 135))
 
     def get_brake_threshold(self):
-        """
-        Convert brake sensitivity into a thumb-raise threshold for gesture braking.
-
-        Returns:
-            float: Gesture threshold value used by the controller.
-        """
         return 0.07 - (self.brake_sensitivity * 0.01)
 
+    # Backward-compatible methods used by legacy flow.
     def increase_brake_sensitivity(self):
-        """
-        Make braking easier to trigger by raising sensitivity.
-
-        Returns:
-            None: Increases `brake_sensitivity` within allowed bounds.
-        """
         self.brake_sensitivity = min(self.brake_sensitivity + 1, 10)
 
     def decrease_brake_sensitivity(self):
-        """
-        Make braking harder to trigger by lowering sensitivity.
-
-        Returns:
-            None: Decreases `brake_sensitivity` within allowed bounds.
-        """
         self.brake_sensitivity = max(self.brake_sensitivity - 1, 1)
 
     def increase_car_speed(self):
-        """
-        Increase the car speed setting within limits.
-
-        Returns:
-            None: Increases `car_speed` within allowed bounds.
-        """
         self.car_speed = min(self.car_speed + 1, 50)
 
     def decrease_car_speed(self):
-        """
-        Decrease the car speed setting within limits.
-
-        Returns:
-            None: Decreases `car_speed` within allowed bounds.
-        """
         self.car_speed = max(self.car_speed - 1, 1)
 
     def toggle_camera(self):
-        """
-        Toggle whether the camera preview is shown.
-
-        Returns:
-            None: Flips `show_camera`.
-        """
         self.show_camera = not self.show_camera
 
     def increase_fps(self):
-        """
-        Increase the max FPS setting using supported values.
-
-        Returns:
-            None: Moves to the next supported FPS value.
-        """
         vals = [30, 60, 120]
         try:
             idx = vals.index(self.max_fps)
@@ -144,12 +240,6 @@ class Settings:
             self.max_fps = 30
 
     def decrease_fps(self):
-        """
-        Decrease the max FPS setting using supported values.
-
-        Returns:
-            None: Moves to the previous supported FPS value.
-        """
         try:
             idx = self._vals.index(self.max_fps)
             self.max_fps = self._vals[max(idx - 1, 0)]
@@ -157,147 +247,33 @@ class Settings:
             self.max_fps = 30
 
     def increase_obstacle_frequency(self):
-        """
-        Increase how often obstacles spawn (smaller gap).
-
-        Returns:
-            None: Increments obstacle frequency control value.
-        """
         self.obstacle_frequency += 1
 
     def decrease_obstacle_frequency(self):
-        """
-        Decrease how often obstacles spawn (larger gap).
-
-        Returns:
-            None: Decrements obstacle frequency control value when possible.
-        """
-        if self.obstacle_frequency <= 1:
-            return
-        self.obstacle_frequency -= 1
+        if self.obstacle_frequency > 1:
+            self.obstacle_frequency -= 1
 
     def increase_lane_count(self):
-        """
-        Increase the number of road lanes within limits.
-
-        Returns:
-            None: Increases `lane_count` within configured bounds.
-        """
         self.lane_count = min(self.lane_count + 1, MAX_LANE_COUNT)
 
     def decrease_lane_count(self):
-        """
-        Decrease the number of road lanes within limits.
-
-        Returns:
-            None: Decreases `lane_count` within configured bounds.
-        """
         self.lane_count = max(self.lane_count - 1, MIN_LANE_COUNT)
 
     def increase_sensitivity(self):
-        """
-        Increase steering sensitivity within limits.
-
-        Returns:
-            None: Increases steering sensitivity within allowed bounds.
-        """
         self.steering_sensitivity = min(self.steering_sensitivity + 0.1, 5.0)
 
     def decrease_sensitivity(self):
-        """
-        Decrease steering sensitivity within limits.
-
-        Returns:
-            None: Decreases steering sensitivity within allowed bounds.
-        """
         self.steering_sensitivity = max(self.steering_sensitivity - 0.1, 0.1)
 
     def increase_points__increment(self, points):
-        """
-        Increase the score interval used to grant  bonuses.
-
-        Args:
-            points (int): Amount added to `_bonus`.
-
-        Returns:
-            None: Updates score threshold for  bonus changes.
-        """
         self._bonus += points
 
     def decrease_points__increment(self, deduct):
-        """
-        Decrease the score interval used to grant  bonuses.
-
-        Args:
-            deduct (int): Amount subtracted from `_bonus`.
-
-        Returns:
-            None: Updates score threshold for  bonus changes.
-        """
         self._bonus -= deduct
 
-    def draw_settings_menu(self, screen, font, settings, selected_index, options):
-        """
-        Render the in-game settings overlay.
-
-        Args:
-            screen (pygame.Surface): Main display surface.
-            font (pygame.font.Font): Font used to render menu text.
-            settings (Settings): Current mutable settings instance.
-            selected_index (int): Selected menu row index.
-            options (list[str]): Ordered settings labels to display.
-
-        Returns:
-            None: Draws directly to the screen surface.
-        """
-        overlay_width = 400
-        overlay_height = max(300, 140 + len(options) * 40)
-        overlay = pygame.Surface((overlay_width, overlay_height))
-        overlay.fill((0, 0, 0))
-        overlay.set_alpha(200)
-
-        screen_rect = screen.get_rect()
-        overlay_rect = overlay.get_rect(center=screen_rect.center)
-
-        screen.blit(overlay, overlay_rect)
-
-        title = font.render("SETTINGS", True, (255, 255, 255))
-        screen.blit(
-            title, (overlay_rect.centerx - title.get_width() // 2, overlay_rect.y + 20)
-        )
-
-        for i, option in enumerate(options):
-            color = (255, 255, 0) if i == selected_index else (255, 255, 255)
-
-            value_text = ""
-            if option == "Car ":
-                value_text = str(settings.car_)
-            elif option == "Max FPS":
-                value_text = str(settings.max_fps)
-            elif option == "Show Camera":
-                value_text = "ON" if settings.show_camera else "OFF"
-            elif option == "Obstacle Freq":
-                value_text = str(settings.obstacle_frequency)
-            elif option == "Lane Count":
-                value_text = str(settings.lane_count)
-            elif option == "Sensitivity":
-                value_text = f"{settings.steering_sensitivity:.1f}"
-            elif option == "Brake Sens":
-                value_text = str(settings.brake_sensitivity)
-
-            text = font.render(f"{option}: {value_text}", True, color)
-
-            # Center the text in the overlay
-            text_rect = text.get_rect(
-                center=(overlay_rect.centerx, overlay_rect.y + 80 + i * 40)
-            )
-            screen.blit(text, text_rect)
-
-        hint = font.render("Press P to Close", True, (150, 150, 150))
-        screen.blit(
-            hint,
-            (overlay_rect.centerx - hint.get_width() // 2, overlay_rect.bottom - 40),
-        )
+    def draw_settings_menu(self, *args, **kwargs):
+        _ = args
+        _ = kwargs
 
     def handle_event(
         self,
@@ -307,59 +283,13 @@ class Settings:
         setting_options: list[str],
         show_settings: bool,
     ) -> tuple[bool, int | Any, bool]:
-        """
-        Process input for game and settings navigation.
-
-        Args:
-            event (Event): Current pygame event to process.
-            running (bool): Existing game running state.
-            selected_setting (int | Any): Current selected settings menu index.
-            setting_options (list[str]): Menu options used for index wrapping.
-            show_settings (bool): Current visibility of settings menu.
-
-        Returns:
-            tuple[bool, int | Any, bool]: Updated `(running, selected_setting, show_settings)`.
-        """
         if event.type == pygame.QUIT:
             running = False
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                running = False
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            running = False
 
-            if show_settings:
-                if event.key == pygame.K_UP:
-                    selected_setting = (selected_setting - 1) % len(setting_options)
-                elif event.key == pygame.K_DOWN:
-                    selected_setting = (selected_setting + 1) % len(setting_options)
-                elif event.key == pygame.K_LEFT:
-                    if selected_setting == 0:
-                        self.decrease_car_speed()
-                    elif selected_setting == 1:
-                        self.decrease_fps()
-                    elif selected_setting == 2:
-                        self.toggle_camera()
-                    elif selected_setting == 3:
-                        self.decrease_obstacle_frequency()
-                    elif selected_setting == 4:
-                        self.decrease_lane_count()
-                    elif selected_setting == 5:
-                        self.decrease_sensitivity()
-                    elif selected_setting == 6:
-                        self.decrease_brake_sensitivity()
-                elif event.key == pygame.K_RIGHT:
-                    if selected_setting == 0:
-                        self.increase_car_speed()
-                    elif selected_setting == 1:
-                        self.increase_fps()
-                    elif selected_setting == 2:
-                        self.toggle_camera()
-                    elif selected_setting == 3:
-                        self.increase_obstacle_frequency()
-                    elif selected_setting == 4:
-                        self.increase_lane_count()
-                    elif selected_setting == 5:
-                        self.increase_sensitivity()
-                    elif selected_setting == 6:
-                        self.increase_brake_sensitivity()
+        _ = selected_setting
+        _ = setting_options
         return running, selected_setting, show_settings
+

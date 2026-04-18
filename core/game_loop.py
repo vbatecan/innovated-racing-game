@@ -307,11 +307,15 @@ class GameLoop:
             True to continue running, False to quit.
         """
         mouse_pos = pygame.mouse.get_pos()
+        if hasattr(self._settings_menu, "bind_settings"):
+            self._settings_menu.bind_settings(self._settings)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
 
             result = self._settings_menu.handle_input(event, mouse_pos)
+            if result and result.get("action") == "changed":
+                self._settings_menu.apply_to_game(self._settings)
             if result and result.get("action") == "close":
                 self._current_screen = "home"
 
@@ -395,9 +399,9 @@ class GameLoop:
             self._game_state_manager.game_state == GameState.PLAYING
         )
         self._game_map.speed = self._settings.car_speed
-        self._game_map.obstacle_frequency = int(
-            (self._settings.max_fps * 2) / self._settings.obstacle_frequency
-        )
+        difficulty_spawn_multiplier = self._settings.get_difficulty_obstacle_multiplier()
+        obstacle_setting = max(0.25, float(self._settings.obstacle_frequency) * difficulty_spawn_multiplier)
+        self._game_map.obstacle_frequency = int((self._settings.max_fps * 2) / obstacle_setting)
         self._game_map.set_lane_count(self._settings.lane_count)
 
         self._handle_events()
@@ -515,6 +519,8 @@ class GameLoop:
             event: Pygame event to process.
         """
         mouse_pos = pygame.mouse.get_pos()
+        if hasattr(self._settings_menu, "bind_settings"):
+            self._settings_menu.bind_settings(self._settings)
         result = self._settings_menu.handle_input(event, mouse_pos)
         if result and result.get("action") == "changed":
             self._settings_menu.apply_to_game(self._settings)
@@ -633,9 +639,12 @@ class GameLoop:
 
         frame = self._detector.get_frame()
         cv2.waitKey(1)
-        if self._settings.show_camera and frame is not None:
+        camera_enabled = self._settings.show_camera and self._settings.camera_mode != "Off"
+        if camera_enabled and frame is not None:
             self._game_hud.set_camera_frame(frame)
-        self._game_hud.set_camera_visibility(self._settings.show_camera)
+        self._game_hud.set_camera_visibility(camera_enabled)
+        if hasattr(self._game_hud, "camera_size"):
+            self._game_hud.camera_size = self._settings.get_camera_preview_size()
 
         self._boost_system.update(self._detector.boosting)
 
@@ -670,13 +679,20 @@ class GameLoop:
                     -2.0, min(2.0, -self._target_steer)
                 )
 
+        if self._settings.steering_assist:
+            self._target_steer *= 0.82
+
         self._target_steer = max(-2.0, min(2.0, self._target_steer))
+
+        if self._settings.auto_brake_assist and abs(self._target_steer) > 1.15 and self._player_car.current_speed > (self._max_speed * 0.45):
+            self._is_braking = True
         self._player_car.turn(
             max(-2, min(self._target_steer, 2)),
             self._player_car.turn_smoothing
         )
 
         acceleration = self._settings.ACCELERATION * self._gear_system.get_acceleration_ratio()
+        acceleration *= self._settings.get_difficulty_acceleration_multiplier()
         self._max_speed = self._player_car.max_speed * self._gear_system.get_speed_ratio()
 
         if self._boost_system.is_active:
@@ -869,4 +885,5 @@ class GameLoop:
         self._detector.stop_stream()
         cv2.destroyAllWindows()
         pygame.quit()
+
 

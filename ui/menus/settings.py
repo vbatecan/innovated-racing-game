@@ -1,498 +1,577 @@
-"""Settings menu component.
-
-Provides a tabbed settings interface with categories for Gameplay,
-Graphics, and Controls. Supports keyboard and mouse navigation with
-visual feedback for value adjustments.
-"""
+"""Modern tabbed settings menu with live application support."""
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 import pygame
 
-from ui.components.slider import Slider
-from ui.core.constants import ANIMATION, COLORS, FONTS, LAYOUT
 from ui.core.types import Event, MousePos, Surface
-from ui.utils.drawing import draw_rounded_rect
+
+
+@dataclass
+class OptionDef:
+    key: str
+    label: str
+    kind: str  # slider | toggle | select
+    description: str
+    min_val: float = 0.0
+    max_val: float = 1.0
+    step: float = 0.05
+    choices: tuple[str, ...] = ()
 
 
 class SettingsMenu:
-    """Settings menu with categorized options and value adjustment.
-    
-    Displays a tabbed interface with three categories: Gameplay, Graphics,
-    and Controls. Each category contains various settings that can be
-    adjusted via keyboard or mouse interaction. Settings are stored as
-    tuples with heterogeneous structures depending on value type.
-    
-    Attributes:
-        categories: List of setting category names.
-        selected_category: Index of currently selected category.
-        selected_option: Index of currently selected option within category.
-        settings: Dictionary mapping category names to option tuples.
-        sliders: Dictionary of Slider components (currently unused).
-        fonts: Dictionary of fonts for different text elements.
-    """
+    """Tabbed settings menu with keyboard/controller/mouse support."""
 
     def __init__(self) -> None:
-        """Initialize the settings menu.
-        
-        Sets up fonts, colors, categories, and default setting values.
-        The settings data structure uses tuples where:
-        - Length 4: Numeric range (name, value, min, max)
-        - Length 3 with list: Discrete options (name, index, [options])
-        - Length 2: Boolean toggle (name, value)
-        """
-        self.font_title: pygame.font.Font = pygame.font.Font(None, FONTS.title_small)
-        self.font_option: pygame.font.Font = pygame.font.Font(None, FONTS.option)
-        self.font_label: pygame.font.Font = pygame.font.Font(None, FONTS.label)
-        self.font_hint: pygame.font.Font = pygame.font.Font(None, FONTS.hint)
+        self.categories = ["Audio", "Graphics", "Gameplay"]
+        self.selected_category = 0
+        self.selected_option = 0
 
-        self.accent_color: pygame.Color = pygame.Color(COLORS.accent)
-        self.text_color: pygame.Color = pygame.Color(COLORS.text)
-        self.muted_color: pygame.Color = pygame.Color(COLORS.muted)
+        self.font_title = pygame.font.Font(None, 56)
+        self.font_tab = pygame.font.Font(None, 34)
+        self.font_label = pygame.font.Font(None, 30)
+        self.font_value = pygame.font.Font(None, 28)
+        self.font_desc = pygame.font.Font(None, 22)
+        self.font_hint = pygame.font.Font(None, 24)
 
-        self.categories: List[str] = ["Gameplay", "Graphics", "Controls"]
-        self.selected_category: int = 0
-        self.selected_option: int = 0
-
-        self.settings: Dict[str, List[Tuple[Any, ...]]] = {
-            "Gameplay": [
-                ("Difficulty", 1, ["Easy", "Normal", "Hard"]),
-                ("Traffic Density", 50, 0, 100),
-                ("Show FPS", True),
+        self._definitions: Dict[str, list[OptionDef]] = {
+            "Audio": [
+                OptionDef("master_volume", "Master Volume", "slider", "Global audio level for all sounds.", 0.0, 1.0, 0.01),
+                OptionDef("music_volume", "Music Volume", "slider", "Background music loudness.", 0.0, 1.0, 0.01),
+                OptionDef("sfx_volume", "SFX Volume", "slider", "Sound effects loudness.", 0.0, 1.0, 0.01),
             ],
             "Graphics": [
-                ("Fullscreen", True),
-                ("Show Camera", True),
-                ("VSync", True),
+                OptionDef("fullscreen", "Fullscreen", "toggle", "Toggle fullscreen display mode."),
+                OptionDef("vsync", "VSync", "toggle", "Reduce tearing by syncing frames to monitor."),
+                OptionDef(
+                    "resolution",
+                    "Resolution",
+                    "select",
+                    "Display resolution. Applies instantly with confirmation.",
+                    choices=("1280x720", "1366x768", "1600x900", "1920x1080"),
+                ),
+                OptionDef(
+                    "graphics_preset",
+                    "Quality Preset",
+                    "select",
+                    "Preset quality profile for performance and visuals.",
+                    choices=("Low", "Medium", "High", "Ultra"),
+                ),
             ],
-            "Controls": [
-                ("Steering Sens", 1.0, 0.1, 5.0),
-                ("Brake Sens", 5, 1, 10),
+            "Gameplay": [
+                OptionDef(
+                    "difficulty",
+                    "Difficulty",
+                    "select",
+                    "Adjust race intensity and handling challenge.",
+                    choices=("Easy", "Normal", "Hard"),
+                ),
+                OptionDef("auto_brake_assist", "Auto-Brake Assist", "toggle", "Automatically brakes during risky turns."),
+                OptionDef("steering_assist", "Steering Assist", "toggle", "Stabilizes steering to reduce drift."),
+                OptionDef(
+                    "camera_mode",
+                    "Camera Mode",
+                    "select",
+                    "Camera preview style in race HUD.",
+                    choices=("Close", "Chase", "Far", "Off"),
+                ),
             ],
         }
 
-        self.sliders: Dict[str, Slider] = {}
-        self._hovered_category: Optional[int] = None
+        self._values: dict[str, Any] = {}
         self._hovered_option: Optional[int] = None
-        self._close_button: Optional[pygame.Rect] = None
+        self._hovered_tab: Optional[int] = None
+        self._dragging_key: Optional[str] = None
+        self._dirty = False
 
-    def handle_input(
-        self, event: Event, mouse_pos: Optional[MousePos] = None
-    ) -> Optional[Dict[str, str]]:
-        """Process input events for settings navigation and adjustment.
-        
-        Handles keyboard navigation (arrow keys, TAB, ESCAPE) for adjusting
-        values and switching categories. Mouse clicks on categories, options,
-        toggle buttons, and adjust buttons are also handled.
-        
-        Args:
-            event: A pygame event object.
-            mouse_pos: Optional mouse position for click detection.
-            
-        Returns:
-            A dictionary with an action key when input should trigger a side
-            effect:
-            - {"action": "changed"} when a setting value was modified.
-            - {"action": "navigate"} for UI selection/category navigation.
-            - {"action": "close"} when the menu should close.
-            Returns None when no action was triggered.
-        """
+        self._bound_settings: Any = None
+
+        self._confirm_resolution = False
+        self._confirm_started_ms = 0
+        self._confirm_timeout_ms = 12000
+        self._previous_resolution: tuple[int, int] | None = None
+
+        self._tab_rects: list[pygame.Rect] = []
+        self._option_rects: list[pygame.Rect] = []
+        self._close_rect: pygame.Rect = pygame.Rect(0, 0, 0, 0)
+        self._reset_rect: pygame.Rect = pygame.Rect(0, 0, 0, 0)
+        self._dialog_keep_rect: pygame.Rect = pygame.Rect(0, 0, 0, 0)
+        self._dialog_revert_rect: pygame.Rect = pygame.Rect(0, 0, 0, 0)
+
+    def bind_settings(self, game_settings: Any) -> None:
+        """Bind runtime settings object so UI can initialize and apply changes instantly."""
+        self._bound_settings = game_settings
+        if not self._values:
+            self._sync_from_settings(game_settings)
+
+    def _sync_from_settings(self, game_settings: Any) -> None:
+        if self._values:
+            return
+
+        self._values = {
+            "master_volume": float(getattr(game_settings, "master_volume", 0.8)),
+            "music_volume": float(getattr(game_settings, "music_volume", 0.7)),
+            "sfx_volume": float(getattr(game_settings, "sfx_volume", 0.85)),
+            "fullscreen": bool(getattr(game_settings, "fullscreen", False)),
+            "vsync": bool(getattr(game_settings, "vsync", False)),
+            "resolution": f"{int(game_settings.resolution[0])}x{int(game_settings.resolution[1])}",
+            "graphics_preset": str(getattr(game_settings, "graphics_preset", "High")),
+            "difficulty": str(getattr(game_settings, "difficulty", "Normal")),
+            "auto_brake_assist": bool(getattr(game_settings, "auto_brake_assist", False)),
+            "steering_assist": bool(getattr(game_settings, "steering_assist", True)),
+            "camera_mode": str(getattr(game_settings, "camera_mode", "Chase")),
+        }
+
+    def _ensure_values(self) -> None:
+        if self._values:
+            return
+        if self._bound_settings is not None:
+            self._sync_from_settings(self._bound_settings)
+            return
+        self._values = {
+            "master_volume": 0.80,
+            "music_volume": 0.70,
+            "sfx_volume": 0.85,
+            "fullscreen": False,
+            "vsync": False,
+            "resolution": "1920x1080",
+            "graphics_preset": "High",
+            "difficulty": "Normal",
+            "auto_brake_assist": False,
+            "steering_assist": True,
+            "camera_mode": "Chase",
+        }
+
+    def handle_input(self, event: Event, mouse_pos: Optional[MousePos] = None) -> Optional[Dict[str, str]]:
+        self._ensure_values()
+
         if event.type == pygame.KEYDOWN:
-            cat: str = self.categories[self.selected_category]
-            options: List[Tuple[Any, ...]] = self.settings[cat]
+            if self._confirm_resolution:
+                return self._handle_confirm_key(event.key)
 
-            if event.key == pygame.K_LEFT:
-                self._adjust_value(cat, options[self.selected_option][0], -1)
-                return {"action": "changed"}
-            elif event.key == pygame.K_RIGHT:
-                self._adjust_value(cat, options[self.selected_option][0], 1)
-                return {"action": "changed"}
-            elif event.key == pygame.K_UP:
-                self.selected_option = (self.selected_option - 1) % len(options)
-            elif event.key == pygame.K_DOWN:
-                self.selected_option = (self.selected_option + 1) % len(options)
-            elif event.key == pygame.K_TAB:
-                self.selected_category = (self.selected_category + 1) % len(
-                    self.categories
-                )
+            if event.key == pygame.K_ESCAPE:
+                return {"action": "close"}
+            if event.key in (pygame.K_TAB, pygame.K_PAGEUP, pygame.K_PAGEDOWN):
+                step = -1 if event.key == pygame.K_PAGEUP else 1
+                self.selected_category = (self.selected_category + step) % len(self.categories)
                 self.selected_option = 0
-            elif event.key == pygame.K_ESCAPE:
+                return {"action": "navigate"}
+            if event.key == pygame.K_UP:
+                self.selected_option = max(0, self.selected_option - 1)
+                return {"action": "navigate"}
+            if event.key == pygame.K_DOWN:
+                self.selected_option = min(len(self._active_options()), self.selected_option + 1)
+                return {"action": "navigate"}
+            if event.key == pygame.K_LEFT and self.selected_option < len(self._active_options()):
+                self._nudge_option(self._active_options()[self.selected_option], -1)
+                return {"action": "changed"}
+            if event.key == pygame.K_RIGHT and self.selected_option < len(self._active_options()):
+                self._nudge_option(self._active_options()[self.selected_option], 1)
+                return {"action": "changed"}
+            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                if self.selected_option == len(self._active_options()):
+                    self._reset_current_section()
+                    return {"action": "changed"}
+                self._nudge_option(self._active_options()[self.selected_option], 1)
+                return {"action": "changed"}
+
+        if event.type == pygame.JOYHATMOTION:
+            if self._confirm_resolution:
+                hat_x, _hat_y = event.value
+                if hat_x < 0:
+                    return self._handle_confirm_key(pygame.K_LEFT)
+                if hat_x > 0:
+                    return self._handle_confirm_key(pygame.K_RIGHT)
+                return None
+
+            hat_x, hat_y = event.value
+            if hat_y > 0:
+                self.selected_option = max(0, self.selected_option - 1)
+                return {"action": "navigate"}
+            if hat_y < 0:
+                self.selected_option = min(len(self._active_options()), self.selected_option + 1)
+                return {"action": "navigate"}
+            if hat_x < 0 and self.selected_option < len(self._active_options()):
+                self._nudge_option(self._active_options()[self.selected_option], -1)
+                return {"action": "changed"}
+            if hat_x > 0 and self.selected_option < len(self._active_options()):
+                self._nudge_option(self._active_options()[self.selected_option], 1)
+                return {"action": "changed"}
+
+        if event.type == pygame.JOYBUTTONDOWN:
+            if event.button == 1:
+                return {"action": "close"}
+            if event.button == 0:
+                if self.selected_option == len(self._active_options()):
+                    self._reset_current_section()
+                else:
+                    self._nudge_option(self._active_options()[self.selected_option], 1)
+                return {"action": "changed"}
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and mouse_pos:
+            if self._confirm_resolution:
+                if self._dialog_keep_rect.collidepoint(mouse_pos):
+                    self._keep_resolution()
+                    return {"action": "changed"}
+                if self._dialog_revert_rect.collidepoint(mouse_pos):
+                    self._revert_resolution()
+                    return {"action": "changed"}
+                return None
+
+            if self._close_rect.collidepoint(mouse_pos):
                 return {"action": "close"}
 
-        if event.type == pygame.MOUSEBUTTONDOWN and mouse_pos:
-            sw: int = pygame.display.get_surface().get_width()
-            sh: int = pygame.display.get_surface().get_height()
-            panel_w: int = LAYOUT.settings_panel_width
-            panel_h: int = LAYOUT.settings_panel_height
-            panel_x: int = sw // 2 - panel_w // 2
-            panel_y: int = sh // 2 - panel_h // 2
+            for idx, rect in enumerate(self._tab_rects):
+                if rect.collidepoint(mouse_pos):
+                    self.selected_category = idx
+                    self.selected_option = 0
+                    return {"action": "navigate"}
 
-            close_btn: pygame.Rect = pygame.Rect(
-                panel_x + panel_w - 50, panel_y + 15, 35, 35
-            )
-            if close_btn.collidepoint(mouse_pos):
-                return {"action": "close"}
+            if self._reset_rect.collidepoint(mouse_pos):
+                self._reset_current_section()
+                return {"action": "changed"}
 
-            sidebar_w: int = LAYOUT.sidebar_width
-            sidebar_x: int = panel_x + 20
-            sidebar_y: int = panel_y + 80
+            for idx, rect in enumerate(self._option_rects):
+                if rect.collidepoint(mouse_pos):
+                    self.selected_option = idx
+                    option = self._active_options()[idx]
+                    if option.kind == "slider":
+                        self._dragging_key = option.key
+                        self._set_slider_value_from_mouse(option, mouse_pos)
+                    else:
+                        self._nudge_option(option, 1)
+                    return {"action": "changed"}
 
-            for i in range(len(self.categories)):
-                cat_rect: pygame.Rect = pygame.Rect(
-                    sidebar_x + 5, sidebar_y + 25 + i * 60, sidebar_w - 10, 45
-                )
-                if cat_rect.collidepoint(mouse_pos):
-                    if self.selected_category != i:
-                        self.selected_category = i
-                        self.selected_option = 0
-                        return {"action": "navigate"}
-                    return None
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self._dragging_key = None
 
-            cat = self.categories[self.selected_category]
-            opts: List[Tuple[Any, ...]] = self.settings[cat]
-            content_x: int = panel_x + sidebar_w + 35
-            content_y: int = panel_y + 80
+        if event.type == pygame.MOUSEMOTION and self._dragging_key and mouse_pos:
+            option = next((o for o in self._active_options() if o.key == self._dragging_key), None)
+            if option is not None:
+                self._set_slider_value_from_mouse(option, mouse_pos)
+                return {"action": "changed"}
 
-            for i in range(len(opts)):
-                opt_y: int = content_y + 25 + i * ANIMATION.settings_option_spacing
-                bar_rect: pygame.Rect = pygame.Rect(content_x, opt_y + 28, 350, 20)
-                if bar_rect.collidepoint(mouse_pos):
-                    if self.selected_option != i:
-                        self.selected_option = i
-                        return {"action": "navigate"}
-                    return None
+        return None
 
-                if i == self.selected_option:
-                    val: Any = self.get_value(cat, opts[i][0])
-                    if isinstance(val, bool):
-                        toggle_rect: pygame.Rect = pygame.Rect(
-                            content_x + 280, opt_y, 50, 25
-                        )
-                        if toggle_rect.collidepoint(mouse_pos):
-                            self._adjust_value(cat, opts[i][0], 1)
-                            return {"action": "changed"}
-                    elif isinstance(val, str):
-                        left_rect: pygame.Rect = pygame.Rect(
-                            content_x + 200, opt_y, 30, 25
-                        )
-                        right_rect: pygame.Rect = pygame.Rect(
-                            content_x + 320, opt_y, 30, 25
-                        )
-                        if left_rect.collidepoint(mouse_pos):
-                            self._adjust_value(cat, opts[i][0], -1)
-                            return {"action": "changed"}
-                        elif right_rect.collidepoint(mouse_pos):
-                            self._adjust_value(cat, opts[i][0], 1)
-                            return {"action": "changed"}
-
+    def _handle_confirm_key(self, key: int) -> Optional[Dict[str, str]]:
+        if key in (pygame.K_ESCAPE, pygame.K_RIGHT, pygame.K_d):
+            self._revert_resolution()
+            return {"action": "changed"}
+        if key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_LEFT, pygame.K_a):
+            self._keep_resolution()
+            return {"action": "changed"}
         return None
 
     def update(self, mouse_pos: MousePos) -> None:
-        """Update hover states based on mouse position.
-        
-        Tracks which category or option is currently hovered for
-        visual feedback during rendering.
-        
-        Args:
-            mouse_pos: Current (x, y) position of the mouse cursor.
-            
-        Returns:
-            None
-        """
-        sw: int = pygame.display.get_surface().get_width()
-        sh: int = pygame.display.get_surface().get_height()
-        panel_w: int = LAYOUT.settings_panel_width
-        panel_h: int = LAYOUT.settings_panel_height
-        panel_x: int = sw // 2 - panel_w // 2
-        panel_y: int = sh // 2 - panel_h // 2
-
-        sidebar_w: int = LAYOUT.sidebar_width
-        sidebar_x: int = panel_x + 20
-        sidebar_y: int = panel_y + 80
-
-        self._hovered_category = None
         self._hovered_option = None
+        self._hovered_tab = None
 
-        for i in range(len(self.categories)):
-            cat_rect: pygame.Rect = pygame.Rect(
-                sidebar_x + 5, sidebar_y + 25 + i * 60, sidebar_w - 10, 45
-            )
-            if cat_rect.collidepoint(mouse_pos):
-                self._hovered_category = i
-                return
-
-        cat: str = self.categories[self.selected_category]
-        opts: List[Tuple[Any, ...]] = self.settings[cat]
-        content_x: int = panel_x + sidebar_w + 35
-        content_y: int = panel_y + 80
-
-        for i in range(len(opts)):
-            opt_y: int = content_y + 25 + i * ANIMATION.settings_option_spacing
-            bar_rect: pygame.Rect = pygame.Rect(content_x, opt_y + 28, 350, 20)
-            if bar_rect.collidepoint(mouse_pos):
-                self._hovered_option = i
-                return
-
-            val: Any = self.get_value(cat, opts[i][0])
-            if isinstance(val, bool):
-                toggle_rect: pygame.Rect = pygame.Rect(content_x + 280, opt_y, 50, 25)
-                if toggle_rect.collidepoint(mouse_pos):
-                    self._hovered_option = i
-                    return
-            elif isinstance(val, str):
-                left_rect: pygame.Rect = pygame.Rect(content_x + 200, opt_y, 30, 25)
-                right_rect: pygame.Rect = pygame.Rect(content_x + 320, opt_y, 30, 25)
-                if left_rect.collidepoint(mouse_pos) or right_rect.collidepoint(
-                    mouse_pos
-                ):
-                    self._hovered_option = i
-                    return
-
-    def _adjust_value(self, category: str, option: str, delta: int) -> None:
-        """Adjust a setting value by the given delta.
-        
-        Modifies the setting value based on its type:
-        - Discrete lists: Cycle through options using modulo
-        - Numeric ranges: Adjust by step (0.5 or 5 depending on option name)
-        - Booleans: Toggle between True/False
-        
-        Args:
-            category: The category name containing the option.
-            option: The option name to adjust.
-            delta: Amount to adjust (+1 or -1).
-            
-        Returns:
-            None
-        """
-        opts: List[Tuple[Any, ...]] = self.settings[category]
-        for i, opt in enumerate(opts):
-            if opt[0] == option:
-                if len(opt) == 3 and isinstance(opt[2], list):
-                    new_idx: int = (opt[1] + delta) % len(opt[2])
-                    self.settings[category][i] = (opt[0], new_idx, opt[2])
-                elif len(opt) == 4:
-                    step: float = 5.0 if "Density" in option else 0.5
-                    new_val: float = opt[1] + delta * step
-                    new_val = max(opt[2], min(opt[3], new_val))
-                    self.settings[category][i] = (opt[0], new_val, opt[2], opt[3])
-                elif len(opt) == 2:
-                    self.settings[category][i] = (opt[0], not opt[1])
+        for idx, rect in enumerate(self._tab_rects):
+            if rect.collidepoint(mouse_pos):
+                self._hovered_tab = idx
                 break
 
-    def get_value(self, category: str, option: str) -> Any:
-        """Get the current value of a setting.
-        
-        For discrete list options, returns the string at the current index.
-        For other options, returns the direct value.
-        
-        Args:
-            category: The category name containing the option.
-            option: The option name to retrieve.
-            
-        Returns:
-            The current value (type depends on option), or None if not found.
-        """
-        for opt in self.settings[category]:
-            if opt[0] == option:
-                if len(opt) == 3 and isinstance(opt[2], list):
-                    return opt[2][opt[1]]
-                return opt[1]
-        return None
+        for idx, rect in enumerate(self._option_rects):
+            if rect.collidepoint(mouse_pos):
+                self._hovered_option = idx
+                break
+
+        if self._confirm_resolution and pygame.time.get_ticks() - self._confirm_started_ms > self._confirm_timeout_ms:
+            self._revert_resolution()
+            self._dirty = True
+
+    def consume_dirty(self) -> bool:
+        was_dirty = self._dirty
+        self._dirty = False
+        return was_dirty
+
+    def _active_options(self) -> list[OptionDef]:
+        return self._definitions[self.categories[self.selected_category]]
+
+    def _nudge_option(self, option: OptionDef, direction: int) -> None:
+        key = option.key
+        if option.kind == "toggle":
+            self._values[key] = not bool(self._values.get(key, False))
+        elif option.kind == "select":
+            choices = option.choices
+            if choices:
+                current = str(self._values.get(key, choices[0]))
+                idx = choices.index(current) if current in choices else 0
+                self._values[key] = choices[(idx + direction) % len(choices)]
+        elif option.kind == "slider":
+            current = float(self._values.get(key, option.min_val))
+            next_val = current + direction * option.step
+            self._values[key] = max(option.min_val, min(option.max_val, next_val))
+
+        self._dirty = True
+
+    def _set_slider_value_from_mouse(self, option: OptionDef, mouse_pos: MousePos) -> None:
+        for idx, rect in enumerate(self._option_rects):
+            if self._active_options()[idx].key != option.key:
+                continue
+            slider_rect = pygame.Rect(rect.x + 300, rect.y + 28, rect.width - 340, 12)
+            rel = max(0.0, min(float(mouse_pos[0] - slider_rect.x), float(slider_rect.width)))
+            pct = 0.0 if slider_rect.width <= 0 else rel / float(slider_rect.width)
+            self._values[option.key] = option.min_val + (option.max_val - option.min_val) * pct
+            self._dirty = True
+            return
+
+    def _reset_current_section(self) -> None:
+        section = self.categories[self.selected_category]
+        defaults = {
+            "Audio": {"master_volume": 0.80, "music_volume": 0.70, "sfx_volume": 0.85},
+            "Graphics": {"fullscreen": False, "vsync": False, "resolution": "1920x1080", "graphics_preset": "High"},
+            "Gameplay": {"difficulty": "Normal", "auto_brake_assist": False, "steering_assist": True, "camera_mode": "Chase"},
+        }
+        for key, value in defaults.get(section, {}).items():
+            self._values[key] = value
+        self._dirty = True
 
     def apply_to_game(self, game_settings: Any) -> None:
-        """Apply current settings to a game settings object.
-        
-        Maps internal setting names to game_settings attributes:
-        - Difficulty -> difficulty
-        - Traffic Density -> obstacle_frequency
-        - Show FPS -> show_fps
-        - Fullscreen -> set_fullscreen() method
-        - Show Camera -> show_camera
-        - VSync -> vsync
-        - Steering Sens -> steering_sensitivity
-        - Brake Sens -> brake_threshold
-        
-        Args:
-            game_settings: An object with attributes matching the mapped names.
-            
-        Returns:
-            None
-        """
-        cat: str = self.categories[0]
-        opts: List[Tuple[Any, ...]] = self.settings[cat]
-        for opt in opts:
-            if opt[0] == "Difficulty":
-                game_settings.difficulty = self.get_value(cat, "Difficulty")
-            elif opt[0] == "Traffic Density":
-                game_settings.obstacle_frequency = self.get_value(
-                    cat, "Traffic Density"
-                )
-            elif opt[0] == "Show FPS":
-                game_settings.show_fps = self.get_value(cat, "Show FPS")
+        self._bound_settings = game_settings
+        self._ensure_values()
 
-        cat = self.categories[1]
-        opts = self.settings[cat]
-        for opt in opts:
-            if opt[0] == "Fullscreen":
-                game_settings.set_fullscreen(self.get_value(cat, "Fullscreen"))
-            elif opt[0] == "Show Camera":
-                game_settings.show_camera = self.get_value(cat, "Show Camera")
-            elif opt[0] == "VSync":
-                game_settings.vsync = self.get_value(cat, "VSync")
+        game_settings.master_volume = float(self._values["master_volume"])
+        game_settings.music_volume = float(self._values["music_volume"])
+        game_settings.sfx_volume = float(self._values["sfx_volume"])
+        game_settings.apply_audio_settings()
 
-        cat = self.categories[2]
-        opts = self.settings[cat]
-        for opt in opts:
-            if opt[0] == "Steering Sens":
-                game_settings.steering_sensitivity = self.get_value(
-                    cat, "Steering Sens"
-                )
-            elif opt[0] == "Brake Sens":
-                game_settings.brake_threshold = self.get_value(cat, "Brake Sens")
+        previous_fullscreen = bool(game_settings.fullscreen)
+        previous_vsync = bool(game_settings.vsync)
+
+        desired_fullscreen = bool(self._values["fullscreen"])
+        desired_vsync = bool(self._values["vsync"])
+        game_settings.fullscreen = desired_fullscreen
+        game_settings.vsync = desired_vsync
+        game_settings.graphics_preset = str(self._values["graphics_preset"])
+
+        game_settings.difficulty = str(self._values["difficulty"])
+        game_settings.auto_brake_assist = bool(self._values["auto_brake_assist"])
+        game_settings.steering_assist = bool(self._values["steering_assist"])
+        game_settings.camera_mode = str(self._values["camera_mode"])
+
+        preset = game_settings.graphics_preset
+        if preset == "Low":
+            game_settings.max_fps = 30
+            game_settings.show_camera = False
+        elif preset == "Medium":
+            game_settings.max_fps = 60
+            game_settings.show_camera = True
+        elif preset == "High":
+            game_settings.max_fps = 120
+            game_settings.show_camera = True
+        elif preset == "Ultra":
+            game_settings.max_fps = 120
+            game_settings.show_camera = True
+
+        width_s, height_s = str(self._values["resolution"]).split("x")
+        selected_resolution = (int(width_s), int(height_s))
+        current_resolution = (int(game_settings.resolution[0]), int(game_settings.resolution[1]))
+
+        display_changed = (
+            selected_resolution != current_resolution
+            or desired_fullscreen != previous_fullscreen
+            or desired_vsync != previous_vsync
+        )
+
+        if selected_resolution != current_resolution and not self._confirm_resolution:
+            self._previous_resolution = current_resolution
+            game_settings.apply_display_settings(
+                resolution=selected_resolution,
+                fullscreen=desired_fullscreen,
+                vsync=desired_vsync,
+            )
+            self._confirm_resolution = True
+            self._confirm_started_ms = pygame.time.get_ticks()
+        elif display_changed and not self._confirm_resolution:
+            game_settings.apply_display_settings(fullscreen=desired_fullscreen, vsync=desired_vsync)
+
+        game_settings.save()
+
+    def _keep_resolution(self) -> None:
+        self._confirm_resolution = False
+        self._previous_resolution = None
+        if self._bound_settings is not None:
+            self._bound_settings.save()
+
+    def _revert_resolution(self) -> None:
+        if self._bound_settings is not None and self._previous_resolution is not None:
+            self._bound_settings.apply_display_settings(
+                resolution=self._previous_resolution,
+                fullscreen=self._bound_settings.fullscreen,
+                vsync=self._bound_settings.vsync,
+            )
+            self._values["resolution"] = f"{self._previous_resolution[0]}x{self._previous_resolution[1]}"
+            self._bound_settings.resolution = [self._previous_resolution[0], self._previous_resolution[1]]
+            self._bound_settings.save()
+
+        self._confirm_resolution = False
+        self._previous_resolution = None
 
     def draw(self, screen: Surface) -> None:
-        """Render the settings menu with improved spacing and layout.
-        
-        Draws the dark overlay, settings panel with title and close button,
-        category sidebar with selection highlighting, and the content area
-        with option labels, values, and progress bars where applicable.
-        
-        Args:
-            screen: The pygame surface to draw on.
-            
-        Returns:
-            None
-        """
-        sw: int = screen.get_width()
-        sh: int = screen.get_height()
+        self._ensure_values()
 
-        # Dark overlay with cleaner fade
-        overlay: Surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        sw, sh = screen.get_width(), screen.get_height()
+        overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
         screen.blit(overlay, (0, 0))
 
-        panel_w: int = LAYOUT.settings_panel_width
-        panel_h: int = LAYOUT.settings_panel_height
-        panel_x: int = sw // 2 - panel_w // 2
-        panel_y: int = sh // 2 - panel_h // 2
+        panel_w, panel_h = 1060, 700
+        panel_x, panel_y = sw // 2 - panel_w // 2, sh // 2 - panel_h // 2
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
 
-        # Panel background with improved styling
-        draw_rounded_rect(
-            screen, (20, 30, 50, 245), (panel_x, panel_y, panel_w, panel_h)
-        )
-        # Top accent line
-        draw_rounded_rect(screen, self.accent_color, (panel_x, panel_y, panel_w, 5))
-        # Border
-        draw_rounded_rect(
-            screen, self.accent_color, (panel_x, panel_y, panel_w, panel_h), 1
-        )
+        pygame.draw.rect(screen, (17, 24, 38), panel_rect, border_radius=18)
+        pygame.draw.rect(screen, (95, 202, 255), panel_rect, 2, border_radius=18)
 
-        # Title with better spacing
-        title: Surface = self.font_title.render("SETTINGS", True, self.accent_color)
-        screen.blit(title, (panel_x + 40, panel_y + 25))
+        title = self.font_title.render("SETTINGS", True, (236, 243, 255))
+        screen.blit(title, (panel_x + 32, panel_y + 24))
 
-        # Close button
-        close_btn: pygame.Rect = pygame.Rect(
-            panel_x + panel_w - 55, panel_y + 20, 40, 40
-        )
-        draw_rounded_rect(screen, COLORS.close_btn, close_btn)
-        close_x: Surface = self.font_title.render("X", True, (255, 255, 255))
-        screen.blit(close_x, (close_btn.x + 12, close_btn.y + 2))
-        self._close_button = close_btn
+        self._close_rect = pygame.Rect(panel_x + panel_w - 64, panel_y + 22, 38, 38)
+        pygame.draw.rect(screen, (120, 48, 48), self._close_rect, border_radius=8)
+        x_txt = self.font_tab.render("X", True, (255, 255, 255))
+        screen.blit(x_txt, x_txt.get_rect(center=self._close_rect.center))
 
-        # Separator line below title
-        pygame.draw.line(screen, self.accent_color, (panel_x + 40, panel_y + 65), (panel_x + panel_w - 40, panel_y + 65), 1)
+        self._tab_rects.clear()
+        tab_y = panel_y + 86
+        tab_w = 210
+        for idx, category in enumerate(self.categories):
+            tab_rect = pygame.Rect(panel_x + 28 + idx * (tab_w + 12), tab_y, tab_w, 44)
+            self._tab_rects.append(tab_rect)
+            active = idx == self.selected_category
+            hovered = idx == self._hovered_tab
+            fill = (38, 56, 84) if active else ((31, 44, 65) if hovered else (24, 34, 52))
+            border = (95, 202, 255) if active else (66, 92, 128)
+            pygame.draw.rect(screen, fill, tab_rect, border_radius=10)
+            pygame.draw.rect(screen, border, tab_rect, 2, border_radius=10)
+            tab_text = self.font_tab.render(category, True, (236, 243, 255))
+            screen.blit(tab_text, tab_text.get_rect(center=tab_rect.center))
 
-        sidebar_w: int = LAYOUT.sidebar_width
-        sidebar_x: int = panel_x + 25
-        sidebar_y: int = panel_y + 85
-        sidebar_h: int = panel_h - 140
+        content_rect = pygame.Rect(panel_x + 28, panel_y + 146, panel_w - 56, panel_h - 208)
+        pygame.draw.rect(screen, (22, 32, 50), content_rect, border_radius=12)
+        pygame.draw.rect(screen, (58, 82, 114), content_rect, 1, border_radius=12)
 
-        # Sidebar background with subtle styling
-        sb: Surface = pygame.Surface((sidebar_w, sidebar_h), pygame.SRCALPHA)
-        sb.fill((25, 35, 55, 120))
-        screen.blit(sb, (sidebar_x, sidebar_y))
+        self._option_rects.clear()
+        options = self._active_options()
+        row_h = 96
+        row_x = content_rect.x + 16
+        row_w = content_rect.width - 32
 
-        # Category tabs with improved spacing
-        for i, cat in enumerate(self.categories):
-            cat_y: int = sidebar_y + 20 + i * 70
-            is_sel: bool = i == self.selected_category
-            is_hover: bool = i == self._hovered_category
+        for idx, option in enumerate(options):
+            row_y = content_rect.y + 12 + idx * row_h
+            row_rect = pygame.Rect(row_x, row_y, row_w, row_h - 8)
+            self._option_rects.append(row_rect)
 
-            bg_col: Tuple[int, int, int, int] = (
-                (0, 180, 255, 80)
-                if is_sel
-                else ((0, 180, 255, 40) if is_hover else (0, 0, 0, 0))
-            )
-            sb2: Surface = pygame.Surface((sidebar_w - 15, 50), pygame.SRCALPHA)
-            sb2.fill(bg_col)
-            screen.blit(sb2, (sidebar_x + 7, cat_y))
+            selected = idx == self.selected_option
+            hovered = idx == self._hovered_option
+            fill = (30, 43, 66) if selected else ((27, 39, 58) if hovered else (24, 35, 54))
+            border = (255, 203, 101) if selected else (55, 78, 109)
 
-            color: pygame.Color = self.accent_color if is_sel else self.text_color
-            cat_text: Surface = self.font_option.render(cat, True, color)
-            screen.blit(cat_text, (sidebar_x + 22, cat_y + 12))
+            pygame.draw.rect(screen, fill, row_rect, border_radius=10)
+            pygame.draw.rect(screen, border, row_rect, 1, border_radius=10)
 
-        # Content area with better spacing
-        content_x: int = panel_x + sidebar_w + 50
-        content_w: int = panel_w - sidebar_w - 75
-        content_y: int = panel_y + 90
+            label = self.font_label.render(option.label, True, (234, 242, 255))
+            desc = self.font_desc.render(option.description, True, (159, 177, 206))
+            screen.blit(label, (row_rect.x + 14, row_rect.y + 10))
+            screen.blit(desc, (row_rect.x + 14, row_rect.y + 40))
 
-        cat = self.categories[self.selected_category]
-        opts: List[Tuple[Any, ...]] = self.settings[cat]
+            self._draw_value_control(screen, row_rect, option)
 
-        # Category title in content area
-        cat_title: Surface = self.font_option.render(cat, True, self.accent_color)
-        screen.blit(cat_title, (content_x, content_y - 30))
-        pygame.draw.line(screen, self.accent_color, (content_x, content_y - 8), (content_x + 200, content_y - 8), 1)
+        reset_y = content_rect.bottom + 12
+        self._reset_rect = pygame.Rect(panel_x + 28, reset_y, 190, 42)
+        pygame.draw.rect(screen, (76, 56, 32), self._reset_rect, border_radius=10)
+        pygame.draw.rect(screen, (228, 186, 108), self._reset_rect, 2, border_radius=10)
+        reset_text = self.font_hint.render("Reset Section", True, (255, 244, 221))
+        screen.blit(reset_text, reset_text.get_rect(center=self._reset_rect.center))
 
-        # Options with improved spacing
-        for i, opt in enumerate(opts):
-            opt_y: int = content_y + 25 + i * ANIMATION.settings_option_spacing
-            is_sel: bool = i == self.selected_option
-            is_hover: bool = i == self._hovered_option
+        hint = self.font_hint.render("Tab/PageUp/PageDown: switch tabs | Arrows: navigate/adjust | Enter: toggle", True, (155, 174, 204))
+        screen.blit(hint, (panel_x + 240, reset_y + 11))
 
-            if is_hover or is_sel:
-                hover_bg: Surface = pygame.Surface((content_w + 10, 65), pygame.SRCALPHA)
-                hover_bg.fill((0, 180, 255, 25))
-                screen.blit(hover_bg, (content_x - 5, opt_y - 10))
+        if self._confirm_resolution:
+            self._draw_resolution_dialog(screen)
 
-            color = self.accent_color if is_sel else self.text_color
-            label: Surface = self.font_label.render(opt[0], True, color)
-            screen.blit(label, (content_x, opt_y))
+    def _draw_value_control(self, screen: Surface, row_rect: pygame.Rect, option: OptionDef) -> None:
+        key = option.key
+        value = self._values.get(key)
 
-            value: Any = self.get_value(cat, opt[0])
+        if option.kind == "slider":
+            slider_rect = pygame.Rect(row_rect.x + 300, row_rect.y + 30, row_rect.width - 340, 12)
+            pygame.draw.rect(screen, (58, 74, 102), slider_rect, border_radius=6)
 
-            if isinstance(value, bool):
-                val_str: str = "ON" if value else "OFF"
-                val_color: pygame.Color = self.accent_color if value else self.muted_color
-            elif isinstance(value, str):
-                val_str = value
-                val_color = self.text_color
-            else:
-                val_str = f"{value:.0f}" if isinstance(value, float) else str(value)
-                val_color = self.text_color
+            pct = 0.0
+            if option.max_val > option.min_val:
+                pct = (float(value) - option.min_val) / (option.max_val - option.min_val)
+            pct = max(0.0, min(1.0, pct))
 
-            val_text: Surface = self.font_option.render(val_str, True, val_color)
-            screen.blit(val_text, (content_x + content_w - 100, opt_y))
+            fill_width = int(slider_rect.width * pct)
+            if fill_width > 0:
+                pygame.draw.rect(screen, (95, 202, 255), (slider_rect.x, slider_rect.y, fill_width, slider_rect.height), border_radius=6)
 
-            bar_y: int = opt_y + 32
-            bar_h: int = 12
-            pygame.draw.rect(
-                screen,
-                (40, 50, 70),
-                (content_x, bar_y, content_w - 20, bar_h),
-                border_radius=6,
-            )
+            thumb_x = slider_rect.x + fill_width
+            pygame.draw.circle(screen, (255, 214, 122), (thumb_x, slider_rect.centery), 8)
 
-            if isinstance(opt[1], int) and len(opt) == 4:
-                pct: float = (opt[1] - opt[2]) / (opt[3] - opt[2])
-                fill_w: int = int((content_w - 20) * pct)
-                if fill_w > 0:
-                    pygame.draw.rect(
-                        screen,
-                        self.accent_color,
-                        (content_x, bar_y, fill_w, bar_h),
-                        border_radius=6,
-                    )
+            pct_text = self.font_value.render(f"{int(float(value) * 100)}%", True, (234, 242, 255))
+            screen.blit(pct_text, (row_rect.right - 72, row_rect.y + 8))
+            return
+
+        if option.kind == "toggle":
+            toggle_rect = pygame.Rect(row_rect.right - 130, row_rect.y + 20, 96, 38)
+            on = bool(value)
+            fill = (48, 134, 88) if on else (88, 76, 76)
+            pygame.draw.rect(screen, fill, toggle_rect, border_radius=18)
+            pygame.draw.rect(screen, (220, 230, 245), toggle_rect, 1, border_radius=18)
+
+            knob_x = toggle_rect.right - 18 if on else toggle_rect.x + 18
+            pygame.draw.circle(screen, (245, 248, 255), (knob_x, toggle_rect.centery), 14)
+
+            val_text = self.font_value.render("ON" if on else "OFF", True, (234, 242, 255))
+            screen.blit(val_text, (toggle_rect.x - 58, toggle_rect.y + 6))
+            return
+
+        if option.kind == "select":
+            value_rect = pygame.Rect(row_rect.right - 220, row_rect.y + 22, 190, 34)
+            pygame.draw.rect(screen, (44, 58, 82), value_rect, border_radius=8)
+            pygame.draw.rect(screen, (104, 132, 168), value_rect, 1, border_radius=8)
+
+            val_text = self.font_value.render(str(value), True, (236, 243, 255))
+            screen.blit(val_text, val_text.get_rect(center=value_rect.center))
+
+            left = self.font_value.render("<", True, (255, 210, 118))
+            right = self.font_value.render(">", True, (255, 210, 118))
+            screen.blit(left, (value_rect.x - 24, value_rect.y + 4))
+            screen.blit(right, (value_rect.right + 8, value_rect.y + 4))
+
+    def _draw_resolution_dialog(self, screen: Surface) -> None:
+        sw, sh = screen.get_width(), screen.get_height()
+        dialog = pygame.Rect(sw // 2 - 250, sh // 2 - 120, 500, 240)
+
+        pygame.draw.rect(screen, (16, 23, 36), dialog, border_radius=12)
+        pygame.draw.rect(screen, (94, 202, 255), dialog, 2, border_radius=12)
+
+        elapsed = pygame.time.get_ticks() - self._confirm_started_ms
+        remaining = max(0, (self._confirm_timeout_ms - elapsed) // 1000)
+
+        title = self.font_tab.render("Keep This Resolution?", True, (236, 243, 255))
+        line1 = self.font_hint.render("New resolution applied instantly.", True, (166, 185, 212))
+        line2 = self.font_hint.render(f"Auto-revert in {remaining}s", True, (255, 210, 118))
+
+        screen.blit(title, title.get_rect(center=(dialog.centerx, dialog.y + 44)))
+        screen.blit(line1, line1.get_rect(center=(dialog.centerx, dialog.y + 88)))
+        screen.blit(line2, line2.get_rect(center=(dialog.centerx, dialog.y + 116)))
+
+        self._dialog_keep_rect = pygame.Rect(dialog.centerx - 170, dialog.bottom - 72, 140, 44)
+        self._dialog_revert_rect = pygame.Rect(dialog.centerx + 30, dialog.bottom - 72, 140, 44)
+
+        pygame.draw.rect(screen, (44, 128, 90), self._dialog_keep_rect, border_radius=10)
+        pygame.draw.rect(screen, (180, 102, 102), self._dialog_revert_rect, border_radius=10)
+
+        keep = self.font_hint.render("Keep", True, (242, 248, 255))
+        revert = self.font_hint.render("Revert", True, (242, 248, 255))
+        screen.blit(keep, keep.get_rect(center=self._dialog_keep_rect.center))
+        screen.blit(revert, revert.get_rect(center=self._dialog_revert_rect.center))
+
+
+
+
