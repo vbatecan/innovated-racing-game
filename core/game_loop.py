@@ -965,6 +965,42 @@ class GameLoop:
         pygame.draw.rect(self._screen, (255, 230, 150), bg, 1, border_radius=6)
         self._screen.blit(surf, (pad, pad))
 
+    def _download_background_track(self) -> Optional[str]:
+        """Download the fixed background track when no local file is available."""
+        try:
+            from yt_dlp import YoutubeDL
+        except Exception:
+            logger.warning("yt-dlp is not installed; cannot fetch background music.")
+            return None
+
+        cache_dir = Path("logs") / "radio_cache"
+        os.makedirs(cache_dir, exist_ok=True)
+        outtmpl = str(cache_dir / "hawak-mo-ang-beat.%(ext)s")
+
+        ydl_opts = {
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
+            "outtmpl": outtmpl,
+            "noplaylist": True,
+            "quiet": True,
+            "no_warnings": True,
+            "restrictfilenames": True,
+        }
+
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                ydl.extract_info(
+                    "https://www.youtube.com/watch?v=9Tyq9k5FdYU&list=RD9Tyq9k5FdYU&start_radio=1",
+                    download=True,
+                )
+        except Exception as exc:
+            logger.warning(f"Background track download failed: {exc}")
+            return None
+
+        for candidate in sorted(glob.glob(str(cache_dir / "hawak-mo-ang-beat.*"))):
+            if candidate.lower().endswith((".mp3", ".ogg", ".wav", ".m4a", ".webm")):
+                return candidate
+        return None
+
     def _find_background_track(self) -> Optional[str]:
         """Find the fixed background track from local resources/cache."""
         patterns = [
@@ -977,8 +1013,8 @@ class GameLoop:
             for candidate in sorted(glob.glob(pattern)):
                 if candidate.lower().endswith(allowed_ext):
                     return candidate
-        return None
 
+        return self._download_background_track()
     def _start_background_music(self) -> None:
         """Start fixed looping music at 50% volume and keep it running."""
         track_path = self._find_background_track()
@@ -1005,6 +1041,7 @@ class GameLoop:
         self._detector.stop_stream()
         cv2.destroyAllWindows()
         pygame.quit()
+
 
 
 
