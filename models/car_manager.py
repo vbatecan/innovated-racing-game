@@ -14,6 +14,14 @@ class CarManager:
 
     SAVE_FILE = "logs/car_save.json"
     BEST_RECORDS_FILE = "logs/best_records.json"
+    LEGACY_SHOP_KEYS = (
+        "owned_skins",
+        "owned_boosts",
+        "selected_skin",
+        "equipped_boost",
+        "skins_inventory",
+        "boost_inventory",
+    )
 
     def __init__(self):
         self.selected_car_id: int = 1
@@ -36,10 +44,12 @@ class CarManager:
             except (json.JSONDecodeError, IOError, ValueError):
                 self.best_score = 0.0
 
+        legacy_fields_detected = False
         if os.path.exists(self.SAVE_FILE):
             try:
                 with open(self.SAVE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                    legacy_fields_detected = any(key in data for key in self.LEGACY_SHOP_KEYS)
                     self.selected_car_id = int(data.get("selected_car", 1))
                     self.unlocked_cars = list(data.get("unlocked_cars", [1]))
                     self.credits = int(data.get("credits", 2400 + int(self.best_score / 30)))
@@ -59,6 +69,10 @@ class CarManager:
             self.selected_car_id = self.unlocked_cars[0] if self.unlocked_cars else 1
 
         self._update_unlocked_cars()
+
+        if legacy_fields_detected:
+            # Rewrite save without deprecated shop categories.
+            self.save()
 
     def save(self) -> None:
         """Persist car, upgrade, and currency state."""
@@ -171,3 +185,4 @@ class CarManager:
         if preview_upgrade_id and preview_upgrade_id not in owned and preview_upgrade_id in UPGRADES:
             owned.append(preview_upgrade_id)
         return base, calculate_effective_stats(base, owned)
+

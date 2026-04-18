@@ -65,7 +65,7 @@ class HomePageScreen:
         self.good = (90, 238, 162)
         self.danger = (255, 140, 140)
 
-        self.categories = ["Cars", "Upgrades", "Skins", "Boosts"]
+        self.categories = ["Cars", "Upgrades"]
         self._active_category = 0
 
         self._elapsed = 0.0
@@ -169,69 +169,7 @@ class HomePageScreen:
             ]
         )
 
-        items.extend(
-            [
-                ShopItem(
-                    id="skin-carbon",
-                    category="Skins",
-                    name="Carbon Apex",
-                    price=520,
-                    badge="New",
-                    premium=False,
-                    key_stats={"finish": "Matte", "rarity": "Rare"},
-                ),
-                ShopItem(
-                    id="skin-neon",
-                    category="Skins",
-                    name="Neon Pulse",
-                    price=880,
-                    badge="Hot",
-                    premium=True,
-                    key_stats={"finish": "Glow", "rarity": "Epic"},
-                ),
-                ShopItem(
-                    id="skin-retro",
-                    category="Skins",
-                    name="Retro Stripe",
-                    price=420,
-                    badge="Limited",
-                    premium=False,
-                    key_stats={"finish": "Classic", "rarity": "Common"},
-                ),
-            ]
-        )
 
-        items.extend(
-            [
-                ShopItem(
-                    id="boost-baseline",
-                    category="Boosts",
-                    name="Starter Nitro",
-                    price=0,
-                    badge="New",
-                    premium=False,
-                    key_stats={"duration": "2.0s", "power": "+15%"},
-                ),
-                ShopItem(
-                    id="boost-overdrive",
-                    category="Boosts",
-                    name="Overdrive Pack",
-                    price=660,
-                    badge="Hot",
-                    premium=True,
-                    key_stats={"duration": "3.5s", "power": "+24%"},
-                ),
-                ShopItem(
-                    id="boost-quantum",
-                    category="Boosts",
-                    name="Quantum Burst",
-                    price=1050,
-                    badge="Limited",
-                    premium=True,
-                    key_stats={"duration": "4.0s", "power": "+30%"},
-                ),
-            ]
-        )
 
         return items
 
@@ -500,6 +438,10 @@ class HomePageScreen:
             self._push_message(f"{item.name} already installed.")
             return
 
+        if item.category not in ("Cars", "Upgrades"):
+            self._push_message("Only cars and upgrades are available in this shop.")
+            return
+
         self._dialog_visible = True
         self._dialog_item = item
         self._dialog_action = 0
@@ -514,6 +456,11 @@ class HomePageScreen:
         if item.category == "Upgrades":
             success, message = self.car_manager.purchase_upgrade(item.id)
             self._push_message(message)
+            self._close_dialog()
+            return
+
+        if item.category != "Cars":
+            self._push_message("Only cars and upgrades can be purchased.")
             self._close_dialog()
             return
 
@@ -609,9 +556,10 @@ class HomePageScreen:
     def _draw_tabs(self, surface: pygame.Surface) -> None:
         self._tab_rects.clear()
         y = 122
-        tab_w = 190
-        gap = 16
-        start_x = 44
+        tab_w = 220
+        gap = 20
+        total_width = len(self.categories) * tab_w + (len(self.categories) - 1) * gap
+        start_x = (self.width - total_width) // 2
         for index, category in enumerate(self.categories):
             rect = pygame.Rect(start_x + index * (tab_w + gap), y, tab_w, 46)
             self._tab_rects.append(rect)
@@ -702,7 +650,7 @@ class HomePageScreen:
             self._draw_stat_bar(surface, draw_rect.x + 12, draw_rect.y + 152, "SPD", int(item.key_stats["speed"]), self.accent)
             self._draw_stat_bar(surface, draw_rect.x + 12, draw_rect.y + 170, "HND", int(item.key_stats["handling"]), self.good)
             self._draw_stat_bar(surface, draw_rect.x + 12, draw_rect.y + 188, "ACC", int(item.key_stats["acceleration"]), self.accent_warm)
-        elif item.category == "Upgrades" and item.id in UPGRADES:
+        elif item.id in UPGRADES:
             base_stats, preview_stats = self.car_manager.get_upgrade_stat_comparison(item.id)
             comparisons = [
                 ("SPD", int(base_stats.speed), int(preview_stats.speed)),
@@ -717,13 +665,6 @@ class HomePageScreen:
                 comp_text = self.tiny_font.render(f"{label} {before} -> {after}", True, self.muted)
                 surface.blit(comp_text, (draw_rect.x + 12, row_y))
                 row_y += 18
-        else:
-            row_y = draw_rect.y + 156
-            stat_chunks = []
-            for key, value in item.key_stats.items():
-                stat_chunks.append(f"{str(key)[:3].upper()} {value}")
-            stats_text = self.tiny_font.render(" | ".join(stat_chunks[:2]), True, self.muted)
-            surface.blit(stats_text, (draw_rect.x + 12, row_y))
 
         if item.category == "Cars" and not unlocked:
             price_text = self.small_font.render(f"Unlock @ {item.unlock_score:,}", True, self.danger)
@@ -736,12 +677,16 @@ class HomePageScreen:
     def _draw_grid(self, surface: pygame.Surface) -> None:
         self.card_rects.clear()
 
-        cols = self.GRID_COLS
+        cols = max(1, min(self.GRID_COLS, len(self._items))) if self._items else self.GRID_COLS
         gap_x = 16
         gap_y = 16
-        margin_x = 44
         top = 186
-        card_w = (self.width - margin_x * 2 - gap_x * (cols - 1)) // cols
+        max_card_w = 320
+        available_w = self.width - 88
+        raw_card_w = (available_w - gap_x * (cols - 1)) // cols
+        card_w = min(max_card_w, raw_card_w)
+        grid_w = cols * card_w + gap_x * (cols - 1)
+        margin_x = (self.width - grid_w) // 2
         card_h = 228
 
         for index, item in enumerate(self._items):
@@ -826,6 +771,8 @@ class HomePageScreen:
         self._draw_actions(surface)
         self._draw_message(surface)
         self._draw_dialog(surface)
+
+
 
 
 
