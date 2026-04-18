@@ -254,7 +254,7 @@ class RadioPlayer:
             pygame.mixer.music.fadeout(220)
             pygame.mixer.music.load(track.path)
             self._apply_volume()
-            pygame.mixer.music.play(loops=0, fade_ms=fade_ms)
+            pygame.mixer.music.play(loops=-1, fade_ms=fade_ms)
             self._paused = False
             self._status = f"Now playing: {track.title}"
         except pygame.error as exc:
@@ -270,3 +270,4 @@ class RadioPlayer:
 
     def shutdown(self) -> None:
         self._settings.save()
+

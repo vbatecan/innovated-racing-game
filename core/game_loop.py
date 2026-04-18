@@ -10,6 +10,9 @@ from collections import deque
 import time
 import tracemalloc
 import logging
+import glob
+import os
+from pathlib import Path
 import pygame
 import cv2
 import config
@@ -21,8 +24,6 @@ from core.oil_swerve_physics import OilSwervePhysics
 from core.collision_handler import CollisionHandler
 from input.key_mapper import KeyMapper
 from input.steering_handler import SteeringHandler
-from core.radio_player import RadioPlayer
-from ui.radio_overlay import RadioOverlay
 
 if TYPE_CHECKING:
     from ui.homepage import HomePageScreen
@@ -122,9 +123,8 @@ class GameLoop:
         self._is_braking = False
         self._target_steer = 0.0
         self._max_speed = player_car.max_speed
+        self._start_background_music()
 
-        self._radio_player = RadioPlayer(self._settings)
-        self._radio_overlay = RadioOverlay(self._settings, self._radio_player, self._window_size)
 
         # Performance: reuse a persistent sprite group instead of allocating each frame.
         self._player_sprite_group = pygame.sprite.GroupSingle(self._player_car)
@@ -387,7 +387,6 @@ class GameLoop:
             # Check if user wants to return to menu instead of quitting
             if self._return_to_menu:
                 logger.info("Returning to menu...")
-                self._radio_player.shutdown()
                 self._detector.stop_stream()
                 self._reset_subsystems()
                 self._game_state_manager.reset_run_state()
@@ -550,8 +549,6 @@ class GameLoop:
         Args:
             event: Pygame event to process.
         """
-        if self._radio_overlay.handle_event(event):
-            return
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_c:
             if self._car_selection and not self._car_selection.visible:
@@ -592,8 +589,6 @@ class GameLoop:
         self._game_map.draw(self._screen)
         self._render_sprite()
         self._game_hud.draw(self._screen)
-        self._radio_overlay.update(1.0 / max(1, int(self._settings.max_fps)))
-        self._radio_overlay.draw(self._screen)
         self._pause_menu.draw(self._screen, delta_time / 1000.0)
         self._draw_perf_overlay()
         pygame.display.flip()
@@ -741,7 +736,6 @@ class GameLoop:
 
         self._collision_handler.check_and_resolve_all()
 
-        self._radio_player.update()
 
     def _refresh_display_surface(self) -> None:
         """Synchronize cached screen reference with the active display surface.
@@ -798,8 +792,6 @@ class GameLoop:
             hearts_collected=hearts_collected,
         )
         self._game_hud.draw(self._screen)
-        self._radio_overlay.update(1.0 / max(1, int(self._settings.max_fps)))
-        self._radio_overlay.draw(self._screen)
 
         if self._settings.visible:
             self._settings_menu.update(pygame.mouse.get_pos())
@@ -973,12 +965,43 @@ class GameLoop:
         pygame.draw.rect(self._screen, (255, 230, 150), bg, 1, border_radius=6)
         self._screen.blit(surf, (pad, pad))
 
+    def _find_background_track(self) -> Optional[str]:
+        """Find the fixed background track from local resources/cache."""
+        patterns = [
+            str(Path("resources") / "music" / "*Hawak*beat*.*"),
+            str(Path("resources") / "music" / "*hawak*beat*.*"),
+            str(Path("logs") / "radio_cache" / "hawak-mo-ang-beat.*"),
+        ]
+        allowed_ext = (".mp3", ".ogg", ".wav", ".m4a", ".webm")
+        for pattern in patterns:
+            for candidate in sorted(glob.glob(pattern)):
+                if candidate.lower().endswith(allowed_ext):
+                    return candidate
+        return None
+
+    def _start_background_music(self) -> None:
+        """Start fixed looping music at 50% volume and keep it running."""
+        track_path = self._find_background_track()
+        if not track_path:
+            logger.warning("Background music track not found.")
+            return
+
+        try:
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+            pygame.mixer.music.load(track_path)
+            pygame.mixer.music.set_volume(0.5)
+            pygame.mixer.music.play(loops=-1)
+        except pygame.error as exc:
+            logger.warning(f"Background music playback failed: {exc}")
+
     def _cleanup(self) -> None:
         """Release all resources on game exit.
 
         Stops the detector stream, destroys OpenCV windows, and quits Pygame.
         """
-        self._radio_player.shutdown()
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
         self._detector.stop_stream()
         cv2.destroyAllWindows()
         pygame.quit()
