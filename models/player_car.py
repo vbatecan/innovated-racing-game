@@ -25,10 +25,8 @@ class PlayerCar(Vehicle):
         self.cornering_grip = 1.0
 
         # Visual cue state.
-        self._has_turbo = False
         self._has_suspension = False
         self._has_brakes = False
-        self._boost_visual_active = False
         self._braking_visual_active = False
 
         self._base_car_image = self.image.copy()
@@ -42,12 +40,9 @@ class PlayerCar(Vehicle):
         self._apply_car_stats()
         self._compose_visual_sprite()
 
-    def set_visual_cues(self, boost_active: bool, is_braking: bool) -> None:
+    def set_visual_cues(self, is_braking: bool) -> None:
         """Update visual cue state for active upgrades and rebuild sprite when needed."""
         changed = False
-        if self._boost_visual_active != boost_active:
-            self._boost_visual_active = boost_active
-            changed = True
         if self._braking_visual_active != is_braking:
             self._braking_visual_active = is_braking
             changed = True
@@ -124,7 +119,6 @@ class PlayerCar(Vehicle):
         self.cornering_grip = 0.70 + (performance.handling / 100.0) * 0.55
 
         owned = set(self.car_manager.get_owned_upgrades())
-        self._has_turbo = "turbo_charger" in owned
         self._has_suspension = "sport_suspension" in owned
         self._has_brakes = "precision_brakes" in owned
 
@@ -147,16 +141,6 @@ class PlayerCar(Vehicle):
             right_caliper = pygame.Rect(64, 58, 8, 16)
             pygame.draw.rect(canvas, (220, 44, 44, intensity), left_caliper, border_radius=3)
             pygame.draw.rect(canvas, (220, 44, 44, intensity), right_caliper, border_radius=3)
-
-        if self._has_turbo and self._boost_visual_active:
-            for radius, alpha, color in (
-                (18, 90, (82, 220, 255)),
-                (11, 160, (255, 164, 74)),
-            ):
-                flame = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-                pygame.draw.ellipse(flame, (*color, alpha), flame.get_rect())
-                canvas.blit(flame, (20 - radius // 2, 72 - radius // 2))
-                canvas.blit(flame, (58 - radius // 2, 72 - radius // 2))
 
         center = self.rect.center
         self.image = canvas

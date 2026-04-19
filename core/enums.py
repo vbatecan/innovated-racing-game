@@ -60,18 +60,6 @@ class GearConstants:
     }
 
 
-class BoostConstants:
-    """Constants for the boost/nitro system.
-
-    Preserves exact timing values from the original implementation.
-    """
-
-    DURATION_MS: int = 1000
-    COOLDOWN_MS: int = 10000
-    ACCELERATION_MULTIPLIER: float = 3.0
-    SPEED_MULTIPLIER: float = 1.7
-
-
 class OilSwerveConstants:
     """Constants for oil spill swerve physics.
 

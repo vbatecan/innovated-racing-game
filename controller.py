@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class Controller:
     """
-    Webcam-based hand controller for steering, braking, boost, and shifting.
+    Webcam-based hand controller for steering, braking, and shifting.
 
     This class owns the camera thread, runs MediaPipe hand landmark detection,
     derives control states from gestures, and exposes the latest annotated frame.
@@ -40,7 +40,6 @@ class Controller:
         self.annotated_frame = None
         self.lock = threading.Lock()
         self.thread: Thread | None = None
-        self.boosting = False
         self.shift_up_requested = False
         self.shift_down_requested = False
         self.left_shift_active = False
@@ -51,7 +50,7 @@ class Controller:
         self.swipe_down_detected = False
         self.question_select_requested = False
         self._prev_question_select_active = False
-        self._question_select_closed_frames = 0
+        self._question_select_hold_frames = 0
         self.question_select_required_frames = 3
         self._prev_right_hand_y = None
         self.swipe_threshold = 0.02
@@ -168,7 +167,7 @@ class Controller:
         self.swipe_down_detected = False
         self.question_select_requested = False
         self._prev_question_select_active = False
-        self._question_select_closed_frames = 0
+        self._question_select_hold_frames = 0
         self._prev_right_hand_y = None
 
     def _resolve_left_right_hands(self):
@@ -219,30 +218,17 @@ class Controller:
 
     @staticmethod
     def _is_thumb_up(hand_landmarks) -> bool:
-        """
-        Detect a thumbs-up gesture used to trigger boost.
-        """
+        """Detect a deliberate thumbs-up pose for question confirmation."""
         thumb_tip = hand_landmarks[4]
         thumb_mcp = hand_landmarks[2]
         thumb_up = thumb_tip.y < thumb_mcp.y
+
         curled = 0
         for tip_i, pip_i in zip([8, 12, 16, 20], [6, 10, 14, 18]):
             if hand_landmarks[tip_i].y > hand_landmarks[pip_i].y:
                 curled += 1
+
         return thumb_up and curled >= 3
-
-    @staticmethod
-    def _is_index_closed(hand_landmarks) -> bool:
-        """Detect a deliberate "index finger down" pose with stricter checks."""
-        index_tip = hand_landmarks[8]
-        index_pip = hand_landmarks[6]
-        index_mcp = hand_landmarks[5]
-
-        tip_below_pip = index_tip.y > (index_pip.y + 0.03)
-        tip_below_mcp = index_tip.y > (index_mcp.y + 0.05)
-        pip_below_mcp = index_pip.y > (index_mcp.y + 0.01)
-
-        return tip_below_pip and tip_below_mcp and pip_below_mcp
 
     def _update_shift_state(self, left_hand, right_hand) -> None:
         """
@@ -368,7 +354,6 @@ class Controller:
 
         self.breaking = not self.left_shift_active and not self.right_shift_active
         self._update_shift_state(left_hand, right_hand)
-        self.boosting = self._is_thumb_up(left_hand)  # Left hand only for boost.
         self._detect_swipes(right_hand)
 
         normalized_slope = self._compute_steer(left_wrist, right_wrist)
@@ -385,21 +370,21 @@ class Controller:
             self.swipe_down_detected = False
             self.question_select_requested = False
             self._prev_question_select_active = False
-            self._question_select_closed_frames = 0
+            self._question_select_hold_frames = 0
             self._prev_right_hand_y = None
             return
 
         primary_hand = hands[0]
         self._detect_swipes(primary_hand)
-        index_closed = any(self._is_index_closed(hand) for hand in hands)
+        thumbs_up = any(self._is_thumb_up(hand) for hand in hands)
 
-        if index_closed:
-            self._question_select_closed_frames += 1
+        if thumbs_up:
+            self._question_select_hold_frames += 1
         else:
-            self._question_select_closed_frames = 0
+            self._question_select_hold_frames = 0
 
         select_active = (
-            self._question_select_closed_frames >= self.question_select_required_frames
+            self._question_select_hold_frames >= self.question_select_required_frames
         )
         self.question_select_requested = (
             select_active and not self._prev_question_select_active
@@ -412,7 +397,6 @@ class Controller:
         self.shift_down_requested = False
         self.left_shift_active = False
         self.right_shift_active = False
-        self.boosting = False
 
         h, w, _ = image.shape
         for hand_landmarks in hands:

@@ -15,7 +15,6 @@ import cv2
 import config
 from core.enums import GameState, ScoringConstants
 from core.game_state import GameStateManager
-from core.boost_system import BoostSystem
 from core.gear_system import GearSystem
 from core.oil_swerve_physics import OilSwervePhysics
 from core.collision_handler import CollisionHandler
@@ -110,7 +109,6 @@ class GameLoop:
         self._question_manager = QuestionManager()
 
         self._game_state_manager: Optional[GameStateManager] = None
-        self._boost_system = BoostSystem()
         self._gear_system = GearSystem()
         self._oil_swerve = OilSwervePhysics()
         self._collision_handler: Optional[CollisionHandler] = None
@@ -698,9 +696,8 @@ class GameLoop:
     def _update_gameplay(self) -> None:
         """Update gameplay state for the current frame.
 
-        Processes detector input, applies boost effects, handles braking and steering,
-        manages gear shifting, applies oil swerve physics, updates player car physics,
-        and updates the game map state.
+        Processes detector input, handles braking and steering, manages gear shifting,
+        applies oil swerve physics, updates player car physics, and updates the game map state.
         """
         self._detector.brake_threshold = self._settings.get_brake_threshold()
 
@@ -712,8 +709,6 @@ class GameLoop:
         self._game_hud.set_camera_visibility(camera_enabled)
         if hasattr(self._game_hud, "camera_size"):
             self._game_hud.camera_size = self._settings.get_camera_preview_size()
-
-        self._boost_system.update(self._detector.boosting)
 
         self._is_braking = self._detector.breaking
         keys = pygame.key.get_pressed()
@@ -763,12 +758,8 @@ class GameLoop:
         acceleration *= self._settings.get_difficulty_acceleration_multiplier()
         self._max_speed = self._player_car.max_speed * self._gear_system.get_speed_ratio()
 
-        if self._boost_system.is_active:
-            acceleration *= self._boost_system.get_acceleration_multiplier()
-            self._max_speed *= self._boost_system.get_speed_multiplier()
-
         if hasattr(self._player_car, "set_visual_cues"):
-            self._player_car.set_visual_cues(self._boost_system.is_active, self._is_braking)
+            self._player_car.set_visual_cues(self._is_braking)
 
         self._player_car.update(
             steering=self._target_steer,
@@ -861,7 +852,6 @@ class GameLoop:
             distance=self._scoring_system.get_distance(),
             gear=self._gear_system.current_gear,
             is_braking=self._is_braking,
-            boost_energy=100.0,
             hearts_collected=hearts_collected,
         )
         self._game_hud.draw(self._screen)
@@ -943,10 +933,9 @@ class GameLoop:
     def _reset_subsystems(self) -> None:
         """Reset all gameplay subsystems after a game restart.
 
-        Clears boost state, gear state, oil swerve effects, collision handler,
-        and steering targets to prepare for a fresh run.
+        Clears gear state, oil swerve effects, collision handler, and steering
+        targets to prepare for a fresh run.
         """
-        self._boost_system.reset()
         self._gear_system.reset()
         self._oil_swerve.reset()
         if self._collision_handler:

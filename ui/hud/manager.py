@@ -1,7 +1,7 @@
 """HUD (Heads-Up Display) Manager.
 
 Provides the in-game HUD displaying speed, score, lives, distance,
-gear, boost energy, and camera preview. All UI elements use glass-panel
+gear, and camera preview. All UI elements use glass-panel
 styling with the game's color scheme.
 """
 
@@ -34,7 +34,6 @@ class HUDManager:
     - Score (top right)
     - Lives (top left, with heart image indicators)
     - Distance, speed, gear stats (bottom left)
-    - Boost energy bar (bottom center, with color-coded levels)
     - Camera preview (bottom right, when enabled)
     
     Attributes:
@@ -50,7 +49,6 @@ class HUDManager:
         distance: Distance traveled in meters.
         gear: Current gear (1-N).
         is_braking: True if vehicle is braking.
-        boost_energy: Current boost energy (0-100).
         hearts_collected: Bonus hearts collected.
         camera_frame: Current camera frame for preview.
         show_camera: True if camera preview is enabled.
@@ -79,7 +77,6 @@ class HUDManager:
         self.distance: float = 0.0
         self.gear: int = DEFAULTS.gear
         self.is_braking: bool = False
-        self.boost_energy: float = DEFAULTS.boost_max
         self.hearts_collected: int = 0
 
         self.camera_frame: np.ndarray | None = None
@@ -129,7 +126,6 @@ class HUDManager:
         distance: float,
         gear: int,
         is_braking: bool,
-        boost_energy: float = DEFAULTS.boost_max,
         hearts_collected: int = 0,
         dt: float = 0.016,
     ) -> None:
@@ -146,7 +142,6 @@ class HUDManager:
             distance: Distance traveled in meters.
             gear: Current gear number.
             is_braking: True if the vehicle is braking.
-            boost_energy: Current boost energy level (0-100).
             hearts_collected: Number of bonus hearts collected.
             dt: Delta time since last update (unused but kept for API compatibility).
             
@@ -160,7 +155,6 @@ class HUDManager:
         self.distance = distance
         self.gear = gear
         self.is_braking = is_braking
-        self.boost_energy = boost_energy
         self.hearts_collected = hearts_collected
 
         self._speed_display += (speed - self._speed_display) * self._speed_anim_speed
@@ -356,52 +350,6 @@ class HUDManager:
 
             screen.blit(label_surf, (x + 15, y + 12 + i * 25))
             screen.blit(value_surf, (x + 120, y + 8 + i * 25))
-
-    def _draw_boost_bar_bottom_center(
-        self, screen: Surface, sw: int, sh: int
-    ) -> None:
-        """Draw the boost energy bar at the bottom center.
-        
-        Displays a horizontal bar showing boost energy level with
-        color coding: blue (high), gold (medium), red (low).
-        
-        Args:
-            screen: The pygame surface to draw on.
-            sw: Screen width for centering.
-            sh: Screen height for positioning.
-            
-        Returns:
-            None
-        """
-        margin: int = LAYOUT.margin
-        bar_w: int = LAYOUT.boost_bar_width
-        bar_h: int = LAYOUT.boost_bar_height
-        x: int = sw // 2 - bar_w // 2
-        y: int = sh - bar_h - margin
-
-        bg: Surface = pygame.Surface((bar_w, bar_h), pygame.SRCALPHA)
-        bg.fill((15, 20, 35, 180))
-        screen.blit(bg, (x, y))
-        pygame.draw.rect(
-            screen, COLORS.accent, (x, y, bar_w, bar_h), 1, border_radius=8
-        )
-
-        pct: float = self.boost_energy / DEFAULTS.boost_max
-        fill_w: int = int((bar_w - 4) * pct)
-
-        if pct > 0.6:
-            fill_color: Color = COLORS.boost_high
-        elif pct > 0.3:
-            fill_color: Color = COLORS.boost_mid
-        else:
-            fill_color: Color = COLORS.boost_low
-
-        if fill_w > 0:
-            fill_rect: pygame.Rect = pygame.Rect(x + 2, y + 2, fill_w, bar_h - 4)
-            draw_rounded_rect(screen, fill_color, fill_rect)
-
-        label: Surface = self.font_small.render("BOOST", True, COLORS.muted)
-        screen.blit(label, (sw // 2 - label.get_width() // 2, y - 18))
 
     def _draw_camera_preview(self, screen: Surface, sw: int, sh: int) -> None:
         """Draw the camera preview panel at the bottom right.

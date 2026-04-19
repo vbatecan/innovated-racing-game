@@ -5,7 +5,7 @@ public classes and functions for easy importing while maintaining
 backward compatibility with the original monolithic structure.
 
 Includes:
-- HUD display with speed, score, lives, distance, gear, boost energy
+- HUD display with speed, score, lives, distance, and gear
 - Pause menu with resume, restart, settings, and quit options
 - Settings menu with gameplay, graphics, and controls categories
 - Interactive Button and Slider components

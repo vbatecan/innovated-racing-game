@@ -31,9 +31,6 @@ class Colors:
         button_hover: Button hover state color.
         button_border: Button border color.
         close_btn: Close button background.
-        boost_high: Boost bar high level color.
-        boost_mid: Boost bar medium level color.
-        boost_low: Boost bar low level color.
     """
     accent: Color = (0, 220, 255)
     text: Color = (245, 250, 255)
@@ -48,9 +45,6 @@ class Colors:
     button_hover: Color = (0, 200, 240)
     button_border: Color = (70, 100, 150)
     close_btn: Color = (220, 100, 100)
-    boost_high: Color = (0, 220, 255)
-    boost_mid: Color = (255, 215, 80)
-    boost_low: Color = (255, 100, 100)
 
 
 @dataclass(frozen=True)
@@ -90,8 +84,6 @@ class Layout:
         score_panel_height: Height of score display panel.
         stats_panel_width: Width of stats panel.
         stats_panel_height: Height of stats panel.
-        boost_bar_width: Width of boost energy bar.
-        boost_bar_height: Height of boost energy bar.
         pause_menu_width: Width of pause menu.
         pause_menu_height: Height of pause menu.
         settings_panel_width: Width of settings panel.
@@ -111,8 +103,6 @@ class Layout:
     score_panel_height: int = 70
     stats_panel_width: int = 200
     stats_panel_height: int = 90
-    boost_bar_width: int = 280
-    boost_bar_height: int = 14
     pause_menu_width: int = 420
     pause_menu_height: int = 520
     settings_panel_width: int = 800
@@ -148,13 +138,11 @@ class GameDefaults:
     Attributes:
         lives: Starting lives.
         max_lives: Maximum lives for clamping.
-        boost_max: Maximum boost energy.
         speed_max: Default max speed for display.
         gear: Starting gear.
     """
     lives: int = 3
     max_lives: int = 3
-    boost_max: float = 100.0
     speed_max: float = 30.0
     gear: int = 1
 
