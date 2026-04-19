@@ -58,16 +58,14 @@ class Settings:
             "resolution": [WINDOW_SIZE["width"], WINDOW_SIZE["height"]],
             "master_volume": 0.80,
             "music_volume": 0.70,
-            "sfx_volume": 0.85,
+            "sfx_volume": 1.00,
             "difficulty": "Normal",
             "auto_brake_assist": False,
             "steering_assist": True,
             "camera_mode": "Chase",
             "graphics_preset": "High",
             "show_fps": False,
-            "radio_enabled": True,
-            "radio_volume": 0.70,
-            "last_radio_track": "Hawak mo ang beat",
+            "last_music_track": "",
             "_bonus": 50,
             "car_collision_deduction_pts": 100,
         }
@@ -96,9 +94,7 @@ class Settings:
             "camera_mode": self.camera_mode,
             "graphics_preset": self.graphics_preset,
             "show_fps": self.show_fps,
-            "radio_enabled": self.radio_enabled,
-            "radio_volume": self.radio_volume,
-            "last_radio_track": self.last_radio_track,
+            "last_music_track": self.last_music_track,
         }
 
     def load(self) -> None:
@@ -122,11 +118,9 @@ class Settings:
         self.car_speed = float(self.car_speed)
         self.obstacle_frequency = max(1, int(self.obstacle_frequency))
         self.lane_count = max(MIN_LANE_COUNT, min(MAX_LANE_COUNT, int(self.lane_count)))
-        self.radio_enabled = bool(self.radio_enabled)
-        self.radio_volume = max(0.0, min(1.0, float(self.radio_volume)))
-        if "last_radio_track" not in data and "last_youtube_url" in data:
-            self.last_radio_track = str(data.get("last_youtube_url", "Hawak mo ang beat"))
-        self.last_radio_track = str(self.last_radio_track)
+        self.last_music_track = str(self.last_music_track)
+        if "last_music_track" not in data and "last_radio_track" in data:
+            self.last_music_track = str(data.get("last_radio_track", ""))
 
     def save(self) -> None:
         os.makedirs("logs", exist_ok=True)

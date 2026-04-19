@@ -141,7 +141,7 @@ class SettingsMenu:
         self._values = {
             "master_volume": 0.80,
             "music_volume": 0.70,
-            "sfx_volume": 0.85,
+            "sfx_volume": 1.00,
             "fullscreen": False,
             "vsync": False,
             "resolution": "1920x1080",
