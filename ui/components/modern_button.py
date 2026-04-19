@@ -7,9 +7,16 @@ smooth transitions for a polished, modern UI aesthetic.
 from __future__ import annotations
 
 import pygame
+import core.sound_manager as sound_manager_module
 
 from ui.core.types import Callback, Color, MousePos, MousePressed, Surface
 from ui.utils.drawing import draw_rounded_rect
+
+
+def _play_ui_click_sfx() -> None:
+    manager = sound_manager_module.sound_manager
+    if manager is not None:
+        manager.play_ui_click()
 
 
 class ModernButton:
@@ -71,6 +78,7 @@ class ModernButton:
         # Animation timing
         self._hover_animation_speed: float = 0.18
         self._glow_pulse_speed: float = 0.06
+        self._was_pressed: bool = False
 
     @staticmethod
     def _get_default_font() -> pygame.font.Font:
@@ -107,13 +115,16 @@ class ModernButton:
             self.click_pulse = max(0, self.click_pulse - delta_time * 8)
         
         # Handle click
-        if self.is_hovered and mouse_pressed[0]:
+        is_pressed = bool(mouse_pressed[0])
+        if self.is_hovered and is_pressed and not self._was_pressed:
             self.is_pressed = True
+            _play_ui_click_sfx()
             if self.callback:
                 self.callback()
-                self.click_pulse = 1.0
+            self.click_pulse = 1.0
         else:
             self.is_pressed = False
+        self._was_pressed = is_pressed
 
     def draw(self, surface: Surface) -> None:
         """Render the button with glow effects.

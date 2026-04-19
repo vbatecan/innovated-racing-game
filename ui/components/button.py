@@ -7,10 +7,17 @@ and callback support for pygame-based UI systems.
 from __future__ import annotations
 
 import pygame
+import core.sound_manager as sound_manager_module
 
 from ui.core.constants import COLORS
 from ui.core.types import Callback, Color, MousePos, MousePressed, Surface
 from ui.utils.drawing import draw_rounded_rect
+
+
+def _play_ui_click_sfx() -> None:
+    manager = sound_manager_module.sound_manager
+    if manager is not None:
+        manager.play_ui_click()
 
 
 class Button:
@@ -69,6 +76,7 @@ class Button:
         self.border_color: Color = COLORS.button_border
         self.is_hovered: bool = False
         self.is_active: bool = False
+        self._was_pressed: bool = False
 
     def update(self, mouse_pos: MousePos, mouse_pressed: MousePressed) -> None:
         """Update button state based on mouse input.
@@ -84,8 +92,12 @@ class Button:
             None
         """
         self.is_hovered = self.rect.collidepoint(mouse_pos)
-        if self.is_hovered and mouse_pressed[0] and self.callback:
-            self.callback()
+        is_pressed: bool = bool(mouse_pressed[0])
+        if self.is_hovered and is_pressed and not self._was_pressed:
+            _play_ui_click_sfx()
+            if self.callback:
+                self.callback()
+        self._was_pressed = is_pressed
 
     def draw(self, surface: Surface) -> None:
         """Render the button on the given surface.

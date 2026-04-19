@@ -4,9 +4,16 @@ import math
 from typing import Callable, Optional
 
 import pygame
+import core.sound_manager as sound_manager_module
 
 from models.car_data import Car, get_car_by_id
 from models.car_manager import CarManager
+
+
+def _play_ui_click_sfx() -> None:
+    manager = sound_manager_module.sound_manager
+    if manager is not None:
+        manager.play_ui_click()
 
 
 class CarSelectionUI:
@@ -138,6 +145,7 @@ class CarSelectionUI:
             if event.button == 1:
                 car_rect = self._get_car_preview_rect()
                 if car_rect.collidepoint(event.pos):
+                    _play_ui_click_sfx()
                     self.select_current_car()
                     return True
 
@@ -147,9 +155,11 @@ class CarSelectionUI:
                 right_arrow_rect = pygame.Rect(self.width - 100, arrow_y - 50, 80, 100)
 
                 if left_arrow_rect.collidepoint(event.pos):
+                    _play_ui_click_sfx()
                     self.previous_car()
                     return True
                 elif right_arrow_rect.collidepoint(event.pos):
+                    _play_ui_click_sfx()
                     self.next_car()
                     return True
 
