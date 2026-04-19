@@ -13,10 +13,17 @@ from pathlib import Path
 from typing import Optional
 
 import pygame
+import core.sound_manager as sound_manager_module
 
 from models.car_data import CARS, Car
 from models.car_manager import CarManager
 from models.upgrades import UPGRADES
+
+
+def _play_ui_click_sfx() -> None:
+    manager = sound_manager_module.sound_manager
+    if manager is not None:
+        manager.play_ui_click()
 
 
 @dataclass
@@ -227,6 +234,7 @@ class HomePageScreen:
 
             for index, rect in enumerate(self._tab_rects):
                 if rect.collidepoint(event.pos):
+                    _play_ui_click_sfx()
                     self._active_category = index
                     self._focus_zone = "tabs"
                     self._refresh_items()
@@ -234,6 +242,7 @@ class HomePageScreen:
 
             for index, rect in enumerate(self.card_rects):
                 if rect.collidepoint(event.pos):
+                    _play_ui_click_sfx()
                     self._selected_card_index = index
                     self._focus_zone = "cards"
                     self._activate_selected_item()
@@ -241,6 +250,7 @@ class HomePageScreen:
 
             for index, rect in enumerate(self._action_rects):
                 if rect.collidepoint(event.pos):
+                    _play_ui_click_sfx()
                     self._selected_action = index
                     self._focus_zone = "actions"
                     if index == 0:
@@ -475,9 +485,11 @@ class HomePageScreen:
     def _handle_dialog_click(self, pos: tuple[int, int]) -> None:
         buy_rect, cancel_rect = self._dialog_button_rects()
         if buy_rect.collidepoint(pos):
+            _play_ui_click_sfx()
             self._dialog_action = 0
             self._confirm_purchase()
         elif cancel_rect.collidepoint(pos):
+            _play_ui_click_sfx()
             self._dialog_action = 1
             self._close_dialog()
 

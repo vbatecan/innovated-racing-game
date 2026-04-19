@@ -10,9 +10,6 @@ from collections import deque
 import time
 import tracemalloc
 import logging
-import glob
-import os
-from pathlib import Path
 import pygame
 import cv2
 import config
@@ -22,6 +19,8 @@ from core.boost_system import BoostSystem
 from core.gear_system import GearSystem
 from core.oil_swerve_physics import OilSwervePhysics
 from core.collision_handler import CollisionHandler
+from core.music_manager import MusicManager
+from core.sound_manager import init_sound_manager
 from input.key_mapper import KeyMapper
 from input.steering_handler import SteeringHandler
 
@@ -102,6 +101,7 @@ class GameLoop:
         self._overlay_body_font = pygame.font.Font(
             None, max(30, config.FONT_SIZE + 10)
         )
+        self._music_overlay_font = pygame.font.Font(None, max(28, config.FONT_SIZE + 4))
 
         from models.score import ScoringSystem
         from environment.question_manager import QuestionManager
@@ -116,14 +116,19 @@ class GameLoop:
         self._collision_handler: Optional[CollisionHandler] = None
         self._key_mapper = KeyMapper()
         self._steering_handler = SteeringHandler()
+        self._sound_manager = init_sound_manager(settings=self._settings)
+        self._music_manager = MusicManager(settings=self._settings)
 
         self._running = True
         self._return_to_menu = False
         self._selected_setting = 0
         self._is_braking = False
+        self._was_braking = False
+        self._last_brake_sfx_ms = 0
         self._target_steer = 0.0
         self._max_speed = player_car.max_speed
-        self._start_background_music()
+        self._music_overlay_text = ""
+        self._music_overlay_until_ms = 0
 
 
         # Performance: reuse a persistent sprite group instead of allocating each frame.
@@ -215,6 +220,8 @@ class GameLoop:
 
         while self._menu_running:
             delta_time = self._clock.tick(120) / 1000.0
+            self._sync_music_state()
+            self._sound_manager.set_sfx_enabled(False)
 
             if self._current_screen == "home":
                 if not self._process_home_screen(delta_time):
@@ -259,6 +266,8 @@ class GameLoop:
                 return False
 
             action = self._homepage.handle_event(event)
+            if action and not (event.type == pygame.MOUSEBUTTONDOWN and getattr(event, "button", None) == 1):
+                self._sound_manager.play_ui_click()
             if action == "quit":
                 logger.info("Homepage returned quit action")
                 return False
@@ -269,6 +278,7 @@ class GameLoop:
         
         self._homepage.update(delta_time)
         self._homepage.draw(self._screen)
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
         return True
@@ -291,6 +301,8 @@ class GameLoop:
                 return False
 
             action = self._shop_screen.handle_event(event)
+            if action and not (event.type == pygame.MOUSEBUTTONDOWN and getattr(event, "button", None) == 1):
+                self._sound_manager.play_ui_click()
             if action == "quit":  # ESC key in shop returns to menu
                 self._current_screen = "home"
             elif action == "start":  # Car selected, proceed to game
@@ -305,6 +317,7 @@ class GameLoop:
         
         self._shop_screen.update(delta_time)
         self._shop_screen.draw(self._screen)
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
         return True
@@ -337,6 +350,7 @@ class GameLoop:
         # Update and draw settings menu
         self._settings_menu.update(mouse_pos)
         self._settings_menu.draw(self._screen)
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
         return True
@@ -414,6 +428,8 @@ class GameLoop:
         )
         self._sync_runtime_settings()
         self._handle_events()
+        self._sync_sfx_state()
+        self._sync_music_state()
 
         if self._pause_menu.visible:
             self._process_pause_menu()
@@ -454,6 +470,28 @@ class GameLoop:
         self._record_perf_sample(frame_start)
         self._clock.tick(self._settings.max_fps)
 
+    def _sync_sfx_state(self) -> None:
+        """Enable SFX only during active gameplay and keep menus/settings silent."""
+        gameplay_active = (
+            not self._menu_running
+            and self._game_state_manager.game_state == GameState.PLAYING
+            and not self._settings.visible
+            and not self._pause_menu.visible
+        )
+        self._sound_manager.set_sfx_enabled(gameplay_active)
+
+    def _sync_music_state(self) -> None:
+        """Pause music in pause/settings/menu contexts and resume during gameplay."""
+        not_playing_state = self._game_state_manager.game_state != GameState.PLAYING
+        should_pause = (
+            self._menu_running
+            or self._pause_menu.visible
+            or self._settings.visible
+            or not_playing_state
+        )
+        self._music_manager.set_context_paused(should_pause)
+        self._music_manager.update()
+
     def _handle_events(self) -> None:
         """Process all Pygame events for the current frame.
 
@@ -465,6 +503,18 @@ class GameLoop:
             if event.type == pygame.QUIT:
                 self._running = False
                 continue
+
+            if (
+                event.type == pygame.KEYDOWN
+                and not self._menu_running
+                and not self._pause_menu.visible
+                and not self._settings.visible
+                and self._game_state_manager.game_state == GameState.PLAYING
+            ):
+                music_status = self._music_manager.handle_keydown(event.key)
+                if music_status is not None:
+                    self._show_music_status_overlay(music_status)
+                    continue
 
             if self._car_selection and self._car_selection.visible:
                 if self._car_selection.handle_event(event):
@@ -590,6 +640,7 @@ class GameLoop:
         self._render_sprite()
         self._game_hud.draw(self._screen)
         self._pause_menu.draw(self._screen, delta_time / 1000.0)
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
 
@@ -702,6 +753,7 @@ class GameLoop:
 
         if self._settings.auto_brake_assist and abs(self._target_steer) > 1.15 and self._player_car.current_speed > (self._max_speed * 0.45):
             self._is_braking = True
+        self._update_brake_audio()
         self._player_car.turn(
             max(-2, min(self._target_steer, 2)),
             self._player_car.turn_smoothing
@@ -728,13 +780,34 @@ class GameLoop:
             screen_width=self._window_size["width"],
         )
 
+        self._sound_manager.update_engine(self._player_car.current_speed / self._max_speed)
+
         self._game_map.speed = float(self._player_car.current_speed)
         self._game_map.update_score(self._scoring_system.get_score())
         self._game_map.update(is_braking=self._is_braking)
 
         self._collision_handler.clamp_to_road()
 
-        self._collision_handler.check_and_resolve_all()
+        collision_result = self._collision_handler.check_and_resolve_all()
+
+        if (
+            collision_result.obstacle_hit
+            or collision_result.brake_hit
+            or collision_result.crack_hit
+            or collision_result.oil_hit
+        ):
+            self._sound_manager.play_sfx("environment/collision")
+
+    def _update_brake_audio(self) -> None:
+        """Play a brake SFX when braking starts."""
+        now_ms = pygame.time.get_ticks()
+        started_braking = self._is_braking and not self._was_braking
+
+        if started_braking and now_ms - self._last_brake_sfx_ms >= 180:
+            self._sound_manager.play_sfx("vehicle/brake")
+            self._last_brake_sfx_ms = now_ms
+
+        self._was_braking = self._is_braking
 
 
     def _refresh_display_surface(self) -> None:
@@ -822,8 +895,33 @@ class GameLoop:
             self._car_selection.update(car_selection_dt)
             self._car_selection.draw(self._screen)
 
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
+
+    def _show_music_status_overlay(self, text: str, duration_ms: int = 2200) -> None:
+        self._music_overlay_text = str(text).strip()
+        self._music_overlay_until_ms = pygame.time.get_ticks() + int(duration_ms)
+
+    def _draw_music_status_overlay(self) -> None:
+        if not self._music_overlay_text:
+            return
+        if pygame.time.get_ticks() > self._music_overlay_until_ms:
+            self._music_overlay_text = ""
+            self._music_overlay_until_ms = 0
+            return
+
+        text_surface = self._music_overlay_font.render(self._music_overlay_text, True, (248, 245, 225))
+        width = text_surface.get_width() + 24
+        height = text_surface.get_height() + 14
+
+        x = (self._screen.get_width() - width) // 2
+        y = max(16, self._screen.get_height() - height - 22)
+        bg_rect = pygame.Rect(x, y, width, height)
+
+        pygame.draw.rect(self._screen, (10, 12, 20), bg_rect, border_radius=10)
+        pygame.draw.rect(self._screen, (220, 194, 124), bg_rect, 2, border_radius=10)
+        self._screen.blit(text_surface, (x + 12, y + 7))
 
     def _render_sprite(self) -> None:
         """Render the player car sprite to the screen."""
@@ -854,6 +952,8 @@ class GameLoop:
         if self._collision_handler:
             self._collision_handler.reset()
         self._selected_setting = 0
+        self._was_braking = False
+        self._last_brake_sfx_ms = 0
         self._target_steer = 0.0
         self._max_speed = self._player_car.max_speed
 
@@ -965,79 +1065,12 @@ class GameLoop:
         pygame.draw.rect(self._screen, (255, 230, 150), bg, 1, border_radius=6)
         self._screen.blit(surf, (pad, pad))
 
-    def _download_background_track(self) -> Optional[str]:
-        """Download the fixed background track when no local file is available."""
-        try:
-            from yt_dlp import YoutubeDL
-        except Exception:
-            logger.warning("yt-dlp is not installed; cannot fetch background music.")
-            return None
-
-        cache_dir = Path("logs") / "radio_cache"
-        os.makedirs(cache_dir, exist_ok=True)
-        outtmpl = str(cache_dir / "hawak-mo-ang-beat.%(ext)s")
-
-        ydl_opts = {
-            "format": "bestaudio[ext=m4a]/bestaudio/best",
-            "outtmpl": outtmpl,
-            "noplaylist": True,
-            "quiet": True,
-            "no_warnings": True,
-            "restrictfilenames": True,
-        }
-
-        try:
-            with YoutubeDL(ydl_opts) as ydl:
-                ydl.extract_info(
-                    "https://www.youtube.com/watch?v=9Tyq9k5FdYU&list=RD9Tyq9k5FdYU&start_radio=1",
-                    download=True,
-                )
-        except Exception as exc:
-            logger.warning(f"Background track download failed: {exc}")
-            return None
-
-        for candidate in sorted(glob.glob(str(cache_dir / "hawak-mo-ang-beat.*"))):
-            if candidate.lower().endswith((".mp3", ".ogg", ".wav", ".m4a", ".webm")):
-                return candidate
-        return None
-
-    def _find_background_track(self) -> Optional[str]:
-        """Find the fixed background track from local resources/cache."""
-        patterns = [
-            str(Path("resources") / "music" / "*Hawak*beat*.*"),
-            str(Path("resources") / "music" / "*hawak*beat*.*"),
-            str(Path("logs") / "radio_cache" / "hawak-mo-ang-beat.*"),
-        ]
-        allowed_ext = (".mp3", ".ogg", ".wav", ".m4a", ".webm")
-        for pattern in patterns:
-            for candidate in sorted(glob.glob(pattern)):
-                if candidate.lower().endswith(allowed_ext):
-                    return candidate
-
-        return self._download_background_track()
-    def _start_background_music(self) -> None:
-        """Start fixed looping music at 50% volume and keep it running."""
-        track_path = self._find_background_track()
-        if not track_path:
-            logger.warning("Background music track not found.")
-            return
-
-        try:
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
-            pygame.mixer.music.load(track_path)
-            pygame.mixer.music.set_volume(0.5)
-            pygame.mixer.music.play(loops=-1)
-        except pygame.error as exc:
-            logger.warning(f"Background music playback failed: {exc}")
-
     def _cleanup(self) -> None:
         """Release all resources on game exit.
 
         Stops the detector stream, destroys OpenCV windows, and quits Pygame.
         """
-        if pygame.mixer.get_init():
-            pygame.mixer.music.stop()
+        self._music_manager.stop()
         self._detector.stop_stream()
         cv2.destroyAllWindows()
         pygame.quit()

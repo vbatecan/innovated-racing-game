@@ -6,8 +6,15 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import pygame
+import core.sound_manager as sound_manager_module
 
 from ui.core.types import Event, MousePos, Surface
+
+
+def _play_ui_click_sfx() -> None:
+    manager = sound_manager_module.sound_manager
+    if manager is not None:
+        manager.play_ui_click()
 
 
 @dataclass
@@ -114,7 +121,7 @@ class SettingsMenu:
         self._values = {
             "master_volume": float(getattr(game_settings, "master_volume", 0.8)),
             "music_volume": float(getattr(game_settings, "music_volume", 0.7)),
-            "sfx_volume": float(getattr(game_settings, "sfx_volume", 0.85)),
+            "sfx_volume": float(getattr(game_settings, "sfx_volume", 1.0)),
             "fullscreen": bool(getattr(game_settings, "fullscreen", False)),
             "vsync": bool(getattr(game_settings, "vsync", False)),
             "resolution": f"{int(game_settings.resolution[0])}x{int(game_settings.resolution[1])}",
@@ -134,7 +141,7 @@ class SettingsMenu:
         self._values = {
             "master_volume": 0.80,
             "music_volume": 0.70,
-            "sfx_volume": 0.85,
+            "sfx_volume": 1.00,
             "fullscreen": False,
             "vsync": False,
             "resolution": "1920x1080",
@@ -214,28 +221,34 @@ class SettingsMenu:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and mouse_pos:
             if self._confirm_resolution:
                 if self._dialog_keep_rect.collidepoint(mouse_pos):
+                    _play_ui_click_sfx()
                     self._keep_resolution()
                     return {"action": "changed"}
                 if self._dialog_revert_rect.collidepoint(mouse_pos):
+                    _play_ui_click_sfx()
                     self._revert_resolution()
                     return {"action": "changed"}
                 return None
 
             if self._close_rect.collidepoint(mouse_pos):
+                _play_ui_click_sfx()
                 return {"action": "close"}
 
             for idx, rect in enumerate(self._tab_rects):
                 if rect.collidepoint(mouse_pos):
+                    _play_ui_click_sfx()
                     self.selected_category = idx
                     self.selected_option = 0
                     return {"action": "navigate"}
 
             if self._reset_rect.collidepoint(mouse_pos):
+                _play_ui_click_sfx()
                 self._reset_current_section()
                 return {"action": "changed"}
 
             for idx, rect in enumerate(self._option_rects):
                 if rect.collidepoint(mouse_pos):
+                    _play_ui_click_sfx()
                     self.selected_option = idx
                     option = self._active_options()[idx]
                     if option.kind == "slider":
@@ -322,7 +335,7 @@ class SettingsMenu:
     def _reset_current_section(self) -> None:
         section = self.categories[self.selected_category]
         defaults = {
-            "Audio": {"master_volume": 0.80, "music_volume": 0.70, "sfx_volume": 0.85},
+            "Audio": {"master_volume": 0.80, "music_volume": 0.70, "sfx_volume": 1.00},
             "Graphics": {"fullscreen": False, "vsync": False, "resolution": "1920x1080", "graphics_preset": "High"},
             "Gameplay": {"difficulty": "Normal", "auto_brake_assist": False, "steering_assist": True, "camera_mode": "Chase"},
         }

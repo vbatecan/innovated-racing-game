@@ -9,11 +9,18 @@ from __future__ import annotations
 from typing import List, Optional
 
 import pygame
+import core.sound_manager as sound_manager_module
 
 from ui.components.button import Button
 from ui.core.constants import ANIMATION, COLORS, FONTS, LAYOUT
 from ui.core.types import Event, MousePos, MousePressed, Surface
 from ui.utils.drawing import draw_rounded_rect
+
+
+def _play_ui_click_sfx() -> None:
+    manager = sound_manager_module.sound_manager
+    if manager is not None:
+        manager.play_ui_click()
 
 
 class PauseMenu:
@@ -152,6 +159,7 @@ class PauseMenu:
         if event.type == pygame.MOUSEBUTTONDOWN:
             for btn in self.buttons:
                 if btn.rect.collidepoint(event.pos):
+                    _play_ui_click_sfx()
                     return btn.text
 
         return None
