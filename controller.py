@@ -220,15 +220,20 @@ class Controller:
     def _is_thumb_up(hand_landmarks) -> bool:
         """Detect a deliberate thumbs-up pose for question confirmation."""
         thumb_tip = hand_landmarks[4]
+        thumb_ip = hand_landmarks[3]
         thumb_mcp = hand_landmarks[2]
-        thumb_up = thumb_tip.y < thumb_mcp.y
+        wrist = hand_landmarks[0]
+
+        thumb_extended_up = thumb_tip.y < thumb_ip.y < thumb_mcp.y
+        thumb_above_mcp = thumb_tip.y < (thumb_mcp.y - 0.06)
+        thumb_above_wrist = thumb_tip.y < (wrist.y - 0.03)
 
         curled = 0
         for tip_i, pip_i in zip([8, 12, 16, 20], [6, 10, 14, 18]):
             if hand_landmarks[tip_i].y > hand_landmarks[pip_i].y:
                 curled += 1
 
-        return thumb_up and curled >= 3
+        return thumb_extended_up and thumb_above_mcp and thumb_above_wrist and curled >= 2
 
     def _update_shift_state(self, left_hand, right_hand) -> None:
         """
