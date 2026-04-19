@@ -29,6 +29,7 @@ class MusicManager:
         self._tracks: list[MusicTrack] = []
         self._current_index = 0
         self._paused = False
+        self._context_paused = True
         self._status = "Music ready"
         self._cached_volume: float | None = None
 
@@ -55,7 +56,7 @@ class MusicManager:
 
     def update(self) -> None:
         self.apply_volume()
-        if self._paused or not self._tracks:
+        if self._paused or self._context_paused or not self._tracks:
             return
         if not pygame.mixer.get_init():
             return
@@ -63,17 +64,39 @@ class MusicManager:
             self._current_index = (self._current_index + 1) % len(self._tracks)
             self._play_current(fade_ms=150)
 
-    def handle_keydown(self, event_key: int) -> bool:
+    def handle_keydown(self, event_key: int) -> str | None:
         if event_key == pygame.K_f:
             self.previous_track()
-            return True
+            return self._status
         if event_key == pygame.K_g:
             self.toggle_pause()
-            return True
+            return self._status
         if event_key == pygame.K_h:
             self.next_track()
-            return True
-        return False
+            return self._status
+        return None
+
+    def set_context_paused(self, paused: bool) -> None:
+        """Pause music for temporary UI contexts like pause/settings/menu."""
+        paused = bool(paused)
+        if paused == self._context_paused:
+            return
+
+        self._ensure_mixer()
+        if not pygame.mixer.get_init():
+            return
+
+        self._context_paused = paused
+        if paused:
+            pygame.mixer.music.pause()
+            return
+
+        if self._paused:
+            return
+
+        pygame.mixer.music.unpause()
+        if not pygame.mixer.music.get_busy() and self._tracks:
+            self._play_current(fade_ms=120)
 
     def previous_track(self) -> None:
         if not self._tracks:
@@ -99,12 +122,18 @@ class MusicManager:
             self._status = "Audio device unavailable"
             return
 
+        if self._context_paused:
+            track = self.current_track
+            track_name = self._format_track_title(track.title) if track else "No track"
+            self._status = f"Music is paused in menu/settings: {track_name}"
+            return
+
         if self._paused:
             pygame.mixer.music.unpause()
             self._paused = False
             track = self.current_track
             if track is not None:
-                self._status = f"Resumed: {track.title}"
+                self._status = f"Resumed: {self._format_track_title(track.title)}"
             else:
                 self._status = "Playback resumed"
             return
@@ -179,11 +208,18 @@ class MusicManager:
             self.apply_volume(force=True)
             pygame.mixer.music.play(loops=0, fade_ms=fade_ms)
             self._paused = False
-            self._status = f"Now playing: {track.title}"
+            self._status = f"Now playing: {self._format_track_title(track.title)}"
             self._settings.last_music_track = track.path.name
             self._settings.save()
         except pygame.error as exc:
             self._status = f"Playback failed: {exc}"
+
+    @staticmethod
+    def _format_track_title(title: str, max_chars: int = 28) -> str:
+        title = str(title).strip()
+        if len(title) <= max_chars:
+            return title
+        return f"{title[: max_chars - 3]}..."
 
     def _ensure_mixer(self) -> None:
         if pygame.mixer.get_init():

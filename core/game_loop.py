@@ -101,6 +101,7 @@ class GameLoop:
         self._overlay_body_font = pygame.font.Font(
             None, max(30, config.FONT_SIZE + 10)
         )
+        self._music_overlay_font = pygame.font.Font(None, max(28, config.FONT_SIZE + 4))
 
         from models.score import ScoringSystem
         from environment.question_manager import QuestionManager
@@ -122,9 +123,12 @@ class GameLoop:
         self._return_to_menu = False
         self._selected_setting = 0
         self._is_braking = False
+        self._was_braking = False
+        self._last_brake_sfx_ms = 0
         self._target_steer = 0.0
         self._max_speed = player_car.max_speed
-        self._music_manager.start()
+        self._music_overlay_text = ""
+        self._music_overlay_until_ms = 0
 
 
         # Performance: reuse a persistent sprite group instead of allocating each frame.
@@ -216,7 +220,7 @@ class GameLoop:
 
         while self._menu_running:
             delta_time = self._clock.tick(120) / 1000.0
-            self._music_manager.update()
+            self._sync_music_state()
             self._sound_manager.set_sfx_enabled(False)
 
             if self._current_screen == "home":
@@ -274,6 +278,7 @@ class GameLoop:
         
         self._homepage.update(delta_time)
         self._homepage.draw(self._screen)
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
         return True
@@ -312,6 +317,7 @@ class GameLoop:
         
         self._shop_screen.update(delta_time)
         self._shop_screen.draw(self._screen)
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
         return True
@@ -344,6 +350,7 @@ class GameLoop:
         # Update and draw settings menu
         self._settings_menu.update(mouse_pos)
         self._settings_menu.draw(self._screen)
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
         return True
@@ -422,7 +429,7 @@ class GameLoop:
         self._sync_runtime_settings()
         self._handle_events()
         self._sync_sfx_state()
-        self._music_manager.update()
+        self._sync_music_state()
 
         if self._pause_menu.visible:
             self._process_pause_menu()
@@ -473,6 +480,18 @@ class GameLoop:
         )
         self._sound_manager.set_sfx_enabled(gameplay_active)
 
+    def _sync_music_state(self) -> None:
+        """Pause music in pause/settings/menu contexts and resume during gameplay."""
+        not_playing_state = self._game_state_manager.game_state != GameState.PLAYING
+        should_pause = (
+            self._menu_running
+            or self._pause_menu.visible
+            or self._settings.visible
+            or not_playing_state
+        )
+        self._music_manager.set_context_paused(should_pause)
+        self._music_manager.update()
+
     def _handle_events(self) -> None:
         """Process all Pygame events for the current frame.
 
@@ -485,8 +504,17 @@ class GameLoop:
                 self._running = False
                 continue
 
-            if event.type == pygame.KEYDOWN and self._music_manager.handle_keydown(event.key):
-                continue
+            if (
+                event.type == pygame.KEYDOWN
+                and not self._menu_running
+                and not self._pause_menu.visible
+                and not self._settings.visible
+                and self._game_state_manager.game_state == GameState.PLAYING
+            ):
+                music_status = self._music_manager.handle_keydown(event.key)
+                if music_status is not None:
+                    self._show_music_status_overlay(music_status)
+                    continue
 
             if self._car_selection and self._car_selection.visible:
                 if self._car_selection.handle_event(event):
@@ -612,6 +640,7 @@ class GameLoop:
         self._render_sprite()
         self._game_hud.draw(self._screen)
         self._pause_menu.draw(self._screen, delta_time / 1000.0)
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
 
@@ -724,6 +753,7 @@ class GameLoop:
 
         if self._settings.auto_brake_assist and abs(self._target_steer) > 1.15 and self._player_car.current_speed > (self._max_speed * 0.45):
             self._is_braking = True
+        self._update_brake_audio()
         self._player_car.turn(
             max(-2, min(self._target_steer, 2)),
             self._player_car.turn_smoothing
@@ -767,6 +797,17 @@ class GameLoop:
             or collision_result.oil_hit
         ):
             self._sound_manager.play_sfx("environment/collision")
+
+    def _update_brake_audio(self) -> None:
+        """Play a brake SFX when braking starts."""
+        now_ms = pygame.time.get_ticks()
+        started_braking = self._is_braking and not self._was_braking
+
+        if started_braking and now_ms - self._last_brake_sfx_ms >= 180:
+            self._sound_manager.play_sfx("vehicle/brake")
+            self._last_brake_sfx_ms = now_ms
+
+        self._was_braking = self._is_braking
 
 
     def _refresh_display_surface(self) -> None:
@@ -854,8 +895,33 @@ class GameLoop:
             self._car_selection.update(car_selection_dt)
             self._car_selection.draw(self._screen)
 
+        self._draw_music_status_overlay()
         self._draw_perf_overlay()
         pygame.display.flip()
+
+    def _show_music_status_overlay(self, text: str, duration_ms: int = 2200) -> None:
+        self._music_overlay_text = str(text).strip()
+        self._music_overlay_until_ms = pygame.time.get_ticks() + int(duration_ms)
+
+    def _draw_music_status_overlay(self) -> None:
+        if not self._music_overlay_text:
+            return
+        if pygame.time.get_ticks() > self._music_overlay_until_ms:
+            self._music_overlay_text = ""
+            self._music_overlay_until_ms = 0
+            return
+
+        text_surface = self._music_overlay_font.render(self._music_overlay_text, True, (248, 245, 225))
+        width = text_surface.get_width() + 24
+        height = text_surface.get_height() + 14
+
+        x = (self._screen.get_width() - width) // 2
+        y = max(16, self._screen.get_height() - height - 22)
+        bg_rect = pygame.Rect(x, y, width, height)
+
+        pygame.draw.rect(self._screen, (10, 12, 20), bg_rect, border_radius=10)
+        pygame.draw.rect(self._screen, (220, 194, 124), bg_rect, 2, border_radius=10)
+        self._screen.blit(text_surface, (x + 12, y + 7))
 
     def _render_sprite(self) -> None:
         """Render the player car sprite to the screen."""
@@ -886,6 +952,8 @@ class GameLoop:
         if self._collision_handler:
             self._collision_handler.reset()
         self._selected_setting = 0
+        self._was_braking = False
+        self._last_brake_sfx_ms = 0
         self._target_steer = 0.0
         self._max_speed = self._player_car.max_speed
 
