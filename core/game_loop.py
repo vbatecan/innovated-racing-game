@@ -22,6 +22,7 @@ from core.boost_system import BoostSystem
 from core.gear_system import GearSystem
 from core.oil_swerve_physics import OilSwervePhysics
 from core.collision_handler import CollisionHandler
+from core.sound_manager import init_sound_manager
 from input.key_mapper import KeyMapper
 from input.steering_handler import SteeringHandler
 
@@ -116,6 +117,7 @@ class GameLoop:
         self._collision_handler: Optional[CollisionHandler] = None
         self._key_mapper = KeyMapper()
         self._steering_handler = SteeringHandler()
+        self._sound_manager = init_sound_manager()
 
         self._running = True
         self._return_to_menu = False
@@ -170,6 +172,7 @@ class GameLoop:
 
         self._initialize_car_selection()
         self._setup_menu_callbacks()
+        self._sound_manager.start_engine()
 
         logger.info("Starting Game Loop...")
         logger.info("Controls: Use your hands visible to the camera.")
@@ -259,6 +262,8 @@ class GameLoop:
                 return False
 
             action = self._homepage.handle_event(event)
+            if action:
+                self._sound_manager.play_sfx("ui/toggle.wav")
             if action == "quit":
                 logger.info("Homepage returned quit action")
                 return False
@@ -291,6 +296,8 @@ class GameLoop:
                 return False
 
             action = self._shop_screen.handle_event(event)
+            if action:
+                self._sound_manager.play_sfx("ui/toggle.wav")
             if action == "quit":  # ESC key in shop returns to menu
                 self._current_screen = "home"
             elif action == "start":  # Car selected, proceed to game
@@ -728,13 +735,21 @@ class GameLoop:
             screen_width=self._window_size["width"],
         )
 
+        self._sound_manager.update_engine(self._player_car.current_speed / self._max_speed)
+
         self._game_map.speed = float(self._player_car.current_speed)
         self._game_map.update_score(self._scoring_system.get_score())
         self._game_map.update(is_braking=self._is_braking)
 
         self._collision_handler.clamp_to_road()
 
+        prev_lives = self._game_state_manager.lives
         self._collision_handler.check_and_resolve_all()
+        
+        if self._game_state_manager.lives < prev_lives:
+            # Collision occurred!
+            collision_type = "environment/collision_heavy.wav" if self._collision_handler.is_out_of_control else "environment/collision_light.wav"
+            self._sound_manager.play_sfx(collision_type)
 
 
     def _refresh_display_surface(self) -> None:
