@@ -2,6 +2,7 @@ import os
 import random
 
 import pygame
+from core.resource_manager import ResourceManager
 
 from models.road import Road
 
@@ -104,7 +105,7 @@ class HeartBonusManager:
         filepath = os.path.join("resources", "models", "full hp.png")
         if os.path.exists(filepath):
             try:
-                img = pygame.image.load(filepath).convert_alpha()
+                img = ResourceManager.load_image(filepath, convert_alpha=True)
                 return img
             except pygame.error:
                 pass

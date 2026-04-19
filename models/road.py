@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import pygame
+from core.resource_manager import ResourceManager
 
 import config
 from models.lane import Lane
@@ -238,7 +239,7 @@ class Road:
                 return
 
             try:
-                image = pygame.image.load(str(map_path))
+                image = ResourceManager.load_image(str(map_path), convert_alpha=True)
                 # Scale image to fit window size
                 scaled_image = pygame.transform.scale(
                     image, (self.window_width, self.height)

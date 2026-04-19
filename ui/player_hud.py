@@ -12,6 +12,7 @@ import os
 from typing import Optional
 
 import pygame
+from core.resource_manager import ResourceManager
 
 from controller import Controller
 from models.player_car import PlayerCar
@@ -121,7 +122,7 @@ class PlayerHUD:
             filepath = os.path.join(base_path, filename)
             if os.path.exists(filepath):
                 try:
-                    img = pygame.image.load(filepath).convert_alpha()
+                    img = ResourceManager.load_image(filepath, convert_alpha=True)
                     self._lives_images[lives] = img
                 except pygame.error:
                     self._lives_images[lives] = None

@@ -2,6 +2,7 @@ import random
 from pathlib import Path
 
 import pygame
+from core.resource_manager import ResourceManager
 
 import config
 from models.lane import Lane
@@ -67,7 +68,7 @@ class ObstacleManager:
             if model_path.name in exclude_names:
                 continue
             try:
-                image = pygame.image.load(str(model_path))
+                image = ResourceManager.load_image(str(model_path), convert_alpha=True)
                 if pygame.display.get_surface() is not None:
                     image = image.convert_alpha()
                 models.append(image)

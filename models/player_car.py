@@ -1,4 +1,5 @@
 import pygame
+from core.resource_manager import ResourceManager
 
 from models.vehicle import Vehicle
 from models.car_data import get_car_by_id
@@ -66,7 +67,7 @@ class PlayerCar(Vehicle):
             return
 
         try:
-            image = pygame.image.load(car_data.image_path).convert_alpha()
+            image = ResourceManager.load_image(car_data.image_path, convert_alpha=True)
             fitted = self._fit_image_to_canvas(image, self.SPRITE_CANVAS_SIZE)
             self._base_car_image = fitted
             self.image = fitted.copy()

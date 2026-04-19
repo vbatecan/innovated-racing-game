@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 import pygame
+from core.resource_manager import ResourceManager
 import core.sound_manager as sound_manager_module
 
 from models.car_data import CARS, Car
@@ -186,7 +187,7 @@ class HomePageScreen:
             if not path.exists():
                 continue
             try:
-                self._car_images[car.id] = pygame.image.load(str(path)).convert_alpha()
+                self._car_images[car.id] = ResourceManager.load_image(str(path), convert_alpha=True).convert_alpha()
             except pygame.error:
                 continue
 

@@ -1,4 +1,5 @@
 import pygame
+from core.resource_manager import ResourceManager
 
 import config
 
@@ -19,7 +20,7 @@ class Vehicle(pygame.sprite.Sprite):
         self.width = width
         self.height = height
         self.image = pygame.transform.scale(
-            pygame.image.load(image_path).convert_alpha(), (self.width, self.height)
+            ResourceManager.load_image(image_path, convert_alpha=True), (self.width, self.height)
         )
         self.original_image = self.image.copy()
         self.rect = self.image.get_rect()

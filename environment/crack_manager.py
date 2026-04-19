@@ -3,6 +3,7 @@ from pathlib import Path
 
 import config
 import pygame
+from core.resource_manager import ResourceManager
 
 from models.crack import Crack
 from models.lane import Lane
@@ -54,7 +55,7 @@ class CrackManager:
         models: list[pygame.Surface] = []
         for model_path in sorted(self.model_dir.glob("Crack*.png")):
             try:
-                image = pygame.image.load(str(model_path))
+                image = ResourceManager.load_image(str(model_path), convert_alpha=True)
                 if pygame.display.get_surface() is not None:
                     image = image.convert_alpha()
                 models.append(image)

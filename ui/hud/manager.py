@@ -13,6 +13,7 @@ from typing import Dict, List, Tuple
 import cv2
 import numpy as np
 import pygame
+from core.resource_manager import ResourceManager
 
 from ui.core.constants import (
     ANIMATION,
@@ -110,7 +111,7 @@ class HUDManager:
             filepath: str = os.path.join(PATHS.models_path, filename)
             if os.path.exists(filepath):
                 try:
-                    img: Surface = pygame.image.load(filepath).convert_alpha()
+                    img: Surface = ResourceManager.load_image(filepath, convert_alpha=True)
                     self.life_images[lives] = img
                 except Exception:
                     self.life_images[lives] = None
