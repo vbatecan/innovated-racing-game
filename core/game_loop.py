@@ -877,7 +877,7 @@ class GameLoop:
                 self._screen,
                 self._overlay_title_font,
                 self._overlay_body_font,
-                self._scoring_system.get_score(),
+                display_currency,
             )
 
         if self._car_selection:
@@ -970,16 +970,16 @@ class GameLoop:
         if self._game_state_manager is None or self._game_state_manager.game_state != GameState.GAME_OVER:
             return
 
-        run_score = int(self._scoring_system.get_score())
-        if run_score > 0:
-            gained = self._car_manager.add_credits(run_score)
-            logger.info("Run cashout applied: +%s CR (score=%s)", gained, run_score)
+        run_currency = self._get_display_currency_value()
+        if run_currency > 0:
+            gained = self._car_manager.add_credits(run_currency)
+            logger.info("Run cashout applied: +%s CR (currency=%s)", gained, run_currency)
 
         self._run_score_cashed_out = True
 
     def _get_display_currency_value(self) -> int:
         """Return the currency value that should be displayed on HUD panels."""
-        return max(0, int(self._scoring_system.get_score()))
+        return max(0, int(self._scoring_system.get_distance()))
 
     def _initialize_car_selection(self) -> None:
         """Configure car selection UI callbacks.
