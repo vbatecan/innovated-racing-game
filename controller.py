@@ -77,9 +77,23 @@ class Controller:
         Opens the default camera device, configures its resolution, and launches
         the background update loop that performs hand detection.
         """
+        if self.thread is not None and self.thread.is_alive():
+            logger.info("Camera thread already running.")
+            return
+
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
+
         self.cap = cv2.VideoCapture(0)
+        if not self.cap.isOpened():
+            logger.error("Failed to open camera device.")
+            self.running = False
+            return
+
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.CAM_X_SIZE)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.CAM_Y_SIZE)
+        self._reset_controls()
         self.running = True
         self.thread = threading.Thread(target=self._update, daemon=True)
         self.thread.start()
@@ -92,15 +106,26 @@ class Controller:
         Signals the update loop to exit, joins the thread, and releases the
         camera handle if it is open.
         """
-        if self.thread is None or not self.thread.is_alive():
-            return
         self.running = False
-        if self.thread.is_alive():
+        if self.thread is not None and self.thread.is_alive():
             self.thread.join()
+        self.thread = None
 
         if self.cap is not None:
             self.cap.release()
+            self.cap = None
+
+        with self.lock:
+            self.current_frame = None
+            self.annotated_frame = None
+        self.latest_result = None
+        self._reset_controls()
         logger.info("Camera thread stopped.")
+
+    def restart_stream(self) -> None:
+        """Restart camera capture and gesture processing state."""
+        self.stop_stream()
+        self.start_stream()
 
     def _update(self):
         """

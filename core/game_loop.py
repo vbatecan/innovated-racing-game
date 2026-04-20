@@ -535,6 +535,7 @@ class GameLoop:
                         self._cash_out_run_score_to_credits()
                         self._game_state_manager.reset_run_state()
                         self._reset_subsystems()
+                        self._restart_camera_stream()
                         self._run_score_cashed_out = False
                     elif event.key in (pygame.K_l, pygame.K_b):
                         self._cash_out_run_score_to_credits()
@@ -659,6 +660,7 @@ class GameLoop:
         elif result == "Restart":
             self._game_state_manager.reset_run_state()
             self._reset_subsystems()
+            self._restart_camera_stream()
             self._run_score_cashed_out = False
             self._pause_menu.hide()
         elif result == "Settings":
@@ -966,6 +968,20 @@ class GameLoop:
         self._target_steer = 0.0
         self._reset_speed_scaling_progress()
         self._max_speed = self._player_car.max_speed
+
+    def _restart_camera_stream(self) -> None:
+        """Restart the detector stream so camera input resets with a run restart."""
+        if hasattr(self._game_hud, "set_camera_frame"):
+            self._game_hud.set_camera_frame(None)
+
+        try:
+            if hasattr(self._detector, "restart_stream"):
+                self._detector.restart_stream()
+            else:
+                self._detector.stop_stream()
+                self._detector.start_stream()
+        except Exception:
+            logger.exception("Failed to restart detector stream during run restart")
 
     def _cash_out_run_score_to_credits(self) -> None:
         """Convert final run score to credits once when leaving gameplay."""
