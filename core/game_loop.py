@@ -492,7 +492,7 @@ class GameLoop:
         self._music_manager.set_context_paused(should_pause)
         self._music_manager.update()
 
-    def _show_startup_splash(self, duration_ms: int = 5000) -> None:
+    def _show_startup_splash(self, duration_ms: int = 3000) -> None:
         """Display a startup splash image centered on screen for duration_ms.
 
         If resources/splash_start.jpg exists it will be displayed; otherwise
