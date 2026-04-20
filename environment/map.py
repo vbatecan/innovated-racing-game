@@ -201,6 +201,13 @@ class Map:
         self.oil_spills.empty()
         self.heart_bonus_manager.clear()
 
+    def reset(self) -> None:
+        """Reset the map state to the beginning."""
+        self.clear_hazards()
+        self.scroll_y = 0
+        self.current_score = 0
+        self.road.reset()
+
     def get_road_borders(self) -> tuple[int, int]:
         """
         Retrieve the left and right x-coordinates of the road boundaries.

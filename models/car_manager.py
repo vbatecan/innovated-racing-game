@@ -97,16 +97,31 @@ class CarManager:
 
     def update_best_score(self, new_score: float) -> List[Car]:
         """Update best score and grant small credit rewards for progression."""
+        # Calculate delta from the last known score in the current run
+        score_diff = new_score - getattr(self, "_last_session_score", 0.0)
+        
+        if score_diff > 0:
+            # Score increased, add the difference to credits
+            if not hasattr(self, "_fractional_credits"):
+                self._fractional_credits = 0.0
+            
+            self._fractional_credits += score_diff
+            gained = int(self._fractional_credits)
+            
+            if gained > 0:
+                self.credits += gained
+                self._fractional_credits -= gained
+        elif new_score < getattr(self, "_last_session_score", 0.0):
+            # Score reset (new run)
+            self._fractional_credits = 0.0
+            
+        self._last_session_score = new_score
+
         if new_score <= self.best_score:
             return []
 
         old_best = int(self.best_score)
         self.best_score = new_score
-
-        # Reward incremental progress to support upgrade purchases.
-        gained = max(0, int((new_score - old_best) / 10))
-        if gained:
-            self.credits += gained
 
         old_unlocked = {car.id for car in get_unlocked_cars(old_best)}
         new_unlocked = get_unlocked_cars(int(self.best_score))

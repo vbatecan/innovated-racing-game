@@ -252,6 +252,9 @@ class GameLoop:
         Returns:
             True to continue running, False to quit.
         """
+        if hasattr(self._homepage, "set_player_info") and self._car_manager:
+            self._homepage.set_player_info("Player", self._car_manager.credits)
+
         self._refresh_display_surface()
         
         # Get current mouse state

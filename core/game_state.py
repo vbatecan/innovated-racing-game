@@ -90,7 +90,7 @@ class GameStateManager:
         self._player_car.current_angle = 0.0
         self._player_car.turn(0.0, 0.0)
 
-        self._game_map.clear_hazards()
+        self._game_map.reset()
 
         self.game_state = GameState.PLAYING
         self.pause_state = False

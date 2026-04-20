@@ -297,6 +297,16 @@ class Road:
             else:
                 self._apply_interpolated_borders(progress)
 
+    def reset(self) -> None:
+        """Reset the road to the default starting map."""
+        self.current_map_index = 0
+        self.transition_from_map_index = 0
+        self.transition_to_map_index = 0
+        self.transition_progress_px = 0.0
+        self.is_transitioning = False
+        self.bg_y_offset = 0
+        self._apply_map_borders(0)
+
     def set_map_by_score(self, score: int) -> None:
         """
         Switch background map based on score threshold.
