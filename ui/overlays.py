@@ -157,6 +157,7 @@ def draw_game_over_overlay(
     title = title_font.render("GAME OVER", True, (255, 90, 90))
     score_text = body_font.render(f"Currency Earned: CR {final_score}", True, (255, 255, 255))
     retry_text = body_font.render("Press R to restart", True, (200, 200, 200))
+    lobby_text = body_font.render("Press L to go back to lobby", True, (200, 200, 200))
 
     screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 34))
     screen.blit(
@@ -164,4 +165,7 @@ def draw_game_over_overlay(
     )
     screen.blit(
         retry_text, (panel.centerx - retry_text.get_width() // 2, panel.y + 188)
+    )
+    screen.blit(
+        lobby_text, (panel.centerx - lobby_text.get_width() // 2, panel.y + 224)
     )

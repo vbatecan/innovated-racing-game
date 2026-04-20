@@ -530,11 +530,16 @@ class GameLoop:
                 continue
 
             if self._game_state_manager.game_state == GameState.GAME_OVER:
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-                    self._cash_out_run_score_to_credits()
-                    self._game_state_manager.reset_run_state()
-                    self._reset_subsystems()
-                    self._run_score_cashed_out = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
+                        self._cash_out_run_score_to_credits()
+                        self._game_state_manager.reset_run_state()
+                        self._reset_subsystems()
+                        self._run_score_cashed_out = False
+                    elif event.key in (pygame.K_l, pygame.K_b):
+                        self._cash_out_run_score_to_credits()
+                        self._return_to_menu = True
+                        self._running = False
                 continue
 
             if self._settings.visible:
