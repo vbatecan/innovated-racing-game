@@ -95,29 +95,18 @@ class CarManager:
         self.unlocked_cars = [car.id for car in unlocked]
         self.save()
 
-    def update_best_score(self, new_score: float) -> List[Car]:
-        """Update best score and grant small credit rewards for progression."""
-        # Calculate delta from the last known score in the current run
-        score_diff = new_score - getattr(self, "_last_session_score", 0.0)
-        
-        if score_diff > 0:
-            # Score increased, add the difference to credits
-            if not hasattr(self, "_fractional_credits"):
-                self._fractional_credits = 0.0
-            
-            self._fractional_credits += score_diff
-            gained = int(self._fractional_credits)
-            
-            if gained > 0:
-                self.credits += gained
-                self._fractional_credits -= gained
-                self.save()  # Save credits incrementally
-        elif new_score < getattr(self, "_last_session_score", 0.0):
-            # Score reset (new run)
-            self._fractional_credits = 0.0
-            
-        self._last_session_score = new_score
+    def add_credits(self, amount: int) -> int:
+        """Add credits to the player's balance and persist the result."""
+        gained = max(0, int(amount))
+        if gained <= 0:
+            return 0
 
+        self.credits += gained
+        self.save()
+        return gained
+
+    def update_best_score(self, new_score: float) -> List[Car]:
+        """Update best score and return newly unlocked cars."""
         if new_score <= self.best_score:
             return []
 

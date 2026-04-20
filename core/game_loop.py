@@ -127,6 +127,7 @@ class GameLoop:
         self._max_speed = player_car.max_speed
         self._music_overlay_text = ""
         self._music_overlay_until_ms = 0
+        self._run_score_cashed_out = False
 
 
         # Performance: reuse a persistent sprite group instead of allocating each frame.
@@ -393,11 +394,14 @@ class GameLoop:
             # Reset flags for new gameplay session
             self._running = True
             self._return_to_menu = False
+            self._run_score_cashed_out = False
 
             # Main gameplay loop
             logger.info("Entering main gameplay loop...")
             while self._running:
                 self._process_frame()
+
+            self._cash_out_run_score_to_credits()
 
             # Check if user wants to return to menu instead of quitting
             if self._return_to_menu:
@@ -444,6 +448,9 @@ class GameLoop:
             and not self._settings.visible
         ):
             self._update_gameplay()
+
+        if self._game_state_manager.game_state == GameState.GAME_OVER:
+            self._cash_out_run_score_to_credits()
 
         self._render()
 
@@ -538,8 +545,10 @@ class GameLoop:
 
             if self._game_state_manager.game_state == GameState.GAME_OVER:
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                    self._cash_out_run_score_to_credits()
                     self._game_state_manager.reset_run_state()
                     self._reset_subsystems()
+                    self._run_score_cashed_out = False
                 continue
 
             if self._settings.visible:
@@ -659,6 +668,7 @@ class GameLoop:
         elif result == "Restart":
             self._game_state_manager.reset_run_state()
             self._reset_subsystems()
+            self._run_score_cashed_out = False
             self._pause_menu.hide()
         elif result == "Settings":
             self._pause_menu.hide()
@@ -826,12 +836,14 @@ class GameLoop:
         self._game_map.draw(self._screen)
         self._render_sprite()
 
+        display_currency = self._get_display_currency_value()
+
         fps = self._clock.get_fps()
         self._hud.update_from_game(
             self._player_car,
             self._detector,
             gear=str(self._gear_system.current_gear),
-            score=self._scoring_system.get_score(),
+            score=display_currency,
             lives=self._game_state_manager.lives,
             fps=int(fps),
             max_fps=self._settings.max_fps,
@@ -850,7 +862,7 @@ class GameLoop:
         self._game_hud.update(
             speed=self._player_car.current_speed,
             max_speed=self._max_speed,
-            score=self._scoring_system.get_score(),
+            score=display_currency,
             lives=int(self._game_state_manager.lives),
             distance=self._scoring_system.get_distance(),
             gear=self._gear_system.current_gear,
@@ -948,6 +960,28 @@ class GameLoop:
         self._last_brake_sfx_ms = 0
         self._target_steer = 0.0
         self._max_speed = self._player_car.max_speed
+
+    def _cash_out_run_score_to_credits(self) -> None:
+        """Convert final run score to credits once when leaving gameplay."""
+        if self._run_score_cashed_out or not self._car_manager:
+            return
+
+        # Credits are awarded only for completed runs that reached game over.
+        if self._game_state_manager is None or self._game_state_manager.game_state != GameState.GAME_OVER:
+            return
+
+        run_score = int(self._scoring_system.get_score())
+        if run_score > 0:
+            gained = self._car_manager.add_credits(run_score)
+            logger.info("Run cashout applied: +%s CR (score=%s)", gained, run_score)
+
+        self._run_score_cashed_out = True
+
+    def _get_display_currency_value(self) -> int:
+        """Return the currency value that should be displayed on HUD panels."""
+        # HUD currency represents the current run score (session points),
+        # not the persistent wallet balance shown in menu/shop screens.
+        return max(0, int(self._scoring_system.get_score()))
 
     def _initialize_car_selection(self) -> None:
         """Configure car selection UI callbacks.

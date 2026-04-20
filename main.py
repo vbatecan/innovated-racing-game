@@ -88,6 +88,7 @@ def main() -> None:
         window_size=runtime_window_size,
         homepage=homepage,
         shop_screen=shop_screen,
+        car_manager=car_manager,
     )
 
     game_loop.initialize()

@@ -218,22 +218,25 @@ class Controller:
 
     @staticmethod
     def _is_wacky_gesture(hand_landmarks) -> bool:
-        """Detect wacky 'shaka' gesture: thumb and pinky extended, others curled."""
-        thumb_tip = hand_landmarks[4]
-        thumb_ip = hand_landmarks[3]
-        thumb_mcp = hand_landmarks[2]
+        """Detect wacky gesture: index and middle fingers extended."""
+        index_tip = hand_landmarks[8]
+        index_pip = hand_landmarks[6]
+        index_mcp = hand_landmarks[5]
+        middle_tip = hand_landmarks[12]
+        middle_pip = hand_landmarks[10]
+        middle_mcp = hand_landmarks[9]
+
+        index_extended = index_tip.y < index_pip.y < index_mcp.y
+        middle_extended = middle_tip.y < middle_pip.y < middle_mcp.y
+
+        ring_tip = hand_landmarks[16]
+        ring_pip = hand_landmarks[14]
         pinky_tip = hand_landmarks[20]
         pinky_pip = hand_landmarks[18]
+        ring_curled = ring_tip.y > ring_pip.y
+        pinky_curled = pinky_tip.y > pinky_pip.y
 
-        thumb_extended = thumb_tip.y < thumb_ip.y < thumb_mcp.y
-        pinky_extended = pinky_tip.y < pinky_pip.y
-
-        middle_curled = 0
-        for tip_i, pip_i in zip([8, 12, 16], [6, 10, 14]):
-            if hand_landmarks[tip_i].y > hand_landmarks[pip_i].y:
-                middle_curled += 1
-
-        return thumb_extended and pinky_extended and middle_curled >= 3
+        return index_extended and middle_extended and ring_curled and pinky_curled
 
     def _update_shift_state(self, left_hand, right_hand) -> None:
         """
@@ -381,9 +384,9 @@ class Controller:
 
         primary_hand = hands[0]
         self._detect_swipes(primary_hand)
-        thumbs_up = any(self._is_wacky_gesture(hand) for hand in hands)
+        wacky_gesture_active = any(self._is_wacky_gesture(hand) for hand in hands)
 
-        if thumbs_up:
+        if wacky_gesture_active:
             self._question_select_hold_frames += 1
         else:
             self._question_select_hold_frames = 0
