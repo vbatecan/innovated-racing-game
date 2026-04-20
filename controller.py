@@ -104,7 +104,8 @@ class Controller:
         Stop the camera capture and clean up resources.
 
         Signals the update loop to exit, joins the thread, and releases the
-        camera handle if it is open.
+        camera handle if it is open. Also attempt to close and dispose of the
+        MediaPipe landmarker so it can be safely recreated later.
         """
         self.running = False
         if self.thread is not None and self.thread.is_alive():
@@ -115,6 +116,16 @@ class Controller:
             self.cap.release()
             self.cap = None
 
+        # Try to close MediaPipe resources - some versions expose a close()
+        # method on the created landmarker. If not available, ignore errors.
+        try:
+            if hasattr(self, 'lm') and self.lm is not None:
+                close_fn = getattr(self.lm, 'close', None)
+                if callable(close_fn):
+                    close_fn()
+        except Exception:
+            logger.exception('Error while closing MediaPipe landmarker')
+
         with self.lock:
             self.current_frame = None
             self.annotated_frame = None
@@ -123,8 +134,36 @@ class Controller:
         logger.info("Camera thread stopped.")
 
     def restart_stream(self) -> None:
-        """Restart camera capture and gesture processing state."""
+        """Restart camera capture and gesture processing state.
+
+        Re-initializes MediaPipe hand landmarker instance before starting the
+        camera stream to avoid stale detector state that can cause gesture
+        input to become unresponsive after a run restart.
+        """
+        # Stop existing capture and try to fully tear down detector state.
         self.stop_stream()
+
+        # Recreate the MediaPipe hand landmarker so internal running-mode
+        # state is fresh. Wrap in try/except to avoid crashing if SDK changes.
+        try:
+            self.lm = vision.HandLandmarker.create_from_options(
+                HandLandmarkerOptions(
+                    base_options=BaseOptions(
+                        model_asset_path="resources/hand_landmarker.task",
+                    ),
+                    num_hands=2,
+                    running_mode=vision.RunningMode.LIVE_STREAM,
+                    result_callback=self.callback,
+                    min_hand_detection_confidence=0.5,
+                    min_hand_presence_confidence=0.5,
+                    min_tracking_confidence=0.5,
+                )
+            )
+        except Exception:
+            logger.exception("Failed to re-create MediaPipe hand landmarker during restart")
+
+        # Small pause to let resources settle, then start capture again.
+        time.sleep(0.15)
         self.start_stream()
 
     def _update(self):
