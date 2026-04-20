@@ -99,6 +99,6 @@ class CollisionConstants:
 class ScoringConstants:
     """Constants for the scoring system."""
 
-    BASE_SPEED: float = 10.0
-    SPEED_INCREMENT_THRESHOLD: int = 300
+    BASE_SPEED: float = 4.0
+    SPEED_INCREMENT_THRESHOLD: int = 500
     SPEED_INCREMENT_PER_THRESHOLD: float = 1.0

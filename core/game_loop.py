@@ -128,6 +128,8 @@ class GameLoop:
         self._music_overlay_text = ""
         self._music_overlay_until_ms = 0
         self._run_score_cashed_out = False
+        self._last_frame_score_for_speed = 0
+        self._score_gain_for_speed_scaling = 0
 
 
         # Performance: reuse a persistent sprite group instead of allocating each frame.
@@ -395,6 +397,7 @@ class GameLoop:
             self._running = True
             self._return_to_menu = False
             self._run_score_cashed_out = False
+            self._reset_speed_scaling_progress()
 
             # Main gameplay loop
             logger.info("Entering main gameplay loop...")
@@ -933,17 +936,32 @@ class GameLoop:
         self._player_sprite_group.draw(self._screen)
 
     def _update_speed_from_score(self) -> None:
-        """Adjust maximum speed based on current score milestones.
+        """Adjust maximum speed using score gains accumulated per frame.
 
-        Increases max speed incrementally as the player reaches score thresholds.
+        Speed scaling is driven by positive score delta each frame so only score
+        increases contribute to speed growth.
         """
-        score = self._scoring_system.get_score()
-        speed_increments = score // ScoringConstants.SPEED_INCREMENT_THRESHOLD
+        score = max(0, int(self._scoring_system.get_score()))
+        frame_score_gain = score - self._last_frame_score_for_speed
+        if frame_score_gain > 0:
+            self._score_gain_for_speed_scaling += frame_score_gain
+
+        self._last_frame_score_for_speed = score
+
+        speed_increments = (
+            self._score_gain_for_speed_scaling // ScoringConstants.SPEED_INCREMENT_THRESHOLD
+        )
         new_max_speed = (
             ScoringConstants.BASE_SPEED
             + (speed_increments * ScoringConstants.SPEED_INCREMENT_PER_THRESHOLD)
         )
         self._player_car.set_max_speed(new_max_speed)
+
+    def _reset_speed_scaling_progress(self) -> None:
+        """Reset per-frame score tracking used by speed scaling."""
+        current_score = max(0, int(self._scoring_system.get_score()))
+        self._last_frame_score_for_speed = current_score
+        self._score_gain_for_speed_scaling = current_score
 
     def _reset_subsystems(self) -> None:
         """Reset all gameplay subsystems after a game restart.
@@ -959,6 +977,7 @@ class GameLoop:
         self._was_braking = False
         self._last_brake_sfx_ms = 0
         self._target_steer = 0.0
+        self._reset_speed_scaling_progress()
         self._max_speed = self._player_car.max_speed
 
     def _cash_out_run_score_to_credits(self) -> None:
