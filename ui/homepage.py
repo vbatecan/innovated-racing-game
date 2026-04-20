@@ -433,11 +433,15 @@ class HomePageScreen:
         if item.category == "Cars":
             if item.car_id is None:
                 return
-            if not self.car_manager.is_car_unlocked(item.car_id):
-                self._push_message(f"Locked: reach {item.unlock_score:,} score.")
+            if self.car_manager.is_car_unlocked(item.car_id):
+                self.car_manager.select_car(item.car_id)
+                self._push_message(f"Selected {item.name}.")
                 return
-            self.car_manager.select_car(item.car_id)
-            self._push_message(f"Selected {item.name}.")
+
+            self._dialog_visible = True
+            self._dialog_item = item
+            self._dialog_action = 0
+            self._focus_zone = "dialog"
             return
 
         if item.category == "Upgrades" and self.car_manager.has_upgrade(item.id):
@@ -470,7 +474,17 @@ class HomePageScreen:
             self._close_dialog()
             return
 
-        self._push_message(f"Purchased {item.name} for {item.price}.")
+        if item.car_id is None:
+            self._push_message("Unknown car.")
+            self._close_dialog()
+            return
+
+        success, message = self.car_manager.purchase_car(item.car_id, item.price)
+        if success:
+            self.car_manager.select_car(item.car_id)
+            self._push_message(f"Purchased {item.name} for CR {item.price:,}.")
+        else:
+            self._push_message(message)
         self._close_dialog()
 
     def _close_dialog(self) -> None:
@@ -675,7 +689,7 @@ class HomePageScreen:
                 row_y += 18
 
         if item.category == "Cars" and not unlocked:
-            price_text = self.small_font.render(f"Unlock @ {item.unlock_score:,}", True, self.danger)
+            price_text = self.small_font.render(f"CR {item.price:,} | {item.unlock_score:,} pts", True, self.accent_warm)
         elif owned:
             price_text = self.small_font.render("OWNED", True, self.good)
         else:

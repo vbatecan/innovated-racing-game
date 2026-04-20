@@ -4,7 +4,7 @@ import json
 import os
 from typing import List, Optional
 
-from models.car_data import Car, get_car_by_id, get_unlocked_cars
+from models.car_data import CARS, Car, get_car_by_id, get_unlocked_cars
 from models.upgrades import Car as UpgradeCar
 from models.upgrades import UPGRADES, calculate_effective_stats
 
@@ -27,6 +27,7 @@ class CarManager:
         self.selected_car_id: int = 1
         self.best_score: float = 0.0
         self.unlocked_cars: List[int] = [1]
+        self.purchased_cars: List[int] = []
 
         self.credits: int = 2400
         self.owned_upgrades: List[str] = []
@@ -43,6 +44,8 @@ class CarManager:
             except (json.JSONDecodeError, IOError, ValueError):
                 self.best_score = 0.0
 
+        score_unlocked_ids = {car.id for car in get_unlocked_cars(int(self.best_score))}
+
         legacy_fields_detected = False
         if os.path.exists(self.SAVE_FILE):
             try:
@@ -50,8 +53,23 @@ class CarManager:
                     data = json.load(f)
                     legacy_fields_detected = any(key in data for key in self.LEGACY_SHOP_KEYS)
                     self.selected_car_id = int(data.get("selected_car", 1))
-                    self.unlocked_cars = list(data.get("unlocked_cars", [1]))
+                    self.unlocked_cars = [int(car_id) for car_id in data.get("unlocked_cars", [1])]
                     self.credits = int(data.get("credits", 2400 + int(self.best_score / 30)))
+
+                    saved_purchased = data.get("purchased_cars")
+                    if isinstance(saved_purchased, list):
+                        self.purchased_cars = [
+                            car_id
+                            for car_id in (int(cid) for cid in saved_purchased)
+                            if get_car_by_id(car_id) is not None and car_id not in score_unlocked_ids
+                        ]
+                    else:
+                        # Legacy saves only contain unlocked cars; preserve any extras as purchases.
+                        self.purchased_cars = [
+                            car_id
+                            for car_id in self.unlocked_cars
+                            if get_car_by_id(car_id) is not None and car_id not in score_unlocked_ids
+                        ]
 
                     owned = data.get("owned_upgrades", [])
                     if isinstance(owned, list):
@@ -59,15 +77,17 @@ class CarManager:
             except (json.JSONDecodeError, IOError, ValueError):
                 self.selected_car_id = 1
                 self.unlocked_cars = [1]
+                self.purchased_cars = []
                 self.credits = 2400 + int(self.best_score / 30)
                 self.owned_upgrades = []
         else:
             self.credits = 2400 + int(self.best_score / 30)
 
+        self._update_unlocked_cars()
+
         if self.selected_car_id not in self.unlocked_cars:
             self.selected_car_id = self.unlocked_cars[0] if self.unlocked_cars else 1
-
-        self._update_unlocked_cars()
+            self.save()
 
         if legacy_fields_detected:
             self.save()
@@ -78,6 +98,7 @@ class CarManager:
         data = {
             "selected_car": self.selected_car_id,
             "unlocked_cars": self.unlocked_cars,
+            "purchased_cars": self.purchased_cars,
             "credits": self.credits,
             "owned_upgrades": self.owned_upgrades,
         }
@@ -89,8 +110,15 @@ class CarManager:
             print(f"Failed to save car data: {exc}")
 
     def _update_unlocked_cars(self) -> None:
-        unlocked = get_unlocked_cars(int(self.best_score))
-        self.unlocked_cars = [car.id for car in unlocked]
+        score_unlocked = {car.id for car in get_unlocked_cars(int(self.best_score))}
+        self.purchased_cars = sorted(
+            {
+                car_id
+                for car_id in self.purchased_cars
+                if get_car_by_id(car_id) is not None and car_id not in score_unlocked
+            }
+        )
+        self.unlocked_cars = sorted(score_unlocked.union(self.purchased_cars) or {1})
         self.save()
 
     def add_credits(self, amount: int) -> int:
@@ -132,7 +160,24 @@ class CarManager:
         return car_id in self.unlocked_cars
 
     def get_unlocked_cars(self) -> List[Car]:
-        return get_unlocked_cars(int(self.best_score))
+        return [car for car in CARS if car.id in self.unlocked_cars]
+
+    def purchase_car(self, car_id: int, price: int) -> tuple[bool, str]:
+        car = get_car_by_id(car_id)
+        if car is None:
+            return False, "Unknown car."
+        if self.is_car_unlocked(car_id):
+            return False, f"{car.name} is already available."
+
+        final_price = max(0, int(price))
+        if self.credits < final_price:
+            return False, "Not enough credits."
+
+        self.credits -= final_price
+        if car_id not in self.purchased_cars:
+            self.purchased_cars.append(car_id)
+        self._update_unlocked_cars()
+        return True, f"Purchased {car.name}."
 
     def get_unlock_progress(self, car_id: int) -> dict:
         car = get_car_by_id(car_id)

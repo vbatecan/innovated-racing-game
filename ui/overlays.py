@@ -62,6 +62,18 @@ def draw_question_overlay(
 
     draw_rounded_rect(screen, border_color, panel, 3)
 
+    difficulty = getattr(question, "difficulty", "EASY")
+    difficulty_color = {
+        "EASY": (120, 255, 150),
+        "MEDIUM": (255, 220, 120),
+        "HARD": (255, 140, 140),
+    }.get(difficulty, (200, 200, 200))
+    difficulty_text = body_font.render(
+        f"Difficulty: {difficulty}",
+        True,
+        difficulty_color,
+    )
+
     prompt = body_font.render(question.prompt, True, (255, 255, 255))
     key_range = ", ".join(str(i) for i in range(1, question.answer_count + 1))
     hint = body_font.render(
@@ -72,9 +84,13 @@ def draw_question_overlay(
 
     screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 24))
     screen.blit(subtitle, (panel.centerx - subtitle.get_width() // 2, panel.y + 60))
-    screen.blit(prompt, (panel.centerx - prompt.get_width() // 2, panel.y + 105))
+    screen.blit(
+        difficulty_text,
+        (panel.centerx - difficulty_text.get_width() // 2, panel.y + 96),
+    )
+    screen.blit(prompt, (panel.centerx - prompt.get_width() // 2, panel.y + 130))
 
-    option_y = panel.y + 160
+    option_y = panel.y + 185
     for index, option in enumerate(question.options, start=1):
         is_selected = (index - 1) == selected_option
         option_color = (255, 255, 100) if is_selected else (240, 240, 240)
