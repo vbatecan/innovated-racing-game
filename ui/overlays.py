@@ -12,6 +12,33 @@ from models.question import Question
 from ui.game_ui import draw_rounded_rect
 
 
+def _wrap_text_lines(
+    font: pygame.font.Font,
+    text: str,
+    max_width: int,
+) -> list[str]:
+    """Split text into lines that fit the provided pixel width."""
+    cleaned = str(text).strip()
+    if not cleaned:
+        return [""]
+
+    words = cleaned.split()
+    lines: list[str] = []
+    current_line = words[0]
+
+    for word in words[1:]:
+        candidate = f"{current_line} {word}"
+        if font.size(candidate)[0] <= max_width:
+            current_line = candidate
+            continue
+
+        lines.append(current_line)
+        current_line = word
+
+    lines.append(current_line)
+    return lines
+
+
 def draw_question_overlay(
     screen: pygame.Surface,
     title_font: pygame.font.Font,
@@ -74,12 +101,12 @@ def draw_question_overlay(
         difficulty_color,
     )
 
-    prompt = body_font.render(question.prompt, True, (255, 255, 255))
+    prompt_lines = _wrap_text_lines(body_font, question.prompt, panel.width - 96)
     key_range = ", ".join(str(i) for i in range(1, question.answer_count + 1))
-    hint = body_font.render(
+    hint_lines = _wrap_text_lines(
+        body_font,
         f"Press {key_range} / Swipe up/down / Close index finger to confirm",
-        True,
-        (180, 180, 180),
+        panel.width - 80,
     )
 
     screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 24))
@@ -88,18 +115,35 @@ def draw_question_overlay(
         difficulty_text,
         (panel.centerx - difficulty_text.get_width() // 2, panel.y + 96),
     )
-    screen.blit(prompt, (panel.centerx - prompt.get_width() // 2, panel.y + 130))
 
-    option_y = panel.y + 185
+    line_height = body_font.get_height()
+    prompt_y = panel.y + 130
+    for prompt_line in prompt_lines:
+        prompt_surface = body_font.render(prompt_line, True, (255, 255, 255))
+        screen.blit(prompt_surface, (panel.centerx - prompt_surface.get_width() // 2, prompt_y))
+        prompt_y += line_height + 4
+
+    hint_block_height = len(hint_lines) * (line_height + 2)
+    hint_start_y = panel.bottom - 24 - hint_block_height
+
+    option_y = prompt_y + 14
+    option_count = max(1, len(question.options))
+    available_option_height = max(24, hint_start_y - option_y - 10)
+    option_spacing = max(26, min(42, available_option_height // option_count))
+
     for index, option in enumerate(question.options, start=1):
         is_selected = (index - 1) == selected_option
         option_color = (255, 255, 100) if is_selected else (240, 240, 240)
         prefix = "> " if is_selected else "  "
         option_text = body_font.render(f"{prefix}{index}) {option}", True, option_color)
         screen.blit(option_text, (panel.x + 64, option_y))
-        option_y += 42
+        option_y += option_spacing
 
-    screen.blit(hint, (panel.centerx - hint.get_width() // 2, panel.bottom - 52))
+    hint_y = hint_start_y
+    for hint_line in hint_lines:
+        hint_surface = body_font.render(hint_line, True, (180, 180, 180))
+        screen.blit(hint_surface, (panel.centerx - hint_surface.get_width() // 2, hint_y))
+        hint_y += line_height + 2
 
 
 def draw_last_chance_overlay(
