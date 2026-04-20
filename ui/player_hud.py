@@ -304,9 +304,9 @@ class PlayerHUD:
                 (0, 0, panel_w, 3),
             )
 
-            score_text = f"{self.score or 0:,}"
+            score_text = f"CR {self.score or 0:,}"
             score_surf = self.font_large.render(score_text, True, self._text_color)
-            label_surf = self.font_small.render("SCORE", True, self._muted_color)
+            label_surf = self.font_small.render("CURRENCY", True, self._muted_color)
 
             self._score_panel_surf.blit(label_surf, (20, 12))
             self._score_panel_surf.blit(score_surf, (20, 30))

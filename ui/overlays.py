@@ -139,7 +139,7 @@ def draw_game_over_overlay(
     draw_rounded_rect(screen, (255, 80, 80), panel, 3)
 
     title = title_font.render("GAME OVER", True, (255, 90, 90))
-    score_text = body_font.render(f"Final Score: {final_score}", True, (255, 255, 255))
+    score_text = body_font.render(f"Currency Earned: CR {final_score}", True, (255, 255, 255))
     retry_text = body_font.render("Press R to restart", True, (200, 200, 200))
 
     screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 34))

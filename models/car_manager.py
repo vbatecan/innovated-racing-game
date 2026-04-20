@@ -111,6 +111,7 @@ class CarManager:
             if gained > 0:
                 self.credits += gained
                 self._fractional_credits -= gained
+                self.save()  # Save credits incrementally
         elif new_score < getattr(self, "_last_session_score", 0.0):
             # Score reset (new run)
             self._fractional_credits = 0.0

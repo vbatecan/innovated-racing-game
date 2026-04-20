@@ -280,9 +280,9 @@ class HUDManager:
 
         self._draw_glass_panel(screen, x, y, w, h)
 
-        score_text: str = f"{self.score:,}"
+        score_text: str = f"CR {self.score:,}"
         score_surf: Surface = self.font_medium.render(score_text, True, COLORS.text)
-        label_surf: Surface = self.font_small.render("SCORE", True, COLORS.muted)
+        label_surf: Surface = self.font_small.render("CURRENCY", True, COLORS.muted)
 
         screen.blit(label_surf, (x + 15, y + 10))
         screen.blit(score_surf, (x + 15, y + 30))
