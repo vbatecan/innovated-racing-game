@@ -59,7 +59,8 @@ class Road:
         self.current_map_index = 0
         self.transition_from_map_index = 0
         self.transition_to_map_index = 0
-        self.transition_progress_px = 0.0
+        self.transition_frame_count = 0
+        self.TRANSITION_FRAMES = 120
         self.is_transitioning = False
         self.active_border_left = self.default_x
         self.active_border_right = self.default_x + self.default_width
@@ -274,20 +275,13 @@ class Road:
                 self.bg_y_offset -= self.height
 
         if self.is_transitioning:
-            self.transition_progress_px += max(0, int(speed))
-            transition_distance = max(1, int(config.MAP_TRANSITION_DISTANCE))
-            raw_progress = self.transition_progress_px / float(transition_distance)
-            
-            if raw_progress < 0.5:
-                progress = 4.0 * raw_progress * raw_progress * raw_progress
-            else:
-                progress = 1.0 - pow(-2.0 * raw_progress + 2.0, 3.0) / 2.0
-            
-            progress = max(0.0, min(1.0, progress))
+            self.transition_frame_count += 1
+            raw_progress = self.transition_frame_count / float(self.TRANSITION_FRAMES)
+            progress = max(0.0, min(1.0, raw_progress))
 
             if raw_progress >= 1.0:
                 self.is_transitioning = False
-                self.transition_progress_px = float(transition_distance)
+                self.transition_frame_count = self.TRANSITION_FRAMES
                 self._apply_map_borders(self.transition_to_map_index)
             else:
                 self._apply_interpolated_borders(progress)
@@ -297,7 +291,7 @@ class Road:
         self.current_map_index = 0
         self.transition_from_map_index = 0
         self.transition_to_map_index = 0
-        self.transition_progress_px = 0.0
+        self.transition_frame_count = 0
         self.is_transitioning = False
         self.bg_y_offset = 0
         self._apply_map_borders(0)
@@ -331,7 +325,7 @@ class Road:
             )
             self.transition_to_map_index = map_index
         
-        self.transition_progress_px = 0.0
+        self.transition_frame_count = 0
         self.is_transitioning = True
         self.current_map_index = map_index
         self._apply_interpolated_borders(0.0)
@@ -413,10 +407,9 @@ class Road:
             if self.is_transitioning and 0 <= self.transition_from_map_index < len(
                 self.bg_images
             ) and 0 <= self.transition_to_map_index < len(self.bg_images):
-                transition_distance = max(1, int(config.MAP_TRANSITION_DISTANCE))
                 progress = max(
                     0.0,
-                    min(1.0, self.transition_progress_px / float(transition_distance)),
+                    min(1.0, self.transition_frame_count / float(self.TRANSITION_FRAMES)),
                 )
                 seam_y = int(progress * self.height)
                 from_bg = self.bg_images[self.transition_from_map_index]
