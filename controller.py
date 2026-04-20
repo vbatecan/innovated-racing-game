@@ -55,6 +55,7 @@ class Controller:
         self._prev_right_hand_y = None
         self.swipe_threshold = 0.02
         self.require_two_hands = True
+        self._last_timestamp_ms = -1
 
         self.lm = vision.HandLandmarker.create_from_options(
             HandLandmarkerOptions(
@@ -134,8 +135,6 @@ class Controller:
         Reads frames from the camera, flips them for a mirror view, and submits
         them to MediaPipe. The latest annotated frame is stored for rendering.
         """
-        start_time = time.monotonic()
-        self._last_timestamp_ms = -1
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
@@ -144,7 +143,9 @@ class Controller:
 
             frame = cv2.flip(frame, 1)
 
-            timestamp_ms = int((time.monotonic() - start_time) * 1000)
+            # LIVE_STREAM mode requires timestamps to be monotonic across the
+            # lifetime of the detector, including restarts.
+            timestamp_ms = int(time.monotonic_ns() / 1_000_000)
             if timestamp_ms <= self._last_timestamp_ms:
                 timestamp_ms = self._last_timestamp_ms + 1
             self._last_timestamp_ms = timestamp_ms
