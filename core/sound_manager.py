@@ -38,17 +38,13 @@ class SoundManager:
         return max(0.0, min(1.0, float(value)))
 
     def _sfx_output_scale(self) -> float:
-        """Compute effective SFX scale from runtime settings.
-
-        A slight boost keeps SFX punchy even when source assets are quiet.
-        """
+        """Compute effective SFX scale from runtime settings."""
         if self._settings is None:
             return 1.0
 
         master = self._clamp01(getattr(self._settings, "master_volume", 1.0))
         sfx = self._clamp01(getattr(self._settings, "sfx_volume", 1.0))
-        boost = 1.35
-        return self._clamp01(master * sfx * boost)
+        return self._clamp01(master * sfx)
 
     def _effective_sfx_volume(self, volume: float) -> float:
         return self._clamp01(float(volume) * self._sfx_output_scale())
@@ -117,6 +113,7 @@ class SoundManager:
         if loop:
             channel = pygame.mixer.find_channel()
             if channel:
+                channel.set_volume(self._effective_sfx_volume(0.32))
                 channel.play(loop, loops=-1)
                 self.engine_channels["idle"] = channel
                 self.current_engine_state = "idle"
@@ -131,7 +128,7 @@ class SoundManager:
     def update_engine(self, speed):
         """
         Adjusts engine sound based on speed.
-        In a simple implementation, we modulate volume or switch loops.
+        In a simple implementation, we modulate volume.
         """
         if not self._sfx_enabled:
             return

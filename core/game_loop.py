@@ -798,8 +798,8 @@ class GameLoop:
         now_ms = pygame.time.get_ticks()
         started_braking = self._is_braking and not self._was_braking
 
-        if started_braking and now_ms - self._last_brake_sfx_ms >= 180:
-            self._sound_manager.play_sfx("vehicle/brake")
+        if started_braking and now_ms - self._last_brake_sfx_ms >= 300:
+            self._sound_manager.play_sfx("vehicle/brake", volume=0.5)
             self._last_brake_sfx_ms = now_ms
 
         self._was_braking = self._is_braking
