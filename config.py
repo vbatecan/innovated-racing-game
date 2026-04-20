@@ -61,62 +61,92 @@ TRUE_FALSE_QUESTIONS = [
     {
         "prompt": "A data structure is used to organize and store data.",
         "answer": True,
+        "difficulty": "EASY",
     },
     {
         "prompt": "An array can store multiple values.",
         "answer": True,
+        "difficulty": "EASY",
     },
     {
         "prompt": "A stack follows LIFO (Last In, First Out).",
         "answer": True,
+        "difficulty": "EASY",
     },
     {
         "prompt": "A queue follows FIFO (First In, First Out).",
         "answer": True,
+        "difficulty": "EASY",
     },
     {
         "prompt": "A linked list is a linear data structure.",
         "answer": True,
-    },
-    {
-        "prompt": "A binary tree can have at most three children per node.",
-        "answer": False,
-    },
-    {
-        "prompt": "A hash table uses key-value pairs for data storage.",
-        "answer": True,
-    },
-    {
-        "prompt": "Binary search requires a sorted array to work correctly.",
-        "answer": True,
-    },
-    {
-        "prompt": "A graph can contain cycles.",
-        "answer": True,
-    },
-    {
-        "prompt": "Recursion is a function that calls itself.",
-        "answer": True,
+        "difficulty": "EASY",
     },
     {
         "prompt": "A variable can hold multiple values at the same time.",
         "answer": False,
+        "difficulty": "EASY",
+    },
+    {
+        "prompt": "A list in Python can store both numbers and strings.",
+        "answer": True,
+        "difficulty": "EASY",
+    },
+    {
+        "prompt": "A binary tree can have at most three children per node.",
+        "answer": False,
+        "difficulty": "MEDIUM",
+    },
+    {
+        "prompt": "A hash table uses key-value pairs for data storage.",
+        "answer": True,
+        "difficulty": "MEDIUM",
+    },
+    {
+        "prompt": "Binary search requires a sorted array to work correctly.",
+        "answer": True,
+        "difficulty": "MEDIUM",
+    },
+    {
+        "prompt": "A graph can contain cycles.",
+        "answer": True,
+        "difficulty": "MEDIUM",
+    },
+    {
+        "prompt": "Recursion is a function that calls itself.",
+        "answer": True,
+        "difficulty": "MEDIUM",
+    },
+    {
+        "prompt": "In a binary search tree, all values in the left subtree are greater than the root.",
+        "answer": False,
+        "difficulty": "MEDIUM",
     },
     {
         "prompt": "The time complexity of binary search is O(log n).",
         "answer": True,
+        "difficulty": "HARD",
     },
     {
         "prompt": "Bubble sort is the fastest sorting algorithm.",
         "answer": False,
+        "difficulty": "HARD",
     },
     {
         "prompt": "A depth-first search uses a stack data structure.",
         "answer": True,
+        "difficulty": "HARD",
     },
     {
         "prompt": "A breadth-first search uses a queue data structure.",
         "answer": True,
+        "difficulty": "HARD",
+    },
+    {
+        "prompt": "Dijkstra's algorithm can correctly find shortest paths with negative edge weights.",
+        "answer": False,
+        "difficulty": "HARD",
     },
 ]
 
