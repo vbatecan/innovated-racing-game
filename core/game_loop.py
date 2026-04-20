@@ -373,6 +373,12 @@ class GameLoop:
 
             logger.info("Menu loop complete, starting gameplay...")
 
+            # Show startup splash for 5 seconds before gameplay begins.
+            try:
+                self._show_startup_splash(duration_ms=5000)
+            except Exception:
+                logger.exception("Failed to show startup splash; continuing to gameplay")
+
             if hasattr(self._player_car, "refresh_configuration"):
                 self._player_car.refresh_configuration()
 
@@ -485,6 +491,44 @@ class GameLoop:
         )
         self._music_manager.set_context_paused(should_pause)
         self._music_manager.update()
+
+    def _show_startup_splash(self, duration_ms: int = 5000) -> None:
+        """Display a startup splash image centered on screen for duration_ms.
+
+        If resources/splash_start.jpg exists it will be displayed; otherwise
+        this function is a no-op.
+        """
+        import os
+        import pygame
+        splash_path = os.path.join('resources', 'splash_start.jpg')
+        if not os.path.exists(splash_path):
+            return
+
+        try:
+            img = pygame.image.load(splash_path)
+            # Scale to fit screen while preserving aspect
+            screen_w, screen_h = self._screen.get_size()
+            iw, ih = img.get_size()
+            scale = min(screen_w / iw, screen_h / ih)
+            new_w = int(iw * scale)
+            new_h = int(ih * scale)
+            img = pygame.transform.smoothscale(img, (new_w, new_h))
+
+            x = (screen_w - new_w) // 2
+            y = (screen_h - new_h) // 2
+
+            start_ms = pygame.time.get_ticks()
+            while pygame.time.get_ticks() - start_ms < int(duration_ms):
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self._running = False
+                        return
+                self._screen.fill((0, 0, 0))
+                self._screen.blit(img, (x, y))
+                pygame.display.flip()
+                self._clock.tick(30)
+        except Exception:
+            logger.exception('Error displaying startup splash')
 
     def _handle_events(self) -> None:
         """Process all Pygame events for the current frame.
