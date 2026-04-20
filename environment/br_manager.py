@@ -111,6 +111,8 @@ class BRManager:
         both existing BR hazards and configured blocking groups.
         """
         max_attempts = 10
+        selected_spawn: tuple[int, int, int, int, pygame.Surface | None] | None = None
+
         for _ in range(max_attempts):
             lane = self.road.random_lane()
             br_image = self._get_random_br_image(lane)
@@ -126,33 +128,31 @@ class BRManager:
                 spawn_x, br_width, min_padding=10
             )
             spawn_y = -br_height - random.randint(40, 220)
+            spawn_rect = pygame.Rect(spawn_x, spawn_y, br_width, br_height)
+            candidate_rect = spawn_rect.inflate(24, 80)
 
             overlap = False
             for br in self.brs:
-                if (
-                        br.rect.left < spawn_x + br_width
-                        and br.rect.right > spawn_x
-                        and abs(br.rect.y - spawn_y) < br_height * 3
-                ):
+                if candidate_rect.colliderect(br.rect.inflate(24, 80)):
                     overlap = True
                     break
 
             if not overlap:
-                spawn_rect = pygame.Rect(spawn_x, spawn_y, br_width, br_height)
                 for group in self.blocking_groups:
                     for blocked_sprite in group:
-                        if (
-                                spawn_rect.left < blocked_sprite.rect.right
-                                and spawn_rect.right > blocked_sprite.rect.left
-                                and abs(blocked_sprite.rect.y - spawn_y) < br_height * 4
-                        ):
+                        if candidate_rect.colliderect(blocked_sprite.rect.inflate(24, 80)):
                             overlap = True
                             break
                     if overlap:
                         break
             if not overlap:
+                selected_spawn = (spawn_x, spawn_y, br_width, br_height, br_image)
                 break
 
+        if selected_spawn is None:
+            return
+
+        spawn_x, spawn_y, br_width, br_height, br_image = selected_spawn
         br = BRHazard(spawn_x, spawn_y, br_width, br_height, image=br_image)
         self.brs.add(br)
 

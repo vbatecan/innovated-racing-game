@@ -182,6 +182,8 @@ class ObstacleManager:
             speed: Current player/map speed used to calculate traffic speed.
         """
         max_attempts = 10
+        selected_spawn: tuple[int, int, int, int, pygame.Surface | None] | None = None
+
         for _ in range(max_attempts):
             lane = self.road.get_lane(self.road.lane_count // 2)
             obstacle_image = self._get_random_obstacle_image(lane)
@@ -194,45 +196,37 @@ class ObstacleManager:
             spawn_x = self._lane_spawn_x(lane, obstacle_width)
             spawn_x = self.road.clamp_spawn_x_to_borders(spawn_x, obstacle_width)
             spawn_y = -obstacle_height - random.randint(0, 100)
+            spawn_rect = pygame.Rect(spawn_x, spawn_y, obstacle_width, obstacle_height)
+            candidate_rect = spawn_rect.inflate(24, 80)
 
             overlap = False
             for obs in self.obstacles:
-                if (
-                    obs.rect.left < spawn_x + obstacle_width
-                    and obs.rect.right > spawn_x
-                    and abs(obs.rect.y - spawn_y) < obstacle_height * 3
-                ):
+                if candidate_rect.colliderect(obs.rect.inflate(24, 80)):
                     overlap = True
                     break
 
             if not overlap:
-                spawn_rect = pygame.Rect(
-                    spawn_x, spawn_y, obstacle_width, obstacle_height
-                )
                 for group in self.blocking_groups:
                     for blocked_sprite in group:
-                        if (
-                            spawn_rect.left < blocked_sprite.rect.right
-                            and spawn_rect.right > blocked_sprite.rect.left
-                            and abs(blocked_sprite.rect.y - spawn_y) < obstacle_height * 4
-                        ):
+                        if candidate_rect.colliderect(blocked_sprite.rect.inflate(24, 80)):
                             overlap = True
                             break
                     if overlap:
                         break
             if not overlap:
+                selected_spawn = (
+                    spawn_x,
+                    spawn_y,
+                    obstacle_width,
+                    obstacle_height,
+                    obstacle_image,
+                )
                 break
-        else:
-            lane = self.road.get_lane(self.road.lane_count // 2)
-            obstacle_image = self._get_random_obstacle_image(lane)
-            obstacle_width = self.obstacle_width
-            obstacle_height = self.obstacle_height
-            if obstacle_image is not None:
-                obstacle_width = obstacle_image.get_width()
-                obstacle_height = obstacle_image.get_height()
-            spawn_x = self._lane_spawn_x(lane, obstacle_width)
-            spawn_x = self.road.clamp_spawn_x_to_borders(spawn_x, obstacle_width)
-            spawn_y = -obstacle_height - random.randint(0, 100)
+
+        if selected_spawn is None:
+            return
+
+        spawn_x, spawn_y, obstacle_width, obstacle_height, obstacle_image = selected_spawn
 
         traffic_speed = self._sample_traffic_speed(speed)
         obstacle = Obstacle(
