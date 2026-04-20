@@ -20,12 +20,10 @@ class PlayerCar(Vehicle):
         self.turn_smoothing = 0.15
         self.x = float(start_x)
 
-        # Upgrade-influenced runtime physics factors.
         self.acceleration_factor = 1.0
         self.brake_factor = 1.0
         self.cornering_grip = 1.0
 
-        # Visual cue state.
         self._has_suspension = False
         self._has_brakes = False
         self._braking_visual_active = False
@@ -168,7 +166,6 @@ class PlayerCar(Vehicle):
             dynamic_brake = effective_brake_strength * (0.35 + (0.65 * speed_ratio))
             self.current_speed -= dynamic_brake
 
-            # Precision brakes reduce lateral slide while stopping.
             if self._has_brakes:
                 self.velocity_x *= 0.82
         else:

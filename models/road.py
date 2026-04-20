@@ -52,7 +52,6 @@ class Road:
         self.lane_count = 1
         self.set_lane_count(lane_count)
 
-        # Load background images for map switching
         self.map_border_bounds: list[tuple[int, int]] = []
         self.transition_map_index = -1
         self.bg_images = self._load_background_images()
@@ -240,7 +239,6 @@ class Road:
 
             try:
                 image = ResourceManager.load_image(str(map_path), convert_alpha=True)
-                # Scale image to fit window size
                 scaled_image = pygame.transform.scale(
                     image, (self.window_width, self.height)
                 )
@@ -256,7 +254,6 @@ class Road:
         for map_path in map_paths:
             load_map(map_path)
 
-        # Load transition map for city to desert transitions
         transition_path = Path("resources/models/maps/transition.png")
         if transition_path.exists():
             self.transition_map_index = len(bg_images)
@@ -273,7 +270,6 @@ class Road:
         """
         if self.bg_images:
             self.bg_y_offset += speed
-            # Loop the background when it scrolls past its height
             if self.bg_y_offset >= self.height:
                 self.bg_y_offset -= self.height
 
@@ -282,7 +278,6 @@ class Road:
             transition_distance = max(1, int(config.MAP_TRANSITION_DISTANCE))
             raw_progress = self.transition_progress_px / float(transition_distance)
             
-            # Apply smooth easing (ease-in-out-cubic) for smoother visual transition
             if raw_progress < 0.5:
                 progress = 4.0 * raw_progress * raw_progress * raw_progress
             else:
@@ -318,8 +313,6 @@ class Road:
         if not self.bg_images:
             return
 
-        # Calculate which map to show based on the score (switch every n points)
-        # Only count non-transition maps in the rotation
         normal_map_count = len(self.bg_images) - (1 if self.transition_map_index >= 0 else 0)
         map_index = (score // config.MAP_SWITCH_SCORE) % normal_map_count
         
@@ -329,13 +322,10 @@ class Road:
         if self.is_transitioning and map_index == self.transition_to_map_index:
             return
 
-        # Special handling for city (0) to desert (1) transition
         if self.current_map_index == 0 and map_index == 1 and self.transition_map_index >= 0:
-            # Transition through the transition map
             self.transition_from_map_index = self.current_map_index
             self.transition_to_map_index = self.transition_map_index
         else:
-            # Normal map transition
             self.transition_from_map_index = (
                 self.transition_to_map_index if self.is_transitioning else self.current_map_index
             )
@@ -419,7 +409,6 @@ class Road:
         Returns:
             None: Draws directly to `surface`.
         """
-        # If background images are loaded, draw them with scrolling
         if self.bg_images and 0 <= self.current_map_index < len(self.bg_images):
             if self.is_transitioning and 0 <= self.transition_from_map_index < len(
                 self.bg_images
@@ -433,16 +422,13 @@ class Road:
                 from_bg = self.bg_images[self.transition_from_map_index]
                 to_bg = self.bg_images[self.transition_to_map_index]
 
-                # Draw the incoming map with increasing alpha
                 self._draw_scrolling_background_range(surface, to_bg, 0, seam_y)
                 self._draw_scrolling_background_range(
                     surface, from_bg, seam_y, self.height
                 )
                 
-                # Smooth crossfade effect at seam
                 self._draw_seam_gradient(surface, seam_y)
                 
-                # Add alpha fade effect for smoother transition
                 overlay_height = int(self.height * 0.15)
                 transition_alpha = int(150 * progress)
                 overlay = pygame.Surface((self.window_width, overlay_height), pygame.SRCALPHA)
@@ -452,7 +438,6 @@ class Road:
                 current_bg = self.bg_images[self.current_map_index]
                 self._draw_scrolling_background(surface, current_bg)
         else:
-            # Fallback to solid colors if no images loaded
             surface.fill(self.BG_COLOR)
             pygame.draw.rect(
                 surface, self.ROAD_COLOR, (self.x, 0, self.width, self.height)
@@ -469,7 +454,6 @@ class Road:
             None: Draws directly to `surface`.
         """
 
-        # Kanan
         left_x, right_x = self.get_borders()
         pygame.draw.line(
             surface,
@@ -479,7 +463,6 @@ class Road:
             config.ROAD_LINE_BORDER_WIDTH,
         )
 
-        # Kaliwa
         pygame.draw.line(
             surface,
             self.LINE_COLOR,

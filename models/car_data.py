@@ -8,11 +8,11 @@ from typing import List
 class CarStats:
     """Car performance statistics."""
 
-    speed: float        # 0-100 (max speed multiplier)
-    handling: float     # 0-100 (turn responsiveness)
-    acceleration: float # 0-100 (how quickly it speeds up)
-    braking: float      # 0-100 (brake control and stopping power)
-    weight: float       # 0-100 (visual/legacy display value)
+    speed: float
+    handling: float
+    acceleration: float
+    braking: float
+    weight: float
 
 
 @dataclass

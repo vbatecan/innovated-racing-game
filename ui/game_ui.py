@@ -54,17 +54,12 @@ from ui.menus.settings import SettingsMenu
 from ui.utils.drawing import draw_rounded_rect
 
 __all__ = [
-    # Components
     "Button",
     "Slider",
-    # HUD
     "HUDManager",
-    # Menus
     "PauseMenu",
     "SettingsMenu",
-    # Utilities
     "draw_rounded_rect",
-    # Constants
     "COLORS",
     "FONTS",
     "LAYOUT",
@@ -77,7 +72,6 @@ __all__ = [
     "Animation",
     "GameDefaults",
     "FilePaths",
-    # Types
     "Callback",
     "Color",
     "Event",

@@ -213,7 +213,6 @@ class PauseMenu:
         sw: int = screen.get_width()
         sh: int = screen.get_height()
 
-        # Draw darker overlay
         overlay: Surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, int(200 * self.anim_progress)))
         screen.blit(overlay, (0, 0))
@@ -223,16 +222,12 @@ class PauseMenu:
         menu_x: int = sw // 2 - menu_w // 2
         menu_y: int = sh // 2 - menu_h // 2
 
-        # Draw menu background with gradient effect
         draw_rounded_rect(screen, (10, 15, 35, 245), (menu_x, menu_y, menu_w, menu_h))
         
-        # Draw accent top border
         draw_rounded_rect(screen, self.accent_color, (menu_x, menu_y, menu_w, 6))
         
-        # Draw menu border with accent
         draw_rounded_rect(screen, self.accent_color, (menu_x, menu_y, menu_w, menu_h), 2)
 
-        # Draw title with glow effect
         title: Surface = self.font_title.render("PAUSED", True, self.accent_color)
         title_x = sw // 2 - title.get_width() // 2
         title_y = menu_y + 35

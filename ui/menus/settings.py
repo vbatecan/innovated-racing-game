@@ -21,7 +21,7 @@ def _play_ui_click_sfx() -> None:
 class OptionDef:
     key: str
     label: str
-    kind: str  # slider | toggle | select
+    kind: str
     description: str
     min_val: float = 0.0
     max_val: float = 1.0

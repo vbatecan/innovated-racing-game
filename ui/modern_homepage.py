@@ -45,7 +45,6 @@ class ModernHomePage:
         self.player_name: str = player_name
         self.coins: int = coins
 
-        # Fonts
         self.title_font: pygame.font.Font | None = None
         self.subtitle_font: pygame.font.Font | None = None
         self.button_font: pygame.font.Font | None = None
@@ -53,7 +52,6 @@ class ModernHomePage:
         self.small_font: pygame.font.Font | None = None
         self._fonts_initialized: bool = False
 
-        # Colors with improved contrast
         self.bg_top: tuple = (6, 10, 20)
         self.bg_bottom: tuple = (25, 35, 65)
         self.accent_cyan: tuple = (0, 220, 255)
@@ -62,18 +60,15 @@ class ModernHomePage:
         self.text_color: tuple = (245, 250, 255)
         self.muted_color: tuple = (140, 160, 190)
 
-        # Animation state
         self.elapsed_time: float = 0.0
         self.title_scale: float = 1.0
         self.title_glow: float = 0.5
 
-        # Background effect
         self.background_effect: BackgroundEffect = BackgroundEffect(self.width, self.height)
 
-        # Create buttons with improved spacing
         button_width: int = 340
         button_height: int = 80
-        button_spacing: int = 120  # Vertical spacing between buttons
+        button_spacing: int = 120
         button_x: int = (self.width - button_width) // 2
         buttons_start_y: int = self.height // 2 + 40
 
@@ -87,7 +82,7 @@ class ModernHomePage:
             accent_color=self.accent_cyan,
             secondary_color=self.accent_green,
         )
-        self.start_button.is_selected = True  # Default selection
+        self.start_button.is_selected = True
 
         self.shop_button: ModernButton = ModernButton(
             button_x,
@@ -111,15 +106,12 @@ class ModernHomePage:
             secondary_color=self.accent_green,
         )
 
-        # Button callbacks (to be set by game loop)
         self._callbacks: dict[str, callable] = {}
 
-        # Mouse state
         self._mouse_pos: tuple[int, int] = (0, 0)
         self._mouse_pressed: tuple[bool, bool, bool] = (False, False, False)
 
-        # Keyboard navigation
-        self._focused_button_index: int = 0  # 0=Start, 1=Shop, 2=Settings
+        self._focused_button_index: int = 0
         self._buttons: list[ModernButton] = [self.start_button, self.shop_button, self.settings_button]
         self._update_focus()
 
@@ -135,15 +127,12 @@ class ModernHomePage:
             self.small_font = pygame.font.Font(None, 26)
             self._fonts_initialized = True
             
-            # Update button fonts
             self.start_button.font = self.button_font
             self.shop_button.font = self.button_font
             self.settings_button.font = self.button_font
         except Exception as e:
-            # Log the error instead of silently passing
             import logging
             logging.getLogger(__name__).error(f"Failed to initialize fonts: {e}")
-            # Create fallback fonts to prevent crashes
             self.title_font = pygame.font.SysFont("arial", 140)
             self.subtitle_font = pygame.font.SysFont("arial", 54)
             self.button_font = pygame.font.SysFont("arial", 44)
@@ -191,19 +180,15 @@ class ModernHomePage:
         Args:
             delta_time: Time elapsed since last update in seconds.
         """
-        # Initialize fonts on first update
         self._init_fonts()
         
         self.elapsed_time += delta_time
 
-        # Update title animation
         self.title_scale = 1.0 + 0.05 * math.sin(self.elapsed_time * 2)
         self.title_glow = 0.5 + 0.3 * math.sin(self.elapsed_time * 1.5)
 
-        # Update background
         self.background_effect.update(delta_time)
 
-        # Update buttons
         self.start_button.update(self._mouse_pos, self._mouse_pressed, delta_time)
         self.shop_button.update(self._mouse_pos, self._mouse_pressed, delta_time)
         self.settings_button.update(self._mouse_pos, self._mouse_pressed, delta_time)
@@ -214,27 +199,20 @@ class ModernHomePage:
         Args:
             surface: The pygame surface to draw on.
         """
-        # Initialize fonts on first draw
         self._init_fonts()
         
-        # Draw gradient background
         self._draw_gradient_background(surface)
 
-        # Draw particle effects
         self.background_effect.draw(surface)
 
-        # Draw top info (player name and coins)
         self._draw_player_info(surface)
 
-        # Draw game title
         self._draw_title(surface)
 
-        # Draw buttons
         self.start_button.draw(surface)
         self.shop_button.draw(surface)
         self.settings_button.draw(surface)
 
-        # Draw footer
         self._draw_footer(surface)
 
     def _draw_gradient_background(self, surface: pygame.Surface) -> None:
@@ -249,7 +227,6 @@ class ModernHomePage:
             g = int(self.bg_top[1] + (self.bg_bottom[1] - self.bg_top[1]) * progress)
             b = int(self.bg_top[2] + (self.bg_bottom[2] - self.bg_top[2]) * progress)
 
-            # Add subtle wave animation
             wave = math.sin(self.elapsed_time + y * 0.002) * 2
             r = max(0, min(255, int(r + wave)))
             g = max(0, min(255, int(g + wave)))
@@ -266,16 +243,14 @@ class ModernHomePage:
         margin: int = 40
         top_margin: int = 35
 
-        # Top-left: Player name with background panel
-        player_text = self.info_font.render(f"👤 {self.player_name}", True, self.accent_cyan)
+        player_text = self.info_font.render(f"\U0001F464 {self.player_name}", True, self.accent_cyan)
         player_bg = pygame.Surface((player_text.get_width() + 20, player_text.get_height() + 10), pygame.SRCALPHA)
         player_bg.fill((92, 220, 255, 15))
         pygame.draw.rect(player_bg, self.accent_cyan, player_bg.get_rect(), width=1, border_radius=5)
         surface.blit(player_bg, (margin - 10, top_margin - 5))
         surface.blit(player_text, (margin, top_margin))
 
-        # Top-right: Coins with background panel
-        coins_text = self.info_font.render(f"💰 {self.coins}", True, self.accent_green)
+        coins_text = self.info_font.render(f"\U0001F4B0 {self.coins}", True, self.accent_green)
         coins_rect = coins_text.get_rect()
         coins_bg = pygame.Surface((coins_rect.width + 20, coins_rect.height + 10), pygame.SRCALPHA)
         coins_bg.fill((80, 220, 160, 15))
@@ -292,16 +267,13 @@ class ModernHomePage:
         title_text = "8-BIT ENDLESS HIGHWAY"
         title_y = 100
 
-        # Create title surface for scaling
         title_surf = self.title_font.render(title_text, True, self.text_color)
         original_rect = title_surf.get_rect()
 
-        # Scale title
         scaled_width = int(original_rect.width * self.title_scale)
         scaled_height = int(original_rect.height * self.title_scale)
         scaled_title = pygame.transform.scale(title_surf, (scaled_width, scaled_height))
 
-        # Draw glow effect
         self._draw_text_glow(
             surface,
             (self.width // 2, title_y),
@@ -310,11 +282,9 @@ class ModernHomePage:
             self.title_glow,
         )
 
-        # Draw title
         title_rect = scaled_title.get_rect(center=(self.width // 2, title_y))
         surface.blit(scaled_title, title_rect)
 
-        # Draw separator line
         line_y = title_y + 70
         line_width = 300
         pygame.draw.line(
@@ -325,12 +295,10 @@ class ModernHomePage:
             2
         )
 
-        # Draw subtitle with better spacing
         subtitle = "Hand Gesture Racing"
         subtitle_surf = self.subtitle_font.render(subtitle, True, self.accent_cyan)
         subtitle_rect = subtitle_surf.get_rect(center=(self.width // 2, line_y + 40))
 
-        # Add subtle animation to subtitle
         subtitle_alpha = int(200 + 55 * math.sin(self.elapsed_time * 2))
         subtitle_surf.set_alpha(subtitle_alpha)
         surface.blit(subtitle_surf, subtitle_rect)
@@ -359,7 +327,6 @@ class ModernHomePage:
             alpha = int(30 * (1 - i / glow_radius) * intensity)
             glow_surf = pygame.Surface((rect.width + i * 2, rect.height + i * 2), pygame.SRCALPHA)
 
-            # Draw blurred outline effect
             pygame.draw.ellipse(
                 glow_surf,
                 glow_color + (alpha,),
@@ -378,14 +345,12 @@ class ModernHomePage:
         margin = 40
         footer_height = 40
         
-        # Draw footer background with slight transparency
         footer_bg = pygame.Surface((self.width, footer_height), pygame.SRCALPHA)
         footer_bg.fill((10, 12, 24, 200))
         pygame.draw.line(footer_bg, self.accent_purple, (0, 0), (self.width, 0), 1)
         surface.blit(footer_bg, (0, footer_y - footer_height + 15))
 
-        # Left-aligned footer text with better spacing
-        footer_text = self.small_font.render("🔊 Sound: ON  |  ❓ Help  |  © 2026 Racing Game", True, self.muted_color)
+        footer_text = self.small_font.render("\U0001F50A Sound: ON  |  \u2753 Help  |  \u00A9 2026 Racing Game", True, self.muted_color)
         surface.blit(footer_text, (margin, footer_y))
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
@@ -416,7 +381,6 @@ class ModernHomePage:
             elif event.key == pygame.K_DOWN:
                 self._navigate_buttons(1)
             elif event.key == pygame.K_TAB:
-                # Tab also cycles through buttons
                 direction = 1 if not (pygame.key.get_mods() & pygame.KMOD_SHIFT) else -1
                 self._navigate_buttons(direction)
 

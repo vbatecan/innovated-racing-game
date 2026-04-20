@@ -14,7 +14,6 @@ from ui.homepage import HomePageScreen
 from ui.modern_homepage import ModernHomePage
 from ui.hud import PlayerHUD
 
-# Configure logging
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     filename="logs/main.log",
@@ -47,13 +46,10 @@ def main() -> None:
 
     car_manager = CarManager()
 
-    # Create shop screen (car selection interface)
     shop_screen = HomePageScreen(runtime_window_size, car_manager)
 
-    # Use modern homepage for main menu
     homepage = ModernHomePage(runtime_window_size, player_name="Player", coins=car_manager.credits)
 
-    # Create settings menu
     settings_menu = SettingsMenu()
 
     game_map = Map(runtime_window_size, lane_count=settings.lane_count)

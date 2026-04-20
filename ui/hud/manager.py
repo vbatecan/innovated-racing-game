@@ -355,7 +355,7 @@ class HUDManager:
     def _draw_camera_preview(self, screen: Surface, sw: int, sh: int) -> None:
         """Draw the camera preview panel at the bottom right.
         
-        Processes the camera frame (BGR→RGB conversion, resize, rotation, flip)
+        Processes the camera frame (BGR->RGB conversion, resize, rotation, flip)
         and renders it within a bordered panel. Errors are silently caught
         and printed to console.
         

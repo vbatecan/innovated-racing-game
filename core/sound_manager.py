@@ -25,7 +25,6 @@ class SoundManager:
                 if path.suffix.lower() not in (".wav", ".ogg", ".mp3"):
                     continue
 
-                # Preserve nested folders to keep keys stable and predictable.
                 category = str(path.parent.relative_to(self.sfx_dir)).replace("\\", "/")
                 name = path.stem
                 key = f"{category}/{name}" if category != "." else name
@@ -104,7 +103,6 @@ class SoundManager:
                 self.play_sfx(key, volume)
                 return
 
-        # Fallback keeps behavior deterministic even if UI assets are incomplete.
         self.play_sfx("ui/toggle", volume)
 
     def start_engine(self):
@@ -143,8 +141,6 @@ class SoundManager:
         if not self.engine_channels["idle"]:
             return
 
-        # Example: Map speed to volume or switch loops
-        # speed is assumed to be 0 to 1.0
         normalized_speed = self._clamp01(speed)
         base_volume = 0.32 + (normalized_speed * 0.68)
         self.engine_channels["idle"].set_volume(self._effective_sfx_volume(base_volume))

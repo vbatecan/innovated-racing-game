@@ -19,9 +19,9 @@ class Particle:
     """Represents a single particle in the system."""
     x: float
     y: float
-    vx: float  # Velocity X
-    vy: float  # Velocity Y
-    life: float  # Remaining lifetime (0.0 to 1.0)
+    vx: float
+    vy: float
+    life: float
     max_life: float
     color: Color
     size: float
@@ -39,7 +39,7 @@ class Particle:
         """
         self.x += self.vx * delta_time
         self.y += self.vy * delta_time
-        self.vy += 20 * delta_time  # Slight gravity
+        self.vy += 20 * delta_time
         self.life -= delta_time
 
     def draw(self, surface: Surface) -> None:
@@ -48,7 +48,6 @@ class Particle:
         Args:
             surface: The pygame surface to draw on.
         """
-        # Create particle surface with alpha
         particle_surf = pygame.Surface((int(self.size * 2), int(self.size * 2)), pygame.SRCALPHA)
         pygame.draw.circle(
             particle_surf,
@@ -115,11 +114,9 @@ class ParticleSystem:
         Args:
             delta_time: Time elapsed since last update in seconds.
         """
-        # Update particles
         for particle in self.particles:
             particle.update(delta_time)
 
-        # Remove dead particles
         self.particles = [p for p in self.particles if p.life > 0]
 
     def draw(self, surface: Surface) -> None:
@@ -151,7 +148,6 @@ class BackgroundEffect:
 
     def _setup_emitters(self) -> None:
         """Set up emission points around the screen."""
-        # Emitters will be triggered periodically
         pass
 
     def update(self, delta_time: float) -> None:
@@ -162,20 +158,17 @@ class BackgroundEffect:
         """
         self.emission_timer += delta_time
 
-        # Emit particles periodically from random positions
         if self.emission_timer >= self.emission_interval:
             self.emission_timer = 0.0
 
-            # Create floating particles from edges
             if random.random() < 0.6:
                 x = random.uniform(0, self.width)
                 y = random.uniform(-20, self.height + 20)
 
-                # Determine color (cyan, purple, or green)
                 colors = [
-                    (92, 220, 255),    # Cyan
-                    (160, 100, 255),   # Purple
-                    (80, 220, 160),    # Green
+                    (92, 220, 255),
+                    (160, 100, 255),
+                    (80, 220, 160),
                 ]
                 color = random.choice(colors)
 

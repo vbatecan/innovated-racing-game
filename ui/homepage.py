@@ -60,7 +60,6 @@ class HomePageScreen:
         self.small_font = pygame.font.Font(None, 24)
         self.tiny_font = pygame.font.Font(None, 20)
 
-        # High-contrast palette optimized for readability.
         self.bg_top = (8, 13, 24)
         self.bg_bottom = (26, 38, 58)
         self.panel = (18, 26, 40)
@@ -80,11 +79,10 @@ class HomePageScreen:
         self._mouse_pos: tuple[int, int] = (0, 0)
         self._mouse_pressed: tuple[bool, bool, bool] = (False, False, False)
 
-        # Focus zones for keyboard/controller traversal.
-        self._focus_zone = "cards"  # tabs | cards | actions | dialog
+        self._focus_zone = "cards"
         self._selected_card_index = 0
-        self._selected_action = 0  # 0=start, 1=back
-        self._dialog_action = 0  # 0=buy, 1=cancel
+        self._selected_action = 0
+        self._dialog_action = 0
 
         self._tab_rects: list[pygame.Rect] = []
         self.card_rects: list[pygame.Rect] = []
@@ -100,7 +98,6 @@ class HomePageScreen:
         self._catalog: list[ShopItem] = self._build_catalog()
         self._items: list[ShopItem] = []
 
-        # Upgrades and credits are persisted by CarManager.
 
         self._load_car_images()
         self._sync_selected_to_manager()
@@ -195,7 +192,6 @@ class HomePageScreen:
         selected = self.car_manager.get_selected_car()
         if not selected:
             return
-        # Keep card cursor aligned with selected car when entering Cars tab.
         for idx, item in enumerate([i for i in self._catalog if i.category == "Cars"]):
             if item.car_id == selected.id:
                 self._selected_card_index = idx
@@ -285,7 +281,6 @@ class HomePageScreen:
             if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 return self._activate_focused()
 
-        # Basic controller support using d-pad and common buttons.
         if event.type == pygame.JOYHATMOTION:
             hat_x, hat_y = event.value
             if hat_x < 0:

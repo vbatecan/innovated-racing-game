@@ -128,7 +128,6 @@ class CrackManager:
             )
             spawn_y = -crack_height - random.randint(40, 260)
 
-            # Check for overlap with existing cracks
             overlap = False
             for crack in self.cracks:
                 if (
@@ -139,7 +138,6 @@ class CrackManager:
                     overlap = True
                     break
 
-            # Check for overlap with blocking groups
             if not overlap:
                 spawn_rect = pygame.Rect(spawn_x, spawn_y, crack_width, crack_height)
                 for group in self.blocking_groups:

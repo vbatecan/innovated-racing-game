@@ -28,7 +28,6 @@ class CarManager:
         self.best_score: float = 0.0
         self.unlocked_cars: List[int] = [1]
 
-        # Shop economy + persistent upgrades.
         self.credits: int = 2400
         self.owned_upgrades: List[str] = []
 
@@ -71,7 +70,6 @@ class CarManager:
         self._update_unlocked_cars()
 
         if legacy_fields_detected:
-            # Rewrite save without deprecated shop categories.
             self.save()
 
     def save(self) -> None:

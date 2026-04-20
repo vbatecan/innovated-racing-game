@@ -220,7 +220,6 @@ class Settings:
     def get_brake_threshold(self):
         return 0.07 - (self.brake_sensitivity * 0.01)
 
-    # Backward-compatible methods used by legacy flow.
     def increase_brake_sensitivity(self):
         self.brake_sensitivity = min(self.brake_sensitivity + 1, 10)
 

@@ -89,8 +89,7 @@ class GameLoop:
         self._homepage = homepage
         self._shop_screen = shop_screen
 
-        # Menu navigation state
-        self._current_screen = "home"  # 'home', 'shop', 'settings', 'game'
+        self._current_screen = "home"
         self._menu_running = True
 
         self._font = pygame.font.Font(None, config.FONT_SIZE)
@@ -132,14 +131,11 @@ class GameLoop:
         self._score_gain_for_speed_scaling = 0
 
 
-        # Performance: reuse a persistent sprite group instead of allocating each frame.
         self._player_sprite_group = pygame.sprite.GroupSingle(self._player_car)
 
-        # Runtime setting cache to avoid repeated per-frame recomputation.
         self._cached_lane_count: Optional[int] = None
         self._cached_obstacle_frequency: Optional[int] = None
 
-        # Debug performance instrumentation (toggle with F3).
         self._debug_perf_enabled = bool(getattr(config, 'DEBUG_PERF', False))
         self._frame_times_ms = deque(maxlen=180)
         self._perf_log_interval_ms = 1000
@@ -260,7 +256,6 @@ class GameLoop:
 
         self._refresh_display_surface()
         
-        # Get current mouse state
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
         
@@ -276,7 +271,6 @@ class GameLoop:
                 logger.info("Homepage returned quit action")
                 return False
 
-        # Update homepage with current mouse state
         self._homepage._mouse_pos = mouse_pos
         self._homepage._mouse_pressed = mouse_pressed
         
@@ -296,7 +290,6 @@ class GameLoop:
         Returns:
             True to continue running, False to quit.
         """
-        # Get current mouse state
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
         
@@ -307,13 +300,12 @@ class GameLoop:
             action = self._shop_screen.handle_event(event)
             if action and not (event.type == pygame.MOUSEBUTTONDOWN and getattr(event, "button", None) == 1):
                 self._sound_manager.play_ui_click()
-            if action == "quit":  # ESC key in shop returns to menu
+            if action == "quit":
                 self._current_screen = "home"
-            elif action == "start":  # Car selected, proceed to game
+            elif action == "start":
                 self._current_screen = "game"
                 self._menu_running = False
 
-        # Update shop with current mouse state
         if hasattr(self._shop_screen, '_mouse_pos'):
             self._shop_screen._mouse_pos = mouse_pos
         if hasattr(self._shop_screen, '_mouse_pressed'):
@@ -348,10 +340,8 @@ class GameLoop:
             if result and result.get("action") == "close":
                 self._current_screen = "home"
 
-        # Draw background
         self._screen.fill((10, 12, 24))
 
-        # Update and draw settings menu
         self._settings_menu.update(mouse_pos)
         self._settings_menu.draw(self._screen)
         self._draw_music_status_overlay()
@@ -375,10 +365,8 @@ class GameLoop:
 
         should_quit = False
         while not should_quit:
-            # Run pre-game menu loop
             logger.info("Starting menu loop...")
             if not self._run_menu_loop():
-                # User quit during menu
                 logger.info("User quit during menu, cleaning up...")
                 should_quit = True
                 break
@@ -388,25 +376,21 @@ class GameLoop:
             if hasattr(self._player_car, "refresh_configuration"):
                 self._player_car.refresh_configuration()
 
-            # Start the detector stream for gameplay
             logger.info("Starting detector stream...")
             self._detector.start_stream()
             logger.info("Detector stream started")
 
-            # Reset flags for new gameplay session
             self._running = True
             self._return_to_menu = False
             self._run_score_cashed_out = False
             self._reset_speed_scaling_progress()
 
-            # Main gameplay loop
             logger.info("Entering main gameplay loop...")
             while self._running:
                 self._process_frame()
 
             self._cash_out_run_score_to_credits()
 
-            # Check if user wants to return to menu instead of quitting
             if self._return_to_menu:
                 logger.info("Returning to menu...")
                 self._detector.stop_stream()
@@ -415,7 +399,6 @@ class GameLoop:
                 self._pause_menu.hide()
                 self._return_to_menu = False
             else:
-                # User quit from pause menu
                 logger.info("User quit game, exiting...")
                 should_quit = True
 
@@ -897,7 +880,6 @@ class GameLoop:
                 self._scoring_system.get_score(),
             )
 
-        # Draw car selection UI if visible
         if self._car_selection:
             car_selection_dt = 1.0 / max(1, int(self._settings.max_fps))
             self._car_selection.update(car_selection_dt)
@@ -985,7 +967,6 @@ class GameLoop:
         if self._run_score_cashed_out or not self._car_manager:
             return
 
-        # Credits are awarded only for completed runs that reached game over.
         if self._game_state_manager is None or self._game_state_manager.game_state != GameState.GAME_OVER:
             return
 
@@ -998,8 +979,6 @@ class GameLoop:
 
     def _get_display_currency_value(self) -> int:
         """Return the currency value that should be displayed on HUD panels."""
-        # HUD currency represents the current run score (session points),
-        # not the persistent wallet balance shown in menu/shop screens.
         return max(0, int(self._scoring_system.get_score()))
 
     def _initialize_car_selection(self) -> None:
@@ -1013,7 +992,6 @@ class GameLoop:
 
         def on_car_selected(car):
             """Handle car selection event."""
-            # TODO: Apply car stats to player car
             logger.info(f"Car selected: {car.name}")
 
         def on_car_selection_closed():

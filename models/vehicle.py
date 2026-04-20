@@ -40,10 +40,8 @@ class Vehicle(pygame.sprite.Sprite):
         target_angle = -steer * config.TURN_STEER_SENS
 
         if smoothing > 0:
-            # Smooth interpolation towards target angle
             self.current_angle += (target_angle - self.current_angle) * smoothing
         else:
-            # Instant turn (no smoothing)
             self.current_angle = target_angle
 
         self.image = pygame.transform.rotate(self.original_image, self.current_angle)

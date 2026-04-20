@@ -21,42 +21,33 @@ def jpg_to_transparent_png(jpg_path, output_path=None, threshold=240):
         threshold: RGB threshold for transparency (0-255, default 240 for white)
     """
     try:
-        # Open image
         img = Image.open(jpg_path)
 
-        # Convert to RGBA if not already
         img = img.convert("RGBA")
 
-        # Get image data
         data = img.getdata()
 
-        # Create new image data with transparency
         new_data = []
         for item in data:
             r, g, b = item[:3]
 
-            # Make light colors (near white) transparent
             if r > threshold and g > threshold and b > threshold:
-                new_data.append((255, 255, 255, 0))  # Transparent
+                new_data.append((255, 255, 255, 0))
             else:
                 new_data.append(item)
 
-        # Apply new data
         img.putdata(new_data)
 
-        # Determine output path
         if output_path is None:
             output_path = Path(jpg_path).with_suffix(".png")
         else:
-            # Ensure output directory exists
             output_path = Path(output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Save as PNG
         img.save(output_path, "PNG")
-        print(f"✓ Converted: {jpg_path} → {output_path}")
+        print(f"\u2713 Converted: {jpg_path} \u2192 {output_path}")
     except Exception as e:
-        print(f"✗ Error processing {jpg_path}: {e}")
+        print(f"\u2717 Error processing {jpg_path}: {e}")
 
 
 def handle_convert(args):
@@ -66,14 +57,13 @@ def handle_convert(args):
     threshold = args.threshold
 
     if not input_dir.exists():
-        print(f"✗ Input directory not found: {input_dir}")
+        print(f"\u2717 Input directory not found: {input_dir}")
         sys.exit(1)
 
     if threshold < 0 or threshold > 255:
-        print(f"✗ Threshold must be between 0 and 255, got {threshold}")
+        print(f"\u2717 Threshold must be between 0 and 255, got {threshold}")
         sys.exit(1)
 
-    # Recursively find all JPG/JPEG files
     jpg_files = (
         list(input_dir.glob("**/*.jpg"))
         + list(input_dir.glob("**/*.jpeg"))
@@ -85,9 +75,7 @@ def handle_convert(args):
     if jpg_files:
         print(f"Found {len(jpg_files)} JPG file(s). Converting...")
         for jpg_file in jpg_files:
-            # Calculate relative path from input_dir
             rel_path = jpg_file.relative_to(input_dir)
-            # Create output path with same structure
             output_path = output_dir / rel_path.with_suffix(".png")
             jpg_to_transparent_png(jpg_file, output_path, threshold=threshold)
         print("\nDone!")
@@ -101,7 +89,6 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Convert command
     convert_parser = subparsers.add_parser(
         "convert", help="Convert JPG files to PNG with transparent background"
     )

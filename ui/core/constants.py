@@ -9,7 +9,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple
 
-# Color type alias: RGB or RGBA tuple
 Color = Tuple[int, int, int] | Tuple[int, int, int, int]
 
 
@@ -185,7 +184,6 @@ class FilePaths:
         return str(Path(self.models_path) / filenames.get(lives, "deds.png"))
 
 
-# Global constant instances
 COLORS = Colors()
 FONTS = FontSizes()
 LAYOUT = Layout()

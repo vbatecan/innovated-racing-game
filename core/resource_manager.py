@@ -12,7 +12,6 @@ class ResourceManager:
         key = f"{path}_{scale}_{convert_alpha}"
         if key not in cls._images:
             if not os.path.exists(path):
-                # Return an empty surface if not found to prevent crash
                 surface = pygame.Surface((32, 32))
                 surface.fill((255, 0, 255))
                 cls._images[key] = surface

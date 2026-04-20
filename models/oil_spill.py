@@ -27,7 +27,6 @@ class OilSpill(pygame.sprite.Sprite):
     def update(self, map_speed: int, screen_height: int) -> None:
         self._y_pos += max(0.0, float(map_speed))
         self.rect.y = int(self._y_pos)
-        # CRITICAL FIX: Update mask when rect position changes
         self.mask = pygame.mask.from_surface(self.image)
         if self.rect.top > screen_height + self.rect.height:
             self.kill()

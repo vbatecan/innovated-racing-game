@@ -24,13 +24,11 @@ class Obstacle(pygame.sprite.Sprite):
             traffic_speed (float): World traffic speed used for relative movement.
         """
         super().__init__()
-        # Always create the image at the correct size for the obstacle
         if image is None:
             self.image = pygame.Surface((width, height), pygame.SRCALPHA)
             self.image.fill((255, 50, 50))
             pygame.draw.rect(self.image, (255, 255, 0), (0, 0, width, 10))
         else:
-            # Defensive: ensure the image is the correct size for the rect
             if image.get_width() != width or image.get_height() != height:
                 self.image = pygame.transform.smoothscale(image, (width, height))
             else:
@@ -39,10 +37,8 @@ class Obstacle(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
-        # Always update the mask after scaling
         self.mask = pygame.mask.from_surface(self.image)
         self.speed = float(speed)
-        # Per-vehicle base approach speed so traffic always moves on-screen.
         self.traffic_speed = max(0.5, float(traffic_speed))
         self._y_pos = float(y)
         self.direction_factor = 1.0
@@ -72,7 +68,6 @@ class Obstacle(pygame.sprite.Sprite):
         self.direction_factor += (target_direction - self.direction_factor) * 0.18
         self._y_pos += self.speed * self.direction_factor
         self.rect.y = int(self._y_pos)
-        # CRITICAL FIX: Update mask when rect position changes
         self.mask = pygame.mask.from_surface(self.image)
 
         if self.rect.top > screen_height + self.rect.height or self.rect.bottom < -self.rect.height:

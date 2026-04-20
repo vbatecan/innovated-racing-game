@@ -224,7 +224,7 @@ class CarSelectionUI:
             overlay.fill((0, 0, 0, 150))
             surface.blit(overlay, rect)
 
-            lock_text = self.font_large.render("🔒", True, self.COLOR_TEXT)
+            lock_text = self.font_large.render("\U0001F512", True, self.COLOR_TEXT)
             lock_rect = lock_text.get_rect(center=rect.center)
             surface.blit(lock_text, lock_rect)
     
@@ -291,38 +291,30 @@ class CarSelectionUI:
 
         current_car = CARS[self.current_index]
 
-        # Title at top with more breathing room
         title_text = self.font_large.render("SELECT YOUR CAR", True, self.COLOR_ACCENT)
         title_rect = title_text.get_rect(center=(self.width // 2, 50))
         surface.blit(title_text, title_rect)
 
-        # Car preview with improved spacing
         self._draw_car_preview(surface, current_car)
 
-        # Car info section with generous spacing
         preview_rect = self._get_car_preview_rect()
-        info_y_start = preview_rect.bottom + 75  # Increased spacing
+        info_y_start = preview_rect.bottom + 75
 
-        # Car name
         car_name_text = self.font_medium.render(current_car.name, True, self.COLOR_TEXT)
         car_name_rect = car_name_text.get_rect(center=(self.width // 2, info_y_start))
         surface.blit(car_name_text, car_name_rect)
 
-        # Rarity with more spacing
         rarity_color = self.COLOR_RARITY.get(current_car.rarity, self.COLOR_TEXT)
         rarity_text = self.font_small.render(current_car.rarity, True, rarity_color)
         rarity_rect = rarity_text.get_rect(center=(self.width // 2, info_y_start + 55))
         surface.blit(rarity_text, rarity_rect)
 
-        # Description with more spacing
         desc_text = self.font_tiny.render(current_car.description, True, (200, 200, 200))
         desc_rect = desc_text.get_rect(center=(self.width // 2, info_y_start + 95))
         surface.blit(desc_text, desc_rect)
 
-        # Stats panel with improved spacing from description
         self._draw_car_stats(surface, current_car, 60, info_y_start + 145)
 
-        # Unlock/Selected status at bottom with better spacing
         if not self.car_manager.is_car_unlocked(current_car.id):
             progress = self.car_manager.get_unlock_progress(current_car.id)
             unlock_score = progress.get("unlock_score", 0)
@@ -358,7 +350,7 @@ class CarSelectionUI:
             progress_text = self.font_tiny.render(f"{int(progress_percent)}%", True, self.COLOR_TEXT)
             surface.blit(progress_text, (progress_bar_x + 15, progress_bar_y + 6))
         else:
-            selected_text = self.font_small.render("✓ UNLOCKED", True, self.COLOR_UNLOCKED)
+            selected_text = self.font_small.render("\u2713 UNLOCKED", True, self.COLOR_UNLOCKED)
             selected_rect = selected_text.get_rect(center=(self.width // 2, self.height - 130))
             surface.blit(selected_text, selected_rect)
 
@@ -366,7 +358,7 @@ class CarSelectionUI:
 
         is_selected = self.car_manager.selected_car_id == current_car.id
         if is_selected:
-            indicator = self.font_small.render("★ SELECTED ★", True, self.COLOR_ACCENT)
+            indicator = self.font_small.render("\u2605 SELECTED \u2605", True, self.COLOR_ACCENT)
             indicator_rect = indicator.get_rect(center=(self.width // 2, self.height - 75))
             surface.blit(indicator, indicator_rect)
 
@@ -382,11 +374,9 @@ class CarSelectionUI:
         arrow_color = self.COLOR_ACCENT
         arrow_size = 45
 
-        # Position arrows vertically centered with the car preview
         preview_rect = self._get_car_preview_rect()
         arrow_y = preview_rect.centery
 
-        # Left arrow with better spacing
         left_x = 50
         pygame.draw.polygon(
             surface,
@@ -398,7 +388,6 @@ class CarSelectionUI:
             ],
         )
 
-        # Right arrow with better spacing
         right_x = self.width - 50
         pygame.draw.polygon(
             surface,
@@ -421,7 +410,7 @@ class CarSelectionUI:
         pulse = math.sin(time * 5) * 0.5 + 0.5
         scale = 1.0 + pulse * 0.2
 
-        animation_text = self.font_large.render("🎉 NEW CAR UNLOCKED! 🎉", True, (255, 215, 0))
+        animation_text = self.font_large.render("\U0001F389 NEW CAR UNLOCKED! \U0001F389", True, (255, 215, 0))
         scaled_text = pygame.transform.scale(
             animation_text,
             (int(animation_text.get_width() * scale), int(animation_text.get_height() * scale)),
