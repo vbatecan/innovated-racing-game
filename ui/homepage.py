@@ -119,7 +119,7 @@ class HomePageScreen:
             if car.id == CARS[-1].id:
                 badge = "Limited"
 
-            price = 0 if car.unlock_score == 0 else 600 + car.unlock_score // 20
+            price = 10_000 + car.unlock_score // 20
             items.append(
                 ShopItem(
                     id=f"car-{car.id}",
